@@ -1,0 +1,22 @@
+{
+  "name": "@malte.muth/remote-state",
+  "version": "0.0.1",
+  "description": "TypeScript-based multiplayer game infrastructure library",
+  "license": "MIT",
+  "author": "Malte Muth",
+  "type": "commonjs",
+  "main": "index.js",
+  "scripts": {
+    
+  },
+  "workspaces": [
+    "packages/*"
+  ],
+  "devDependencies": {
+    "typescript": "^5.0.0",
+    "eslint": "^8.0.0",
+    "@typescript-eslint/eslint-plugin": "^6.0.0",
+    "@typescript-eslint/parser": "^6.0.0",
+    "prettier": "^3.0.0"
+  }
+}
