@@ -6,17 +6,11 @@
   "author": "Malte Muth",
   "type": "commonjs",
   "main": "index.js",
-  "scripts": {
-    
-  },
   "workspaces": [
-    "packages/*"
+    "packages/remote-state"
   ],
-  "devDependencies": {
-    "typescript": "^5.0.0",
-    "eslint": "^8.0.0",
-    "@typescript-eslint/eslint-plugin": "^6.0.0",
-    "@typescript-eslint/parser": "^6.0.0",
-    "prettier": "^3.0.0"
+  "scripts": {},
+  "dependencies": {
+    "express": "^5.1.0"
   }
 }
