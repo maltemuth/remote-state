@@ -4,7 +4,7 @@
   "description": "TypeScript-based multiplayer game infrastructure library",
   "license": "MIT",
   "author": "Malte Muth",
-  "type": "commonjs",
+  "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "scripts": {
@@ -20,18 +20,19 @@
     "prepare": "npm run build"
   },
   "dependencies": {
-    "express": "^5",
-    "cors": "^2.8.5"
+    "cors": "^2.8.5",
+    "express": "^5"
   },
   "devDependencies": {
-    "typescript": "^5.0.0",
-    "ts-node": "^10.9.1",
-    "@types/express": "^5",
+    "@eslint/js": "^9.34.0",
     "@types/cors": "^2.8.13",
+    "@types/express": "^5",
     "@types/node": "^24",
-    "eslint": "^9",
-    "@typescript-eslint/eslint-plugin": "^8",
-    "@typescript-eslint/parser": "^8",
-    "prettier": "^3.0.0"
+    "@typescript-eslint/eslint-plugin": "^8.40.0",
+    "@typescript-eslint/parser": "^8.40.0",
+    "eslint": "^9.34.0",
+    "prettier": "^3.0.0",
+    "ts-node": "^10.9.1",
+    "typescript": "^5.0.0"
   }
 }
