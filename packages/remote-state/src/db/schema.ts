@@ -19,6 +19,8 @@ export const players = sqliteTable('players', {
   role: text('role', { enum: ['spectator', 'player', 'admin'] })
     .notNull()
     .default('player'),
+  token: text('token'), // Token for authentication/authorization
+  tokenType: text('token_type', { enum: ['owner', 'identity'] }), // Type of token
   joinedAt: integer('joined_at', { mode: 'timestamp' }).notNull().default(new Date()),
 });
 

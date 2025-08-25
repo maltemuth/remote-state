@@ -9,6 +9,10 @@ import {
   getCurrentGameState,
   updateGameState,
   addPlayerToGame,
+  createGameOwner,
+  createJoiningPlayer,
+  validatePlayerToken,
+  getGameOwner,
 } from './db/service';
 
 const { info, error } = createLogger({
@@ -136,7 +140,90 @@ app.get('/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
-// Create new game endpoint
+// Self-register as game owner endpoint
+app.post('/api/auth/register/owner', async (req, res) => {
+  try {
+    const { playerName, gameName } = req.body;
+
+    // Validate request
+    if (!playerName || !gameName) {
+      return res.status(400).json({ error: 'Player name and game name are required' });
+    }
+
+    // Generate a unique game ID
+    const gameId = `game-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+
+    // Create the game in the database
+    const game = await createGame({
+      id: gameId,
+      name: gameName,
+      status: 'waiting',
+    });
+
+    // Create the game owner
+    const owner = await createGameOwner(gameId, playerName);
+
+    info(`Created new game with owner: ${game.id} - ${owner.name}`);
+
+    // Return the game ID and owner token
+    res.status(201).json({
+      success: true,
+      gameId: game.id,
+      playerId: owner.id,
+      token: owner.token,
+      message: 'Game created and owner registered successfully',
+    });
+  } catch (err) {
+    error('Error registering game owner:', {
+      error: err instanceof Error ? err.message : String(err),
+    });
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Self-register as joining player endpoint
+app.post('/api/auth/register/join', async (req, res) => {
+  try {
+    const { playerName, gameId } = req.body;
+
+    // Validate request
+    if (!playerName || !gameId) {
+      return res.status(400).json({ error: 'Player name and game ID are required' });
+    }
+
+    // Check if game exists
+    const game = await getGame(gameId);
+    if (!game) {
+      return res.status(404).json({ error: 'Game not found' });
+    }
+
+    // Check if game is accepting players
+    if (game.status !== 'waiting') {
+      return res.status(400).json({ error: 'Game is not accepting new players' });
+    }
+
+    // Create the joining player
+    const player = await createJoiningPlayer(gameId, playerName);
+
+    info(`Created joining player: ${player.name} for game ${gameId}`);
+
+    // Return the player ID and token
+    res.status(201).json({
+      success: true,
+      playerId: player.id,
+      token: player.token,
+      gameId,
+      message: 'Player registered successfully',
+    });
+  } catch (err) {
+    error('Error registering joining player:', {
+      error: err instanceof Error ? err.message : String(err),
+    });
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Create new game endpoint (deprecated - use /api/auth/register/owner instead)
 app.post('/api/games', async (req, res) => {
   try {
     const { name } = req.body;
@@ -182,6 +269,8 @@ app.use('{*splat}', (req, res) => {
 server.listen(port, () => {
   info(`Remote State server listening at http://localhost:${port}`);
   info('Endpoints:');
+  info('  POST /api/auth/register/owner - Register as game owner (creates new game)');
+  info('  POST /api/auth/register/join - Register as joining player (joins existing game)');
   info('  POST /api/games/:gameId/actions - Submit game action');
   info('  GET /api/games/:gameId/state/current - Retrieve current game state');
   info('  GET /health - Health check');

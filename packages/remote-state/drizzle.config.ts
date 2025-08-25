@@ -1,7 +1,7 @@
 export default {
   schema: './src/db/schema.ts',
   out: './drizzle',
-  driver: 'sqlite',
+  dialect: 'sqlite',
   dbCredentials: {
     url: 'games.db',
   },

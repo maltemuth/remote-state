@@ -1,4 +1,4 @@
-import { eq, desc } from 'drizzle-orm';
+import { eq, desc, and } from 'drizzle-orm';
 import { db } from './index';
 import { games, players, actions, gameStates } from './schema';
 import { createLogger } from '../logger';
@@ -13,7 +13,6 @@ const { info } = createLogger({
 export interface GameData {
   id: string;
   name: string;
-  owner: PlayerData;
   status: string;
   createdAt: Date;
   updatedAt: Date;
@@ -27,6 +26,8 @@ export interface PlayerData {
   gameId: string;
   name: string;
   role: 'spectator' | 'player' | 'admin';
+  token?: string;
+  tokenType?: 'owner' | 'identity';
   joinedAt: Date;
 }
 
@@ -117,11 +118,108 @@ export const addPlayerToGame = async (
     gameId: playerData.gameId,
     name: playerData.name,
     role: playerData.role,
+    token: playerData.token,
+    tokenType: playerData.tokenType,
     joinedAt: now,
   };
 
   await db.insert(players).values(newPlayer);
   return newPlayer;
+};
+
+/**
+ * Generate a secure random token
+ */
+export const generateToken = (length: number = 32): string => {
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+  let result = '';
+  for (let i = 0; i < length; i++) {
+    result += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return result;
+};
+
+/**
+ * Create a game owner with token
+ */
+export const createGameOwner = async (gameId: string, playerName: string): Promise<PlayerData> => {
+  info(`Creating game owner for game ${gameId}: ${playerName}`);
+
+  const playerId = `owner-${Date.now()}`;
+  const token = generateToken();
+
+  const owner = await addPlayerToGame({
+    id: playerId,
+    gameId,
+    name: playerName,
+    role: 'admin',
+    token,
+    tokenType: 'owner',
+  });
+
+  return owner;
+};
+
+/**
+ * Create a joining player with token
+ */
+export const createJoiningPlayer = async (
+  gameId: string,
+  playerName: string
+): Promise<PlayerData> => {
+  info(`Creating joining player for game ${gameId}: ${playerName}`);
+
+  const playerId = `player-${Date.now()}`;
+  const token = generateToken();
+
+  const player = await addPlayerToGame({
+    id: playerId,
+    gameId,
+    name: playerName,
+    role: 'player',
+    token,
+    tokenType: 'identity',
+  });
+
+  return player;
+};
+
+/**
+ * Get player by token
+ */
+export const getPlayerByToken = async (token: string): Promise<PlayerData | null> => {
+  info(`Retrieving player by token`);
+
+  const result = await db.select().from(players).where(eq(players.token, token)).limit(1);
+  return result[0] || null;
+};
+
+/**
+ * Validate player token and get player data
+ */
+export const validatePlayerToken = async (token: string): Promise<PlayerData | null> => {
+  info(`Validating player token`);
+
+  const player = await getPlayerByToken(token);
+  if (!player) {
+    return null;
+  }
+
+  return player;
+};
+
+/**
+ * Get game owner by game ID
+ */
+export const getGameOwner = async (gameId: string): Promise<PlayerData | null> => {
+  info(`Retrieving game owner for game: ${gameId}`);
+
+  const result = await db
+    .select()
+    .from(players)
+    .where(and(eq(players.gameId, gameId), eq(players.tokenType, 'owner')))
+    .limit(1);
+  return result[0] || null;
 };
 
 /**
@@ -137,8 +235,8 @@ export const getPlayersForGame = async (gameId: string): Promise<PlayerData[]> =
  * Record an action
  */
 export const recordAction = async (
-  actionData: Omit<ActionData, 'timestamp'>
-): Promise<ActionData> => {
+  actionData: Omit<ActionData<any, any, any>, 'timestamp'>
+): Promise<ActionData<any, any, any>> => {
   info(`Recording action: ${actionData.actionType} for game ${actionData.gameId}`);
 
   const now = new Date();
@@ -160,7 +258,7 @@ export const recordAction = async (
 /**
  * Get actions for a game
  */
-export const getActionsForGame = async (gameId: string): Promise<ActionData[]> => {
+export const getActionsForGame = async (gameId: string): Promise<ActionData<any, any, any>[]> => {
   info(`Retrieving actions for game: ${gameId}`);
 
   return await db
@@ -174,7 +272,7 @@ export const getActionsForGame = async (gameId: string): Promise<ActionData[]> =
  * Update game state
  */
 export const updateGameState = async (
-  gameStateData: Omit<GameStateData, 'updatedAt'>
+  gameStateData: Omit<GameStateData<any>, 'updatedAt'>
 ): Promise<void> => {
   info(`Updating game state for game: ${gameStateData.gameId}`);
 
@@ -199,7 +297,7 @@ export const updateGameState = async (
 /**
  * Get current game state
  */
-export const getCurrentGameState = async (gameId: string): Promise<GameStateData | null> => {
+export const getCurrentGameState = async (gameId: string): Promise<GameStateData<any> | null> => {
   info(`Retrieving current game state for game: ${gameId}`);
 
   const result = await db.select().from(gameStates).where(eq(gameStates.gameId, gameId)).limit(1);
