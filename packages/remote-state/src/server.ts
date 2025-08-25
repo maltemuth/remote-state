@@ -2,6 +2,14 @@ import express from 'express';
 import cors from 'cors';
 import { createServer } from 'http';
 import { createLogger } from './logger';
+import {
+  createGame,
+  getGame,
+  recordAction,
+  getCurrentGameState,
+  updateGameState,
+  addPlayerToGame,
+} from './db/service';
 
 const { info, error } = createLogger({
   scope: 'server',
@@ -17,25 +25,11 @@ const server = createServer(app);
 app.use(cors());
 app.use(express.json());
 
-// In-memory storage for demonstration (will be replaced with database later)
-const gameState = {
-  gameId: 'demo-game',
-  players: [],
-  state: {
-    board: Array(9).fill(null),
-    currentPlayer: 'X',
-    winner: null,
-    isDraw: false,
-    status: 'waiting',
-  },
-  actions: [],
-};
-
 // Action submission endpoint
-app.post('/api/games/:gameId/actions', (req, res) => {
+app.post('/api/games/:gameId/actions', async (req, res) => {
   try {
     const { gameId } = req.params;
-    const { action, cursor } = req.body;
+    const { action } = req.body;
 
     info(`Received action for game ${gameId}:`, { action });
 
@@ -44,25 +38,44 @@ app.post('/api/games/:gameId/actions', (req, res) => {
       return res.status(400).json({ error: 'Action is required' });
     }
 
-    // Stub: In a real implementation, this would:
-    // 1. Validate the action using game plugin
-    // 2. Apply the action to the game state
-    // 3. Generate a new cursor
-    // 4. Create state deltas
-    // 5. Broadcast updates via WebSocket
-    // 6. Record action, cursor, and deltas to database
+    // Check if game exists
+    let game = await getGame(gameId);
+    if (!game) {
+      // Create game if it doesn't exist
+      game = await createGame({
+        id: gameId,
+        name: `Game ${gameId}`,
+        status: 'waiting',
+      });
+    }
 
-    const newAction = {
-      id: `action-${Date.now()}`,
+    // Create a default player if none exists for this game
+    const defaultPlayerId = `player-${Date.now()}`;
+    await addPlayerToGame({
+      id: defaultPlayerId,
       gameId,
-      action,
-      cursor: cursor || null,
-      timestamp: new Date().toISOString(),
-      validationResult: { valid: true, message: 'Action accepted' },
-    };
+      name: 'Default Player',
+      role: 'player',
+    });
 
-    // Store the action
-    gameState.actions.push(newAction);
+    // Record the action in the database
+    const newAction = await recordAction({
+      id: `action-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+      gameId,
+      playerId: defaultPlayerId,
+      actionType: action.type || 'unknown',
+      actionData: action,
+      gameState: null, // In a real implementation, this would be the resulting game state
+      // cursor is not stored directly in the action but used for validation
+      validationResult: { valid: true, message: 'Action accepted' },
+    });
+
+    // Update game state
+    await updateGameState({
+      gameId,
+      state: { message: 'Action recorded', lastAction: newAction },
+      lastActionId: newAction.id,
+    });
 
     // Return success response
     res.status(201).json({
@@ -80,33 +93,32 @@ app.post('/api/games/:gameId/actions', (req, res) => {
 });
 
 // Current state retrieval endpoint
-app.get('/api/games/:gameId/state/current', (req, res) => {
+app.get('/api/games/:gameId/state/current', async (req, res) => {
   try {
     const { gameId } = req.params;
 
     info(`Retrieving current state for game ${gameId}`);
 
-    // Stub: In a real implementation, this would:
-    // 1. Query the database for the latest game state
-    // 2. Apply any pending actions
-    // 3. Filter the state based on player permissions
-    // 4. Return the filtered state
-
-    if (gameId !== gameState.gameId) {
+    // Check if game exists
+    const game = await getGame(gameId);
+    if (!game) {
       return res.status(404).json({ error: 'Game not found' });
     }
 
+    // Get current game state from database
+    const gameState = await getCurrentGameState(gameId);
+
     const response = {
       gameId,
-      state: gameState.state,
-      lastAction: gameState.actions[gameState.actions.length - 1] || null,
+      state: gameState?.state || { message: 'No state recorded yet' },
+      lastAction: null, // In a real implementation, this would be the last action
       timestamp: new Date().toISOString(),
       cursor: {
         id: `cursor-${Date.now()}`,
         gameId,
         timestamp: new Date().toISOString(),
         stateHash: 'demo-hash',
-        position: gameState.actions.length,
+        position: 0, // In a real implementation, this would be based on action count
       },
     };
 
@@ -122,6 +134,37 @@ app.get('/api/games/:gameId/state/current', (req, res) => {
 // Health check endpoint
 app.get('/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
+});
+
+// Create new game endpoint
+app.post('/api/games', async (req, res) => {
+  try {
+    const { name } = req.body;
+
+    // Generate a unique game ID
+    const gameId = `game-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+
+    // Create the game in the database
+    const game = await createGame({
+      id: gameId,
+      name: name || `Game ${gameId}`,
+      status: 'waiting',
+    });
+
+    info(`Created new game: ${game.id}`);
+
+    // Return the game ID
+    res.status(201).json({
+      success: true,
+      gameId: game.id,
+      message: 'Game created successfully',
+    });
+  } catch (err) {
+    error('Error creating game:', {
+      error: err instanceof Error ? err.message : String(err),
+    });
+    res.status(500).json({ error: 'Internal server error' });
+  }
 });
 
 // Error handling middleware
