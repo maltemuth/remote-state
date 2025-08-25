@@ -15,16 +15,12 @@ export default [
     files: ["**/*.ts"],
     languageOptions: {
       parser: tsparser,
-      ecmaVersion: 2020,
-      sourceType: "module",
-      parserOptions: {
-        project: "./tsconfig.json",
-      },
     },
     plugins: {
       "@typescript-eslint": tseslint,
     },
     rules: {
+      "no-unused-vars": "off",
       // TypeScript specific rules
       "@typescript-eslint/no-unused-vars": [
         "error",
@@ -40,19 +36,6 @@ export default [
       "no-console": "warn",
       "prefer-const": "error",
       "no-var": "error",
-    },
-  },
-
-  // Override for packages/**/*.ts files
-  {
-    files: ["packages/**/*.ts"],
-    languageOptions: {
-      parser: tsparser,
-      ecmaVersion: 2020,
-      sourceType: "module",
-      globals: {
-        node: true,
-      },
     },
   },
 ];

@@ -1,6 +1,11 @@
 import express from 'express';
 import cors from 'cors';
 import { createServer } from 'http';
+import { createLogger } from './logger';
+
+const { info, error } = createLogger({
+  scope: 'server',
+});
 
 const app = express();
 const port = 3000;
@@ -13,7 +18,7 @@ app.use(cors());
 app.use(express.json());
 
 // In-memory storage for demonstration (will be replaced with database later)
-let gameState: any = {
+const gameState: any = {
   gameId: 'demo-game',
   players: [],
   state: {
@@ -32,7 +37,7 @@ app.post('/api/games/:gameId/actions', (req, res) => {
     const { gameId } = req.params;
     const { action, cursor } = req.body;
 
-    console.log(`Received action for game ${gameId}:`, action);
+    info(`Received action for game ${gameId}:`, { action });
 
     // Validate request
     if (!action) {
@@ -66,8 +71,10 @@ app.post('/api/games/:gameId/actions', (req, res) => {
       message: 'Action submitted successfully',
       validationResult: newAction.validationResult,
     });
-  } catch (error) {
-    console.error('Error processing action:', error);
+  } catch (err) {
+    error('Error processing action:', {
+      error: err instanceof Error ? err.message : String(err),
+    });
     res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -77,7 +84,7 @@ app.get('/api/games/:gameId/state/current', (req, res) => {
   try {
     const { gameId } = req.params;
 
-    console.log(`Retrieving current state for game ${gameId}`);
+    info(`Retrieving current state for game ${gameId}`);
 
     // Stub: In a real implementation, this would:
     // 1. Query the database for the latest game state
@@ -104,8 +111,10 @@ app.get('/api/games/:gameId/state/current', (req, res) => {
     };
 
     res.json(response);
-  } catch (error) {
-    console.error('Error retrieving state:', error);
+  } catch (err) {
+    error('Error retrieving state:', {
+      error: err instanceof Error ? err.message : String(err),
+    });
     res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -116,8 +125,8 @@ app.get('/health', (req, res) => {
 });
 
 // Error handling middleware
-app.use((err: Error, req: express.Request, res: express.Response, next: express.NextFunction) => {
-  console.error(err.stack);
+app.use((err: Error, req: express.Request, res: express.Response) => {
+  error('Server error:', { stack: err.stack });
   res.status(500).json({ error: 'Something went wrong!' });
 });
 
@@ -128,11 +137,11 @@ app.use('*', (req, res) => {
 
 // Start server
 server.listen(port, () => {
-  console.log(`Remote State server listening at http://localhost:${port}`);
-  console.log(`Endpoints:`);
-  console.log(`  POST /api/games/:gameId/actions - Submit game action`);
-  console.log(`  GET /api/games/:gameId/state/current - Retrieve current game state`);
-  console.log(`  GET /health - Health check`);
+  info(`Remote State server listening at http://localhost:${port}`);
+  info('Endpoints:');
+  info('  POST /api/games/:gameId/actions - Submit game action');
+  info('  GET /api/games/:gameId/state/current - Retrieve current game state');
+  info('  GET /health - Health check');
 });
 
 export default app;

@@ -1,25 +1,27 @@
 {
   "compilerOptions": {
-    "target": "ES2020",
-    "module": "commonjs",
-    "lib": ["ES2020"],
-    "declaration": true,
-    "outDir": "./dist",
-    "rootDir": "./",
-    "strict": true,
     "esModuleInterop": true,
-    "skipLibCheck": true,
-    "forceConsistentCasingInFileNames": true,
-    "moduleResolution": "node",
-    "resolveJsonModule": true,
-    "allowSyntheticDefaultImports": true,
+    // Decorators and metadata
     "experimentalDecorators": true,
-    "emitDecoratorMetadata": true
+    "emitDecoratorMetadata": true,
+
+    // Project structure
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["./packages/remote-state/src/*"]
+    },
+
+    // Skip lib check for faster builds
+    "skipLibCheck": true,
+
+    // Incremental build support
+    "incremental": true,
+    "tsBuildInfoFile": "./dist/.tsbuildinfo"
   },
-  "exclude": [
-    "node_modules",
-    "dist",
-    "**/*.test.ts",
-    "**/*.spec.ts"
-  ]
+
+  // Include all TypeScript files in the project
+  "include": ["**/*.ts", "**/*.tsx"],
+
+  // Exclude common directories
+  "exclude": ["node_modules", "dist"]
 }
