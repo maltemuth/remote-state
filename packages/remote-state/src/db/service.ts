@@ -2,6 +2,7 @@ import { eq, desc, and } from 'drizzle-orm';
 import { db } from './index';
 import { games, players, actions, gameStates } from './schema';
 import { createLogger } from '../logger';
+import { createInitialGameState } from '../games';
 
 const { info } = createLogger({
   scope: 'db-service',
@@ -302,4 +303,82 @@ export const getCurrentGameState = async (gameId: string): Promise<GameStateData
 
   const result = await db.select().from(gameStates).where(eq(gameStates.gameId, gameId)).limit(1);
   return result[0] || null;
+};
+
+/**
+ * Create initial tic-tac-toe game state
+ */
+export const createTicTacToeGameState = async (gameId: string): Promise<void> => {
+  info(`Creating initial tic-tac-toe game state for game: ${gameId}`);
+
+  const initialState = createInitialGameState(gameId);
+
+  await db
+    .insert(gameStates)
+    .values({
+      gameId,
+      state: initialState,
+      lastActionId: null,
+      updatedAt: new Date(),
+    })
+    .onConflictDoUpdate({
+      target: gameStates.gameId,
+      set: {
+        state: initialState,
+        lastActionId: null,
+        updatedAt: new Date(),
+      },
+    });
+};
+
+/**
+ * Update game state with typed validation
+ */
+export const updateGameStateWithValidation = async (
+  gameId: string,
+  action: any,
+  token: string
+): Promise<{ success: boolean; state?: any; error?: string }> => {
+  info(`Updating game state with validation for game: ${gameId}`);
+
+  try {
+    // Get current game state
+    const currentState = await getCurrentGameState(gameId);
+    if (!currentState?.state) {
+      return { success: false, error: 'Game state not found' };
+    }
+
+    // Get player by token
+    const player = await validatePlayerToken(token);
+    if (!player) {
+      return { success: false, error: 'Invalid token' };
+    }
+
+    // For tic-tac-toe, use the game engine
+    const { executeAction } = await import('../games/tic-tac-toe/engine');
+
+    const gameAction = {
+      ...action,
+      playerId: player.id,
+      timestamp: new Date(),
+    };
+
+    const result = executeAction(currentState.state, gameAction);
+
+    if (result.success) {
+      // Update the game state in database
+      await updateGameState({
+        gameId,
+        state: result.state,
+        lastActionId: action.id || `action-${Date.now()}`,
+      });
+
+      return { success: true, state: result.state };
+    } else {
+      return { success: false, error: result.validationResult.message };
+    }
+  } catch (error) {
+    error(`Error updating game state with validation: ${error}`);
+    return { success: false, error: 'Internal server error' };
+  }
 };

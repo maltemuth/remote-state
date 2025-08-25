@@ -12,6 +12,8 @@ import {
   createGameOwner,
   createJoiningPlayer,
   validatePlayerToken,
+  createTicTacToeGameState,
+  updateGameStateWithValidation,
 } from './db/service';
 
 const { info, error } = createLogger({
@@ -50,6 +52,9 @@ app.post('/api/games/:gameId/actions', async (req, res) => {
         name: `Game ${gameId}`,
         status: 'waiting',
       });
+
+      // Initialize tic-tac-toe game state
+      await createTicTacToeGameState(gameId);
     }
 
     // Validate player token if provided
@@ -82,6 +87,16 @@ app.post('/api/games/:gameId/actions', async (req, res) => {
       player = { id: defaultPlayerId, gameId, name: 'Default Player', role: 'player' };
     }
 
+    // Use typed game state validation for tic-tac-toe
+    const validationResult = await updateGameStateWithValidation(gameId, action, token);
+
+    if (!validationResult.success) {
+      return res.status(400).json({
+        error: validationResult.error || 'Invalid action',
+        code: 'INVALID_ACTION',
+      });
+    }
+
     // Record the action in the database
     const newAction = await recordAction({
       id: `action-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
@@ -89,15 +104,14 @@ app.post('/api/games/:gameId/actions', async (req, res) => {
       playerId: player.id,
       actionType: action.type || 'unknown',
       actionData: action,
-      gameState: null, // In a real implementation, this would be the resulting game state
-      // cursor is not stored directly in the action but used for validation
+      gameState: validationResult.state, // Use the validated game state
       validationResult: { valid: true, message: 'Action accepted' },
     });
 
-    // Update game state
+    // Update game state with the validated state
     await updateGameState({
       gameId,
-      state: { message: 'Action recorded', lastAction: newAction },
+      state: validationResult.state,
       lastActionId: newAction.id,
     });
 
@@ -132,9 +146,31 @@ app.get('/api/games/:gameId/state/current', async (req, res) => {
     // Get current game state from database
     const gameState = await getCurrentGameState(gameId);
 
+    // If no state exists, create initial tic-tac-toe state
+    if (!gameState?.state) {
+      await createTicTacToeGameState(gameId);
+      const newGameState = await getCurrentGameState(gameId);
+
+      const response = {
+        gameId,
+        state: newGameState?.state || { message: 'No state recorded yet' },
+        lastAction: null,
+        timestamp: new Date().toISOString(),
+        cursor: {
+          id: `cursor-${Date.now()}`,
+          gameId,
+          timestamp: new Date().toISOString(),
+          stateHash: 'demo-hash',
+          position: 0,
+        },
+      };
+
+      return res.json(response);
+    }
+
     const response = {
       gameId,
-      state: gameState?.state || { message: 'No state recorded yet' },
+      state: gameState.state,
       lastAction: null, // In a real implementation, this would be the last action
       timestamp: new Date().toISOString(),
       cursor: {
