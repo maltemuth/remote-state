@@ -12,7 +12,6 @@ import {
   createGameOwner,
   createJoiningPlayer,
   validatePlayerToken,
-  getGameOwner,
 } from './db/service';
 
 const { info, error } = createLogger({
@@ -33,9 +32,9 @@ app.use(express.json());
 app.post('/api/games/:gameId/actions', async (req, res) => {
   try {
     const { gameId } = req.params;
-    const { action } = req.body;
+    const { action, token } = req.body;
 
-    info(`Received action for game ${gameId}:`, { action });
+    info(`Received action for game ${gameId}:`, { action, hasToken: !!token });
 
     // Validate request
     if (!action) {
@@ -53,20 +52,41 @@ app.post('/api/games/:gameId/actions', async (req, res) => {
       });
     }
 
-    // Create a default player if none exists for this game
-    const defaultPlayerId = `player-${Date.now()}`;
-    await addPlayerToGame({
-      id: defaultPlayerId,
-      gameId,
-      name: 'Default Player',
-      role: 'player',
-    });
+    // Validate player token if provided
+    let player = null;
+    if (token) {
+      player = await validatePlayerToken(token);
+      if (!player) {
+        return res.status(401).json({
+          error: 'Invalid or expired token',
+          code: 'INVALID_TOKEN',
+        });
+      }
+
+      // Verify player belongs to this game
+      if (player.gameId !== gameId) {
+        return res.status(403).json({
+          error: 'Token does not belong to this game',
+          code: 'WRONG_GAME',
+        });
+      }
+    } else {
+      // Create a default player if no token is provided
+      const defaultPlayerId = `player-${Date.now()}`;
+      await addPlayerToGame({
+        id: defaultPlayerId,
+        gameId,
+        name: 'Default Player',
+        role: 'player',
+      });
+      player = { id: defaultPlayerId, gameId, name: 'Default Player', role: 'player' };
+    }
 
     // Record the action in the database
     const newAction = await recordAction({
       id: `action-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
       gameId,
-      playerId: defaultPlayerId,
+      playerId: player.id,
       actionType: action.type || 'unknown',
       actionData: action,
       gameState: null, // In a real implementation, this would be the resulting game state
