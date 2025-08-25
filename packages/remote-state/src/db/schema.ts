@@ -16,7 +16,9 @@ export const players = sqliteTable('players', {
     .notNull()
     .references(() => games.id),
   name: text('name').notNull(),
-  role: text('role').notNull().default('player'), // player, spectator, admin
+  role: text('role', { enum: ['spectator', 'player', 'admin'] })
+    .notNull()
+    .default('player'),
   joinedAt: integer('joined_at', { mode: 'timestamp' }).notNull().default(new Date()),
 });
 
@@ -30,10 +32,10 @@ export const actions = sqliteTable('actions', {
     .notNull()
     .references(() => players.id),
   actionType: text('action_type').notNull(),
-  actionData: text('action_data', { mode: 'json' }), // JSON string of the action payload
-  gameState: text('game_state', { mode: 'json' }), // JSON string of the resulting game state
+  actionData: text('action_data', { mode: 'json' }).$type<any>(), // JSON string of the action payload (generic type A)
+  gameState: text('game_state', { mode: 'json' }).$type<any>(), // JSON string of the resulting game state (generic type S)
   timestamp: integer('timestamp', { mode: 'timestamp' }).notNull().default(new Date()),
-  validationResult: text('validation_result', { mode: 'json' }), // JSON string of validation result
+  validationResult: text('validation_result', { mode: 'json' }).$type<any>(), // JSON string of validation result (generic type R)
 });
 
 // Game states table to track the current state of each game
@@ -41,7 +43,7 @@ export const gameStates = sqliteTable('game_states', {
   gameId: text('game_id')
     .primaryKey()
     .references(() => games.id),
-  state: text('state', { mode: 'json' }), // JSON string of the current game state
+  state: text('state', { mode: 'json' }).$type<any>(), // JSON string of the current game state (generic type S)
   lastActionId: text('last_action_id').references(() => actions.id),
   updatedAt: integer('updated_at', { mode: 'timestamp' }).notNull().default(new Date()),
 });

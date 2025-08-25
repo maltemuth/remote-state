@@ -13,6 +13,7 @@ const { info } = createLogger({
 export interface GameData {
   id: string;
   name: string;
+  owner: PlayerData;
   status: string;
   createdAt: Date;
   updatedAt: Date;
@@ -25,30 +26,30 @@ export interface PlayerData {
   id: string;
   gameId: string;
   name: string;
-  role: string;
+  role: 'spectator' | 'player' | 'admin';
   joinedAt: Date;
 }
 
 /**
  * Action data type
  */
-export interface ActionData {
+export interface ActionData<A, S, R> {
   id: string;
   gameId: string;
   playerId: string;
   actionType: string;
-  actionData: any;
-  gameState: any;
+  actionData: A;
+  gameState: S;
   timestamp: Date;
-  validationResult: any;
+  validationResult: R;
 }
 
 /**
  * Game state data type
  */
-export interface GameStateData {
+export interface GameStateData<S> {
   gameId: string;
-  state: any;
+  state: S;
   lastActionId: string | null;
   updatedAt: Date;
 }
