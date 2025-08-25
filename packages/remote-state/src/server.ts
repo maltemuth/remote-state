@@ -18,7 +18,7 @@ app.use(cors());
 app.use(express.json());
 
 // In-memory storage for demonstration (will be replaced with database later)
-const gameState: any = {
+const gameState = {
   gameId: 'demo-game',
   players: [],
   state: {
@@ -125,13 +125,13 @@ app.get('/health', (req, res) => {
 });
 
 // Error handling middleware
-app.use((err: Error, req: express.Request, res: express.Response) => {
+app.use((err: Error, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
   error('Server error:', { stack: err.stack });
-  res.status(500).json({ error: 'Something went wrong!' });
+  res.status(500).json({ error: 'Internal Server Error' });
 });
 
 // 404 handler
-app.use('*', (req, res) => {
+app.use('{*splat}', (req, res) => {
   res.status(404).json({ error: 'Endpoint not found' });
 });
 

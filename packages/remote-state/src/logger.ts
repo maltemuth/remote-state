@@ -65,7 +65,7 @@ const createLoggerFunction = (options: StrictLoggerOptions): LoggerFunction => {
 };
 
 const createLevelLogger = (level: LogLevel, options: StrictLoggerOptions): LoggerFunction => {
-  if (options.logLevel < level) {
+  if (options.logLevel > level) {
     return NOOP;
   }
   return createLoggerFunction({ ...options, logLevel: level });

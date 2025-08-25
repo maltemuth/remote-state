@@ -5,18 +5,13 @@
     "experimentalDecorators": true,
     "emitDecoratorMetadata": true,
 
+    "declaration": true,
+
     // Project structure
-    "baseUrl": ".",
+    "baseUrl": "./src",
     "paths": {
       "@/*": ["./packages/remote-state/src/*"]
-    },
-
-    // Skip lib check for faster builds
-    "skipLibCheck": true,
-
-    // Incremental build support
-    "incremental": true,
-    "tsBuildInfoFile": "./dist/.tsbuildinfo"
+    }
   },
 
   // Include all TypeScript files in the project

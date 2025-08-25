@@ -11,8 +11,7 @@
   ],
   "scripts": {},
   "dependencies": {
-    "eslint": "^9.34.0",
-    "express": "^5.1.0"
+    "eslint": "^9.34.0"
   },
   "devDependencies": {
     "@eslint/js": "^9.34.0",
