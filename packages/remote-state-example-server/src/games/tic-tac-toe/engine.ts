@@ -5,14 +5,14 @@
 
 import {
   TicTacToeState,
-  GameAction,
+  TicTacToeAction,
   GameValidationResult,
   GameMoveResult,
   Player,
   Board,
   WinLine,
   createInitialGameState,
-} from './types';
+} from "./types";
 
 /**
  * Check if a position is valid on the board
@@ -24,7 +24,11 @@ export const isValidPosition = (row: number, col: number): boolean => {
 /**
  * Check if a position is empty
  */
-export const isPositionEmpty = (board: Board, row: number, col: number): boolean => {
+export const isPositionEmpty = (
+  board: Board,
+  row: number,
+  col: number
+): boolean => {
   if (!isValidPosition(row, col)) return false;
   return board[row][col] === null;
 };
@@ -33,7 +37,7 @@ export const isPositionEmpty = (board: Board, row: number, col: number): boolean
  * Check if the board is full
  */
 export const isBoardFull = (board: Board): boolean => {
-  return board.every(row => row.every(cell => cell !== null));
+  return board.every((row) => row.every((cell) => cell !== null));
 };
 
 /**
@@ -42,9 +46,13 @@ export const isBoardFull = (board: Board): boolean => {
 export const checkWin = (board: Board, player: Player): WinLine => {
   // Check rows
   for (let row = 0; row < 3; row++) {
-    if (board[row][0] === player && board[row][1] === player && board[row][2] === player) {
+    if (
+      board[row][0] === player &&
+      board[row][1] === player &&
+      board[row][2] === player
+    ) {
       return {
-        type: 'row',
+        type: "row",
         player,
         positions: [
           [row, 0],
@@ -57,9 +65,13 @@ export const checkWin = (board: Board, player: Player): WinLine => {
 
   // Check columns
   for (let col = 0; col < 3; col++) {
-    if (board[0][col] === player && board[1][col] === player && board[2][col] === player) {
+    if (
+      board[0][col] === player &&
+      board[1][col] === player &&
+      board[2][col] === player
+    ) {
       return {
-        type: 'column',
+        type: "column",
         player,
         positions: [
           [0, col],
@@ -71,9 +83,13 @@ export const checkWin = (board: Board, player: Player): WinLine => {
   }
 
   // Check diagonals
-  if (board[0][0] === player && board[1][1] === player && board[2][2] === player) {
+  if (
+    board[0][0] === player &&
+    board[1][1] === player &&
+    board[2][2] === player
+  ) {
     return {
-      type: 'diagonal',
+      type: "diagonal",
       player,
       positions: [
         [0, 0],
@@ -83,9 +99,13 @@ export const checkWin = (board: Board, player: Player): WinLine => {
     };
   }
 
-  if (board[0][2] === player && board[1][1] === player && board[2][0] === player) {
+  if (
+    board[0][2] === player &&
+    board[1][1] === player &&
+    board[2][0] === player
+  ) {
     return {
-      type: 'diagonal',
+      type: "diagonal",
       player,
       positions: [
         [0, 2],
@@ -102,25 +122,32 @@ export const checkWin = (board: Board, player: Player): WinLine => {
  * Check if game is over
  */
 export const isGameOver = (state: TicTacToeState): boolean => {
-  return state.status === 'finished' || state.winner !== null || isBoardFull(state.board);
+  return (
+    state.status === "finished" ||
+    state.winner !== null ||
+    isBoardFull(state.board)
+  );
 };
 
 /**
  * Validate a game action
  */
-export const validateAction = (state: TicTacToeState, action: GameAction): GameValidationResult => {
+export const validateAction = (
+  state: TicTacToeState,
+  action: TicTacToeAction
+): GameValidationResult => {
   // Check if game is over
   if (isGameOver(state)) {
     return {
       valid: false,
-      message: 'Game is already finished',
-      error: 'Game is already finished',
-      code: 'GAME_FINISHED',
+      message: "Game is already finished",
+      error: "Game is already finished",
+      code: "GAME_FINISHED",
     };
   }
 
   // For move actions
-  if (action.type === 'move' && action.position) {
+  if (action.type === "move" && action.position) {
     const [row, col] = action.position;
 
     // Check if it's the correct player's turn
@@ -128,8 +155,8 @@ export const validateAction = (state: TicTacToeState, action: GameAction): GameV
       return {
         valid: false,
         message: `It's not ${action.playerId}'s turn`,
-        error: 'Wrong player turn',
-        code: 'WRONG_PLAYER_TURN',
+        error: "Wrong player turn",
+        code: "WRONG_PLAYER_TURN",
       };
     }
 
@@ -137,9 +164,9 @@ export const validateAction = (state: TicTacToeState, action: GameAction): GameV
     if (!isValidPosition(row, col)) {
       return {
         valid: false,
-        message: 'Invalid position',
-        error: 'Position must be between 0-2',
-        code: 'INVALID_POSITION',
+        message: "Invalid position",
+        error: "Position must be between 0-2",
+        code: "INVALID_POSITION",
       };
     }
 
@@ -147,23 +174,26 @@ export const validateAction = (state: TicTacToeState, action: GameAction): GameV
     if (!isPositionEmpty(state.board, row, col)) {
       return {
         valid: false,
-        message: 'Position is already occupied',
-        error: 'Position already taken',
-        code: 'POSITION_OCCUPIED',
+        message: "Position is already occupied",
+        error: "Position already taken",
+        code: "POSITION_OCCUPIED",
       };
     }
   }
 
   return {
     valid: true,
-    message: 'Action is valid',
+    message: "Action is valid",
   };
 };
 
 /**
  * Execute a game action
  */
-export const executeAction = (state: TicTacToeState, action: GameAction): GameMoveResult => {
+export const executeAction = (
+  state: TicTacToeState,
+  action: TicTacToeAction
+): GameMoveResult => {
   const validationResult = validateAction(state, action);
 
   if (!validationResult.valid) {
@@ -182,7 +212,7 @@ export const executeAction = (state: TicTacToeState, action: GameAction): GameMo
 
   // Handle different action types
   switch (action.type) {
-    case 'move':
+    case "move":
       if (action.position) {
         const [row, col] = action.position;
 
@@ -200,31 +230,31 @@ export const executeAction = (state: TicTacToeState, action: GameAction): GameMo
         if (winLine) {
           newState.winner = state.currentPlayer;
           newState.winLine = winLine;
-          newState.status = 'finished';
+          newState.status = "finished";
           winner = state.currentPlayer;
           gameOver = true;
         } else if (isBoardFull(newState.board)) {
           // Draw
-          newState.status = 'finished';
+          newState.status = "finished";
           gameOver = true;
         } else {
           // Switch players
-          newState.currentPlayer = state.currentPlayer === 'X' ? 'O' : 'X';
+          newState.currentPlayer = state.currentPlayer === "X" ? "O" : "X";
         }
       }
       break;
 
-    case 'restart':
+    case "restart":
       // Reset the game but keep players
-      newState = createInitialGameState('');
+      newState = createInitialGameState("");
       newState.players = state.players;
       break;
 
-    case 'join':
+    case "join":
       // Handle player joining (already handled in service layer)
       break;
 
-    case 'leave':
+    case "leave":
       // Handle player leaving (already handled in service layer)
       break;
   }
@@ -269,7 +299,10 @@ export const addPlayer = (
 /**
  * Remove a player from the game
  */
-export const removePlayer = (state: TicTacToeState, playerId: string): TicTacToeState => {
+export const removePlayer = (
+  state: TicTacToeState,
+  playerId: string
+): TicTacToeState => {
   const newState = { ...state };
 
   // Remove player from their symbol
@@ -282,7 +315,7 @@ export const removePlayer = (state: TicTacToeState, playerId: string): TicTacToe
   // Reset game if a player leaves
   newState.winner = null;
   newState.winLine = null;
-  newState.currentPlayer = 'X';
+  newState.currentPlayer = "X";
   newState.updatedAt = new Date();
 
   return newState;

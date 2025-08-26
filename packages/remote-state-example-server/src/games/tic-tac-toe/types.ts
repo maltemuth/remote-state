@@ -3,17 +3,17 @@
  */
 
 // Player types
-export type Player = 'X' | 'O';
-export type PlayerSymbol = 'X' | 'O' | null;
+export type Player = "X" | "O";
+export type PlayerSymbol = "X" | "O" | null;
 
 // Board representation
 export type Board = PlayerSymbol[][];
 
 // Game status
-export type GameStatus = 'waiting' | 'finished';
+export type GameStatus = "waiting" | "finished";
 
 // Win conditions
-export type WinCondition = 'row' | 'column' | 'diagonal' | 'draw' | null;
+export type WinCondition = "row" | "column" | "diagonal" | "draw" | null;
 export type WinLine = {
   type: WinCondition;
   player: Player;
@@ -21,11 +21,11 @@ export type WinLine = {
 } | null;
 
 // Game action types
-export type GameActionType = 'move' | 'restart' | 'join' | 'leave';
+export type TicTacToeActionType = "move" | "restart" | "join" | "leave";
 
 // Game action data
-export interface GameAction {
-  type: GameActionType;
+export interface TicTacToeAction {
+  type: TicTacToeActionType;
   playerId: string;
   position?: [number, number]; // For move actions
   timestamp: Date;
@@ -75,8 +75,8 @@ export const createInitialGameState = (_gameId: string): TicTacToeState => ({
     [null, null, null],
     [null, null, null],
   ],
-  currentPlayer: 'X',
-  status: 'waiting',
+  currentPlayer: "X",
+  status: "waiting",
   winner: null,
   winLine: null,
   players: {
@@ -84,7 +84,7 @@ export const createInitialGameState = (_gameId: string): TicTacToeState => ({
     O: null,
   },
   lastMove: {
-    player: 'X',
+    player: "X",
     position: null,
     timestamp: null,
   },
