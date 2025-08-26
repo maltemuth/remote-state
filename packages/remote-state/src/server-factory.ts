@@ -2,6 +2,7 @@ import express, { Express, Request, Response, NextFunction } from 'express';
 import cors from 'cors';
 import { createServer } from 'http';
 import { createLogger } from './logger';
+import { initializeDatabase } from './db/instance';
 import {
   createGame,
   getGame,
@@ -14,6 +15,9 @@ import {
   validatePlayerToken,
   PlayerData,
 } from './db/service';
+
+// Initialize database instance for the server factory
+initializeDatabase({ databasePath: 'games.db', sync: true });
 
 export interface GameValidationResult {
   valid: boolean;

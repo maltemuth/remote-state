@@ -1,8 +1,8 @@
-import { eq, desc, and } from 'drizzle-orm';
-import { db } from './index';
-import { games, players, actions, gameStates } from './schema';
 import { createLogger } from '../logger';
-import { createInitialGameState } from '../games';
+import { Game } from './models/Game';
+import { Player } from './models/Player';
+import { Action } from './models/Action';
+import { GameState } from './models/GameState';
 
 const { info } = createLogger({
   scope: 'db-service',
@@ -57,6 +57,30 @@ export interface GameStateData<S> {
 }
 
 /**
+ * Helper function to safely parse JSON strings
+ */
+const safeJsonParse = (jsonString: string | null | undefined): any => {
+  if (!jsonString) return null;
+  try {
+    return JSON.parse(jsonString);
+  } catch (_error) {
+    return null;
+  }
+};
+
+/**
+ * Helper function to safely stringify JSON
+ */
+const safeJsonStringify = (obj: any): string | null => {
+  if (obj === null || obj === undefined) return null;
+  try {
+    return JSON.stringify(obj);
+  } catch (_error) {
+    return null;
+  }
+};
+
+/**
  * Create a new game
  */
 export const createGame = async (
@@ -65,25 +89,31 @@ export const createGame = async (
   info(`Creating new game: ${gameData.name}`);
 
   const now = new Date();
-  const newGame = {
+
+  // Create the game
+  const newGame = await Game.create({
     id: gameData.id,
     name: gameData.name,
     status: gameData.status,
     createdAt: now,
     updatedAt: now,
-  };
-
-  await db.insert(games).values(newGame);
+  });
 
   // Create initial game state
-  await db.insert(gameStates).values({
+  await GameState.create({
     gameId: gameData.id,
     state: null,
     lastActionId: null,
     updatedAt: now,
   });
 
-  return newGame;
+  return {
+    id: newGame.id,
+    name: newGame.name,
+    status: newGame.status,
+    createdAt: newGame.createdAt,
+    updatedAt: newGame.updatedAt,
+  };
 };
 
 /**
@@ -92,8 +122,19 @@ export const createGame = async (
 export const getGame = async (gameId: string): Promise<GameData | null> => {
   info(`Retrieving game: ${gameId}`);
 
-  const result = await db.select().from(games).where(eq(games.id, gameId)).limit(1);
-  return result[0] || null;
+  const result = await Game.findByPk(gameId);
+
+  if (!result) {
+    return null;
+  }
+
+  return {
+    id: result.id,
+    name: result.name,
+    status: result.status,
+    createdAt: result.createdAt,
+    updatedAt: result.updatedAt,
+  };
 };
 
 /**
@@ -102,7 +143,17 @@ export const getGame = async (gameId: string): Promise<GameData | null> => {
 export const updateGameStatus = async (gameId: string, status: string): Promise<void> => {
   info(`Updating game status: ${gameId} -> ${status}`);
 
-  await db.update(games).set({ status, updatedAt: new Date() }).where(eq(games.id, gameId));
+  await Game.update(
+    {
+      status,
+      updatedAt: new Date(),
+    },
+    {
+      where: {
+        id: gameId,
+      },
+    }
+  );
 };
 
 /**
@@ -114,7 +165,7 @@ export const addPlayerToGame = async (
   info(`Adding player ${playerData.name} to game ${playerData.gameId}`);
 
   const now = new Date();
-  const newPlayer = {
+  const newPlayer = await Player.create({
     id: playerData.id,
     gameId: playerData.gameId,
     name: playerData.name,
@@ -122,10 +173,17 @@ export const addPlayerToGame = async (
     token: playerData.token,
     tokenType: playerData.tokenType,
     joinedAt: now,
-  };
+  });
 
-  await db.insert(players).values(newPlayer);
-  return newPlayer;
+  return {
+    id: newPlayer.id,
+    gameId: newPlayer.gameId,
+    name: newPlayer.name,
+    role: newPlayer.role as 'spectator' | 'player' | 'admin',
+    token: newPlayer.token || undefined,
+    tokenType: newPlayer.tokenType as 'owner' | 'identity' | undefined,
+    joinedAt: newPlayer.joinedAt,
+  };
 };
 
 /**
@@ -191,8 +249,25 @@ export const createJoiningPlayer = async (
 export const getPlayerByToken = async (token: string): Promise<PlayerData | null> => {
   info(`Retrieving player by token`);
 
-  const result = await db.select().from(players).where(eq(players.token, token)).limit(1);
-  return result[0] || null;
+  const result = await Player.findOne({
+    where: {
+      token: token,
+    },
+  });
+
+  if (!result) {
+    return null;
+  }
+
+  return {
+    id: result.id,
+    gameId: result.gameId,
+    name: result.name,
+    role: result.role as 'spectator' | 'player' | 'admin',
+    token: result.token || undefined,
+    tokenType: result.tokenType as 'owner' | 'identity' | undefined,
+    joinedAt: result.joinedAt,
+  };
 };
 
 /**
@@ -215,12 +290,26 @@ export const validatePlayerToken = async (token: string): Promise<PlayerData | n
 export const getGameOwner = async (gameId: string): Promise<PlayerData | null> => {
   info(`Retrieving game owner for game: ${gameId}`);
 
-  const result = await db
-    .select()
-    .from(players)
-    .where(and(eq(players.gameId, gameId), eq(players.tokenType, 'owner')))
-    .limit(1);
-  return result[0] || null;
+  const result = await Player.findOne({
+    where: {
+      gameId: gameId,
+      tokenType: 'owner',
+    },
+  });
+
+  if (!result) {
+    return null;
+  }
+
+  return {
+    id: result.id,
+    gameId: result.gameId,
+    name: result.name,
+    role: result.role as 'spectator' | 'player' | 'admin',
+    token: result.token || undefined,
+    tokenType: result.tokenType as 'owner' | 'identity' | undefined,
+    joinedAt: result.joinedAt,
+  };
 };
 
 /**
@@ -229,7 +318,21 @@ export const getGameOwner = async (gameId: string): Promise<PlayerData | null> =
 export const getPlayersForGame = async (gameId: string): Promise<PlayerData[]> => {
   info(`Retrieving players for game: ${gameId}`);
 
-  return await db.select().from(players).where(eq(players.gameId, gameId));
+  const results = await Player.findAll({
+    where: {
+      gameId: gameId,
+    },
+  });
+
+  return results.map(result => ({
+    id: result.id,
+    gameId: result.gameId,
+    name: result.name,
+    role: result.role as 'spectator' | 'player' | 'admin',
+    token: result.token || undefined,
+    tokenType: result.tokenType as 'owner' | 'identity' | undefined,
+    joinedAt: result.joinedAt,
+  }));
 };
 
 /**
@@ -241,19 +344,27 @@ export const recordAction = async (
   info(`Recording action: ${actionData.actionType} for game ${actionData.gameId}`);
 
   const now = new Date();
-  const newAction = {
+  const newAction = await Action.create({
     id: actionData.id,
     gameId: actionData.gameId,
     playerId: actionData.playerId,
     actionType: actionData.actionType,
-    actionData: actionData.actionData,
-    gameState: actionData.gameState,
+    actionData: safeJsonStringify(actionData.actionData),
+    gameState: safeJsonStringify(actionData.gameState),
     timestamp: now,
-    validationResult: actionData.validationResult,
-  };
+    validationResult: safeJsonStringify(actionData.validationResult),
+  });
 
-  await db.insert(actions).values(newAction);
-  return newAction;
+  return {
+    id: newAction.id,
+    gameId: newAction.gameId,
+    playerId: newAction.playerId,
+    actionType: newAction.actionType,
+    actionData: safeJsonParse(newAction.actionData),
+    gameState: safeJsonParse(newAction.gameState),
+    timestamp: newAction.timestamp,
+    validationResult: safeJsonParse(newAction.validationResult),
+  };
 };
 
 /**
@@ -262,11 +373,23 @@ export const recordAction = async (
 export const getActionsForGame = async (gameId: string): Promise<ActionData<any, any, any>[]> => {
   info(`Retrieving actions for game: ${gameId}`);
 
-  return await db
-    .select()
-    .from(actions)
-    .where(eq(actions.gameId, gameId))
-    .orderBy(desc(actions.timestamp));
+  const results = await Action.findAll({
+    where: {
+      gameId: gameId,
+    },
+    order: [['timestamp', 'DESC']],
+  });
+
+  return results.map(result => ({
+    id: result.id,
+    gameId: result.gameId,
+    playerId: result.playerId,
+    actionType: result.actionType,
+    actionData: safeJsonParse(result.actionData),
+    gameState: safeJsonParse(result.gameState),
+    timestamp: result.timestamp,
+    validationResult: safeJsonParse(result.validationResult),
+  }));
 };
 
 /**
@@ -277,22 +400,29 @@ export const updateGameState = async (
 ): Promise<void> => {
   info(`Updating game state for game: ${gameStateData.gameId}`);
 
-  await db
-    .insert(gameStates)
-    .values({
-      gameId: gameStateData.gameId,
-      state: gameStateData.state,
+  // Use upsert equivalent - try to update first, then create if not found
+  const [updated] = await GameState.update(
+    {
+      state: safeJsonStringify(gameStateData.state),
       lastActionId: gameStateData.lastActionId,
       updatedAt: new Date(),
-    })
-    .onConflictDoUpdate({
-      target: gameStates.gameId,
-      set: {
-        state: gameStateData.state,
-        lastActionId: gameStateData.lastActionId,
-        updatedAt: new Date(),
+    },
+    {
+      where: {
+        gameId: gameStateData.gameId,
       },
+    }
+  );
+
+  // If no rows were updated, create a new record
+  if (updated === 0) {
+    await GameState.create({
+      gameId: gameStateData.gameId,
+      state: safeJsonStringify(gameStateData.state),
+      lastActionId: gameStateData.lastActionId,
+      updatedAt: new Date(),
     });
+  }
 };
 
 /**
@@ -301,34 +431,18 @@ export const updateGameState = async (
 export const getCurrentGameState = async (gameId: string): Promise<GameStateData<any> | null> => {
   info(`Retrieving current game state for game: ${gameId}`);
 
-  const result = await db.select().from(gameStates).where(eq(gameStates.gameId, gameId)).limit(1);
-  return result[0] || null;
-};
+  const result = await GameState.findByPk(gameId);
 
-/**
- * Create initial tic-tac-toe game state
- */
-export const createTicTacToeGameState = async (gameId: string): Promise<void> => {
-  info(`Creating initial tic-tac-toe game state for game: ${gameId}`);
+  if (!result) {
+    return null;
+  }
 
-  const initialState = createInitialGameState(gameId);
-
-  await db
-    .insert(gameStates)
-    .values({
-      gameId,
-      state: initialState,
-      lastActionId: null,
-      updatedAt: new Date(),
-    })
-    .onConflictDoUpdate({
-      target: gameStates.gameId,
-      set: {
-        state: initialState,
-        lastActionId: null,
-        updatedAt: new Date(),
-      },
-    });
+  return {
+    gameId: result.gameId,
+    state: safeJsonParse(result.state),
+    lastActionId: result.lastActionId,
+    updatedAt: result.updatedAt,
+  };
 };
 
 /**
@@ -378,7 +492,7 @@ export const updateGameStateWithValidation = async (
       return { success: false, error: result.validationResult.message };
     }
   } catch (error) {
-    error(`Error updating game state with validation: ${error}`);
+    info(`Error updating game state with validation: ${error}`);
     return { success: false, error: 'Internal server error' };
   }
 };

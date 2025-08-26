@@ -5,11 +5,11 @@
  * using the factory function approach.
  */
 
-import { createTicTacToeServer } from './games/tic-tac-toe/server-config';
-import { createLogger } from './logger';
+import { createTicTacToeServer } from "./server-config";
+import { createLogger } from "@malte.muth/remote-state";
 
 const { info } = createLogger({
-  scope: 'example-server',
+  scope: "example-server",
 });
 
 // Create and start the tic-tac-toe server
@@ -18,7 +18,7 @@ const { app, startServer } = createTicTacToeServer(3000);
 // Start the server
 startServer();
 
-info('Tic-Tac-Toe server started on port 3000');
+info("Tic-Tac-Toe server started on port 3000");
 
 // Export the app for testing purposes
 export default app;

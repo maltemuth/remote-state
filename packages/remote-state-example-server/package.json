@@ -1,0 +1,32 @@
+{
+  "name": "@malte.muth/remote-state-example-server",
+  "version": "0.0.1",
+  "description": "Example server implementation using the Remote State library",
+  "license": "MIT",
+  "author": "Malte Muth",
+  "type": "commonjs",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "start": "node dist/server.js",
+    "dev": "ts-node src/server.ts",
+    "build": "tsc",
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "lint": "eslint src --ext .ts",
+    "lint:fix": "eslint src --ext .ts --fix",
+    "format": "prettier --write src/**/*.ts",
+    "format:check": "prettier --check src/**/*.ts",
+    "clean": "rm -rf dist"
+  },
+  "dependencies": {
+    "@malte.muth/remote-state": "file:../remote-state",
+    "express": "^5"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "^7.6.13",
+    "@types/express": "^5",
+    "@types/node": "^24",
+    "ts-node": "^10.9.1",
+    "typescript": "^5.0.0"
+  }
+}

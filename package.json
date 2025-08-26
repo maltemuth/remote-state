@@ -7,7 +7,8 @@
   "type": "module",
   "main": "index.js",
   "workspaces": [
-    "packages/remote-state"
+    "packages/remote-state",
+    "packages/remote-state-example-server"
   ],
   "scripts": {},
   "dependencies": {
