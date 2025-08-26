@@ -13,6 +13,7 @@ export enum LogLevel {
 const { console } = globalThis;
 
 interface LogEntry {
+  scope?: string;
   timestamp: string;
   level: LogLevel;
   message: string;
@@ -38,16 +39,18 @@ type LoggerOptions = Partial<StrictLoggerOptions>;
 const NOOP = () => {};
 
 const formatLogEntry = (entry: LogEntry) => {
-  const levelName = LogLevel[entry.level];
-  const timestamp = new Date(entry.timestamp).toISOString();
-  const metaStr = entry.meta ? ` | ${JSON.stringify(entry.meta)}` : '';
-  return `[${timestamp}] ${levelName.padEnd(5)}: ${entry.message}${metaStr}`;
+  const scopeName = entry.scope || '';
+  const levelName = LogLevel[entry.level].padEnd(5);
+  const timestamp = `[${new Date(entry.timestamp).toISOString()}]`;
+  const metaStr = entry.meta ? `| ${JSON.stringify(entry.meta)}` : '';
+  return [timestamp, levelName, scopeName, entry.message, metaStr].join(' ');
 };
 
 const createLoggerFunction = (options: StrictLoggerOptions): LoggerFunction => {
   const level = options.logLevel;
   return (message: string, meta?: unknown) => {
     const entry: LogEntry = {
+      scope: options.scope,
       timestamp: new Date().toISOString(),
       level,
       message,
