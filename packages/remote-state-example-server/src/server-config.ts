@@ -6,8 +6,8 @@ import {
   TicTacToeState,
   TicTacToeAction,
   createInitialGameState,
-} from "./games/tic-tac-toe/types";
-import { validateAction, executeAction } from "./games/tic-tac-toe/engine";
+} from "./games/tic-tac-toe/types.js";
+import { validateAction, executeAction } from "./games/tic-tac-toe/engine.js";
 
 export const createTicTacToeServer = (
   port: number = 3000

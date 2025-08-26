@@ -1,8 +1,8 @@
 import { createLogger } from '../logger';
-import { Game } from './models/Game';
-import { Player } from './models/Player';
 import { Action } from './models/Action';
 import { GameState } from './models/GameState';
+import { Game } from './models/Game';
+import { Player } from './models/Player';
 
 const { info } = createLogger({
   scope: 'db-service',

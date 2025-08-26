@@ -16,13 +16,13 @@ import { Action } from './Action';
   tableName: 'players',
   timestamps: false,
 })
-export class Player extends Model {
+export class Player extends Model<Player> {
   @PrimaryKey
   @Column({
     type: DataType.STRING,
     allowNull: false,
   })
-  id!: string;
+  id: string = '';
 
   @ForeignKey(() => Game)
   @Column({

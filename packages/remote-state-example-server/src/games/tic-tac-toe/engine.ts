@@ -12,7 +12,7 @@ import {
   Board,
   WinLine,
   createInitialGameState,
-} from "./types";
+} from "./types.js";
 
 /**
  * Check if a position is valid on the board

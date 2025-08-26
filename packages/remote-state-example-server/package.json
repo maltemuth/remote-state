@@ -4,7 +4,7 @@
   "description": "Example server implementation using the Remote State library",
   "license": "MIT",
   "author": "Malte Muth",
-  "type": "commonjs",
+  "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "scripts": {

@@ -16,8 +16,7 @@ import {
   PlayerData,
 } from './db/service';
 
-// Initialize database instance for the server factory
-initializeDatabase({ databasePath: 'games.db', sync: true });
+// Database initialization will happen when needed during requests
 
 export interface GameValidationResult {
   valid: boolean;
@@ -64,6 +63,11 @@ export function createRemoteStateServer<StateType, ActionType>(
 ): RemoteStateServer {
   const { info, error } = createLogger({
     scope: 'remote-state-server',
+  });
+
+  // Initialize database when server is created
+  initializeDatabase({ databasePath: 'games.db', sync: true }).catch(err => {
+    error('Failed to initialize database:', err);
   });
 
   const app = express();

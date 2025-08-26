@@ -14,7 +14,7 @@ import { Game } from './Game';
   tableName: 'gameStates',
   timestamps: false,
 })
-export class GameState extends Model {
+export class GameState extends Model<GameState> {
   @PrimaryKey
   @ForeignKey(() => Game)
   @Column({
@@ -34,13 +34,6 @@ export class GameState extends Model {
     allowNull: true,
   })
   lastActionId?: string;
-
-  @UpdatedAt
-  @Column({
-    type: DataType.DATE,
-    allowNull: false,
-  })
-  updatedAt!: Date;
 
   // Associations
   @BelongsTo(() => Game)

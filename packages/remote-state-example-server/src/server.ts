@@ -5,7 +5,7 @@
  * using the factory function approach.
  */
 
-import { createTicTacToeServer } from "./server-config";
+import { createTicTacToeServer } from "./server-config.js";
 import { createLogger } from "@malte.muth/remote-state";
 
 const { info } = createLogger({

@@ -17,13 +17,13 @@ import { GameState } from './GameState';
   tableName: 'games',
   timestamps: true,
 })
-export class Game extends Model {
+export class Game extends Model<Game> {
   @PrimaryKey
   @Column({
     type: DataType.STRING,
     allowNull: false,
   })
-  id!: string;
+  id: string = '';
 
   @Column({
     type: DataType.STRING,
@@ -37,20 +37,6 @@ export class Game extends Model {
     defaultValue: 'waiting',
   })
   status!: string;
-
-  @CreatedAt
-  @Column({
-    type: DataType.DATE,
-    allowNull: false,
-  })
-  createdAt!: Date;
-
-  @UpdatedAt
-  @Column({
-    type: DataType.DATE,
-    allowNull: false,
-  })
-  updatedAt!: Date;
 
   // Associations
   @HasMany(() => Player)
