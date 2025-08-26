@@ -59,7 +59,7 @@ export interface GameStateData<S> {
 /**
  * Helper function to safely parse JSON strings
  */
-const safeJsonParse = (jsonString: string | null | undefined): any => {
+const safeJsonParse = (jsonString: string | null | undefined): unknown => {
   if (!jsonString) return null;
   try {
     return JSON.parse(jsonString);
@@ -71,7 +71,7 @@ const safeJsonParse = (jsonString: string | null | undefined): any => {
 /**
  * Helper function to safely stringify JSON
  */
-const safeJsonStringify = (obj: any): string | null => {
+const safeJsonStringify = (obj: unknown): string | null => {
   if (obj === null || obj === undefined) return null;
   try {
     return JSON.stringify(obj);
@@ -338,9 +338,9 @@ export const getPlayersForGame = async (gameId: string): Promise<PlayerData[]> =
 /**
  * Record an action
  */
-export const recordAction = async (
-  actionData: Omit<ActionData<any, any, any>, 'timestamp'>
-): Promise<ActionData<any, any, any>> => {
+export const recordAction = async <A, S, R>(
+  actionData: Omit<ActionData<A, S, R>, 'timestamp'>
+): Promise<ActionData<A, S, R>> => {
   info(`Recording action: ${actionData.actionType} for game ${actionData.gameId}`);
 
   const now = new Date();
@@ -360,17 +360,19 @@ export const recordAction = async (
     gameId: newAction.gameId,
     playerId: newAction.playerId,
     actionType: newAction.actionType,
-    actionData: safeJsonParse(newAction.actionData),
-    gameState: safeJsonParse(newAction.gameState),
+    actionData: safeJsonParse(newAction.actionData) as A,
+    gameState: safeJsonParse(newAction.gameState) as S,
     timestamp: newAction.timestamp,
-    validationResult: safeJsonParse(newAction.validationResult),
+    validationResult: safeJsonParse(newAction.validationResult) as R,
   };
 };
 
 /**
  * Get actions for a game
  */
-export const getActionsForGame = async (gameId: string): Promise<ActionData<any, any, any>[]> => {
+export const getActionsForGame = async <A, S, R>(
+  gameId: string
+): Promise<ActionData<A, S, R>[]> => {
   info(`Retrieving actions for game: ${gameId}`);
 
   const results = await Action.findAll({
@@ -385,18 +387,18 @@ export const getActionsForGame = async (gameId: string): Promise<ActionData<any,
     gameId: result.gameId,
     playerId: result.playerId,
     actionType: result.actionType,
-    actionData: safeJsonParse(result.actionData),
-    gameState: safeJsonParse(result.gameState),
+    actionData: safeJsonParse(result.actionData) as A,
+    gameState: safeJsonParse(result.gameState) as S,
     timestamp: result.timestamp,
-    validationResult: safeJsonParse(result.validationResult),
+    validationResult: safeJsonParse(result.validationResult) as R,
   }));
 };
 
 /**
  * Update game state
  */
-export const updateGameState = async (
-  gameStateData: Omit<GameStateData<any>, 'updatedAt'>
+export const updateGameState = async <S>(
+  gameStateData: Omit<GameStateData<S>, 'updatedAt'>
 ): Promise<void> => {
   info(`Updating game state for game: ${gameStateData.gameId}`);
 
@@ -428,7 +430,7 @@ export const updateGameState = async (
 /**
  * Get current game state
  */
-export const getCurrentGameState = async (gameId: string): Promise<GameStateData<any> | null> => {
+export const getCurrentGameState = async <S>(gameId: string): Promise<GameStateData<S> | null> => {
   info(`Retrieving current game state for game: ${gameId}`);
 
   const result = await GameState.findByPk(gameId);
@@ -439,7 +441,7 @@ export const getCurrentGameState = async (gameId: string): Promise<GameStateData
 
   return {
     gameId: result.gameId,
-    state: safeJsonParse(result.state),
+    state: safeJsonParse(result.state) as S,
     lastActionId: result.lastActionId,
     updatedAt: result.updatedAt,
   };
@@ -448,16 +450,16 @@ export const getCurrentGameState = async (gameId: string): Promise<GameStateData
 /**
  * Update game state with typed validation
  */
-export const updateGameStateWithValidation = async (
+export const updateGameStateWithValidation = async <A, S>(
   gameId: string,
-  action: any,
+  action: A,
   token: string
-): Promise<{ success: boolean; state?: any; error?: string }> => {
+): Promise<{ success: boolean; state?: S; error?: string }> => {
   info(`Updating game state with validation for game: ${gameId}`);
 
   try {
     // Get current game state
-    const currentState = await getCurrentGameState(gameId);
+    const currentState = await getCurrentGameState<S>(gameId);
     if (!currentState?.state) {
       return { success: false, error: 'Game state not found' };
     }
@@ -495,4 +497,103 @@ export const updateGameStateWithValidation = async (
     info(`Error updating game state with validation: ${error}`);
     return { success: false, error: 'Internal server error' };
   }
+};
+
+/**
+ * Service factory interface with typed Action and State generics
+ */
+export interface DatabaseService<A, S, R> {
+  // Game operations
+  createGame: (gameData: Omit<GameData, 'createdAt' | 'updatedAt'>) => Promise<GameData>;
+  getGame: (gameId: string) => Promise<GameData | null>;
+  updateGameStatus: (gameId: string, status: string) => Promise<void>;
+
+  // Player operations
+  addPlayerToGame: (playerData: Omit<PlayerData, 'joinedAt'>) => Promise<PlayerData>;
+  createGameOwner: (gameId: string, playerName: string) => Promise<PlayerData>;
+  createJoiningPlayer: (gameId: string, playerName: string) => Promise<PlayerData>;
+  getPlayerByToken: (token: string) => Promise<PlayerData | null>;
+  validatePlayerToken: (token: string) => Promise<PlayerData | null>;
+  getGameOwner: (gameId: string) => Promise<PlayerData | null>;
+  getPlayersForGame: (gameId: string) => Promise<PlayerData[]>;
+
+  // Action operations (typed)
+  recordAction: (
+    actionData: Omit<ActionData<A, S, R>, 'timestamp'>
+  ) => Promise<ActionData<A, S, R>>;
+  getActionsForGame: (gameId: string) => Promise<ActionData<A, S, R>[]>;
+
+  // Game state operations (typed)
+  updateGameState: (gameStateData: Omit<GameStateData<S>, 'updatedAt'>) => Promise<void>;
+  getCurrentGameState: (gameId: string) => Promise<GameStateData<S> | null>;
+
+  // Validation operations (typed)
+  updateGameStateWithValidation: (
+    gameId: string,
+    action: A,
+    token: string
+  ) => Promise<{ success: boolean; state?: S; error?: string }>;
+}
+
+/**
+ * Create a typed database service instance
+ * @param actionType - The Action type for this service
+ * @param stateType - The State type for this service
+ * @param resultType - The Result type for this service
+ * @returns A typed database service instance
+ */
+export const createDatabaseService = <A, S, R>(): DatabaseService<A, S, R> => {
+  // Return service with properly typed functions
+  return {
+    // Game operations
+    createGame,
+    getGame,
+    updateGameStatus,
+
+    // Player operations
+    addPlayerToGame,
+    createGameOwner,
+    createJoiningPlayer,
+    getPlayerByToken,
+    validatePlayerToken,
+    getGameOwner,
+    getPlayersForGame,
+
+    // Action operations (typed)
+    recordAction: async (
+      actionData: Omit<ActionData<A, S, R>, 'timestamp'>
+    ): Promise<ActionData<A, S, R>> => {
+      return recordAction(actionData as ActionData<A, S, R>) as Promise<ActionData<A, S, R>>;
+    },
+
+    getActionsForGame: async (gameId: string): Promise<ActionData<A, S, R>[]> => {
+      return getActionsForGame(gameId) as Promise<ActionData<A, S, R>[]>;
+    },
+
+    // Game state operations (typed)
+    updateGameState: async (gameStateData: Omit<GameStateData<S>, 'updatedAt'>): Promise<void> => {
+      return updateGameState(gameStateData as GameStateData<S>);
+    },
+
+    getCurrentGameState: async (gameId: string): Promise<GameStateData<S> | null> => {
+      return getCurrentGameState(gameId) as Promise<GameStateData<S> | null>;
+    },
+
+    // Validation operations (typed)
+    updateGameStateWithValidation: async (
+      gameId: string,
+      action: A,
+      token: string
+    ): Promise<{ success: boolean; state?: S; error?: string }> => {
+      return updateGameStateWithValidation(
+        gameId,
+        action as ActionData<A, S, R>,
+        token
+      ) as Promise<{
+        success: boolean;
+        state?: S;
+        error?: string;
+      }>;
+    },
+  };
 };
