@@ -44,8 +44,6 @@ export interface RemoteStateServerConfig<StateType, ActionType> {
     state: StateType,
     action: ActionType & { playerId: string; timestamp: Date }
   ) => GameMoveResult<StateType>;
-  /** Optional function to transform state for response */
-  transformState?: (state: StateType) => any;
   /** Optional game-specific configuration */
   gameConfig?: {
     name: string;
@@ -249,9 +247,7 @@ export function createRemoteStateServer<StateType, ActionType>(
           lastActionId: null,
         });
 
-        const transformedState = config.transformState
-          ? config.transformState(initialState)
-          : initialState;
+        const transformedState = initialState;
 
         const response = {
           gameId,
@@ -270,9 +266,7 @@ export function createRemoteStateServer<StateType, ActionType>(
         return res.json(response);
       }
 
-      const transformedState = config.transformState
-        ? config.transformState(gameState.state as StateType)
-        : gameState.state;
+      const transformedState = gameState.state;
 
       const response = {
         gameId,
