@@ -2,7 +2,7 @@ import { createLogger } from '../logger';
 import { createSequelizeInstance, syncDatabase } from './sequelize';
 
 const { info, error } = createLogger({
-  scope: 'database',
+  scope: 'database-instance',
 });
 
 /**
@@ -28,7 +28,6 @@ export const initializeDatabase = async (options: DatabaseOptions = {}) => {
     // Sync the database schema
     if (sync) {
       await syncDatabase();
-      info('Database schema synchronized successfully');
     }
 
     info('Database initialization completed successfully');

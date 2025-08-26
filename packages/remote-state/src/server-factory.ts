@@ -159,7 +159,10 @@ export function createRemoteStateServer<StateType, ActionType>(
       }
 
       // Use game-specific validation
-      const validationResult = config.validateAction(currentStateResult.state, action);
+      const validationResult = config.validateAction(
+        currentStateResult.state as StateType,
+        action as ActionType
+      );
       if (!validationResult.valid) {
         return res.status(400).json({
           error: validationResult.error || 'Invalid action',
@@ -174,7 +177,10 @@ export function createRemoteStateServer<StateType, ActionType>(
         timestamp: new Date(),
       };
 
-      const executionResult = config.executeAction(currentStateResult.state, actionWithPlayer);
+      const executionResult = config.executeAction(
+        currentStateResult.state as StateType,
+        actionWithPlayer as ActionType & { playerId: string; timestamp: Date }
+      );
 
       if (!executionResult.success) {
         return res.status(400).json({
@@ -265,7 +271,7 @@ export function createRemoteStateServer<StateType, ActionType>(
       }
 
       const transformedState = config.transformState
-        ? config.transformState(gameState.state)
+        ? config.transformState(gameState.state as StateType)
         : gameState.state;
 
       const response = {

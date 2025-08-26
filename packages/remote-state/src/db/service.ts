@@ -470,29 +470,14 @@ export const updateGameStateWithValidation = async <A, S>(
       return { success: false, error: 'Invalid token' };
     }
 
-    // For tic-tac-toe, use the game engine
-    const { executeAction } = await import('../games/tic-tac-toe/engine');
+    // Note: Game-specific validation and execution logic should be implemented
+    // by the calling application or game-specific service. This generic service
+    // provides the database operations only.
 
-    const gameAction = {
-      ...action,
-      playerId: player.id,
-      timestamp: new Date(),
-    };
+    // For a complete implementation, game-specific validation and execution
+    // functions should be imported and used here based on the game type.
 
-    const result = executeAction(currentState.state, gameAction);
-
-    if (result.success) {
-      // Update the game state in database
-      await updateGameState({
-        gameId,
-        state: result.state,
-        lastActionId: action.id || `action-${Date.now()}`,
-      });
-
-      return { success: true, state: result.state };
-    } else {
-      return { success: false, error: result.validationResult.message };
-    }
+    return { success: false, error: 'Game-specific validation not implemented' };
   } catch (error) {
     info(`Error updating game state with validation: ${error}`);
     return { success: false, error: 'Internal server error' };
