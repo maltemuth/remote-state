@@ -227,10 +227,6 @@ describe('Tic-Tac-Toe E2E Tests', () => {
           return {
             success: true,
             state: newState,
-            validationResult: {
-              valid: true,
-              message: 'Action executed successfully',
-            },
             gameOver: newState.winner !== null,
             winner: newState.winner,
           };

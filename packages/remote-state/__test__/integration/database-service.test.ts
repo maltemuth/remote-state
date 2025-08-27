@@ -224,7 +224,6 @@ describe('Database Service Integration Tests', () => {
           board: ['X', null, null, null, null, null, null, null, null],
           currentPlayer: 'O',
         },
-        validationResult: { valid: true },
       };
 
       const action = await recordAction(actionData);
@@ -236,7 +235,6 @@ describe('Database Service Integration Tests', () => {
       expect(action.actionType).toBe(actionData.actionType);
       expect(action.actionData).toEqual(actionData.actionData);
       expect(action.gameState).toEqual(actionData.gameState);
-      expect(action.validationResult).toEqual(actionData.validationResult);
       expect(action.timestamp).toBeDefined();
     });
 
@@ -260,7 +258,6 @@ describe('Database Service Integration Tests', () => {
           board: ['X', null, null, null, null, null, null, null, null],
           currentPlayer: 'O',
         },
-        validationResult: { valid: true },
       };
 
       const actionData2 = {
@@ -273,7 +270,6 @@ describe('Database Service Integration Tests', () => {
           board: ['X', 'O', null, null, null, null, null, null, null],
           currentPlayer: 'X',
         },
-        validationResult: { valid: true },
       };
 
       await recordAction(actionData1);

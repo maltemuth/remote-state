@@ -63,7 +63,6 @@ export interface GameValidationResult {
 export interface GameMoveResult {
   success: boolean;
   state: TicTacToeState;
-  validationResult: GameValidationResult;
   gameOver: boolean;
   winner: Player | null;
 }

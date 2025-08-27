@@ -36,7 +36,6 @@ export interface GameValidationResult {
 export interface GameMoveResult<StateType> {
   success: boolean;
   state: StateType;
-  validationResult: GameValidationResult;
   gameOver: boolean;
   winner: string | null;
 }

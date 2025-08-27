@@ -200,7 +200,6 @@ export const executeAction = (
     return {
       success: false,
       state,
-      validationResult,
       gameOver: isGameOver(state),
       winner: state.winner,
     };
@@ -262,7 +261,6 @@ export const executeAction = (
   return {
     success: true,
     state: newState,
-    validationResult,
     gameOver,
     winner,
   };

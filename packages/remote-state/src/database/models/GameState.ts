@@ -37,7 +37,7 @@ export class GameState extends Model<GameState> {
   declare gameId: string;
 
   @Column({
-    type: DataType.TEXT,
+    type: DataType.JSON,
     allowNull: true,
   })
   declare state?: string;
@@ -55,16 +55,10 @@ export class GameState extends Model<GameState> {
   declare actionType: string;
 
   @Column({
-    type: DataType.TEXT,
+    type: DataType.JSON,
     allowNull: true,
   })
   declare actionData?: string;
-
-  @Column({
-    type: DataType.TEXT,
-    allowNull: true,
-  })
-  declare validationResult?: string;
 
   @CreatedAt
   @Column({

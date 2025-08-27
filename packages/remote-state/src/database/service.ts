@@ -43,7 +43,6 @@ export const createGame = async (gameData: {
       playerId: 'system',
       actionType: 'initial',
       actionData: null,
-      validationResult: null,
     });
   } catch (error) {
     throw new Error(
@@ -343,14 +342,13 @@ export const getPlayersForGame = async (
 /**
  * Record an action and game state
  */
-export const recordAction = async <A, S, R>(actionData: {
+export const recordAction = async <A, S>(actionData: {
   id: string;
   gameId: string;
   playerId: string;
   actionType: string;
   actionData: A;
   gameState: S;
-  validationResult: R;
 }): Promise<{
   id: string;
   gameId: string;
@@ -359,7 +357,6 @@ export const recordAction = async <A, S, R>(actionData: {
   actionData: A;
   gameState: S;
   timestamp: Date;
-  validationResult: R;
 }> => {
   info(`Recording action: ${actionData.actionType} for game ${actionData.gameId}`);
 
@@ -370,7 +367,6 @@ export const recordAction = async <A, S, R>(actionData: {
     state: safeJsonStringify(actionData.gameState),
     actionType: actionData.actionType,
     actionData: safeJsonStringify(actionData.actionData),
-    validationResult: safeJsonStringify(actionData.validationResult),
   });
 
   return {
@@ -381,14 +377,13 @@ export const recordAction = async <A, S, R>(actionData: {
     actionData: safeJsonParse(newGameState.actionData) as A,
     gameState: safeJsonParse(newGameState.state) as S,
     timestamp: newGameState.createdAt,
-    validationResult: safeJsonParse(newGameState.validationResult) as R,
   };
 };
 
 /**
  * Get actions for a game
  */
-export const getActionsForGame = async <A, S, R>(
+export const getActionsForGame = async <A, S>(
   gameId: string
 ): Promise<
   {
@@ -399,7 +394,6 @@ export const getActionsForGame = async <A, S, R>(
     actionData: A;
     gameState: S;
     timestamp: Date;
-    validationResult: R;
   }[]
 > => {
   info(`Retrieving actions for game: ${gameId}`);
@@ -422,7 +416,6 @@ export const getActionsForGame = async <A, S, R>(
     actionData: safeJsonParse(result.actionData) as A,
     gameState: safeJsonParse(result.state) as S,
     timestamp: result.createdAt,
-    validationResult: safeJsonParse(result.validationResult) as R,
   }));
 };
 
@@ -442,7 +435,6 @@ export const updateGameState = async <S>(gameStateData: {
     playerId: 'system',
     actionType: 'update',
     actionData: null,
-    validationResult: null,
   });
 };
 
@@ -512,7 +504,7 @@ export const updateGameStateWithValidation = async <A, S>(
 /**
  * Service factory interface with typed Action and State generics
  */
-export interface DatabaseService<ActionType, StateType, ValidationResultType> {
+export interface DatabaseService<ActionType, StateType> {
   // Game operations
   createGame: (gameData: {
     id: string;
@@ -613,7 +605,6 @@ export interface DatabaseService<ActionType, StateType, ValidationResultType> {
     actionType: string;
     actionData: ActionType; // Use generic type
     gameState: StateType; // Use generic type
-    validationResult: ValidationResultType; // Use generic type
   }) => Promise<{
     id: string;
     gameId: string;
@@ -622,7 +613,6 @@ export interface DatabaseService<ActionType, StateType, ValidationResultType> {
     actionData: ActionType;
     gameState: StateType;
     timestamp: Date;
-    validationResult: ValidationResultType;
   }>;
   getActionsForGame: (gameId: string) => Promise<
     {
@@ -633,7 +623,6 @@ export interface DatabaseService<ActionType, StateType, ValidationResultType> {
       actionData: ActionType;
       gameState: StateType;
       timestamp: Date;
-      validationResult: ValidationResultType;
     }[]
   >;
 
@@ -658,11 +647,10 @@ export interface DatabaseService<ActionType, StateType, ValidationResultType> {
  * @param resultType - The Result type for this service
  * @returns A typed database service instance
  */
-export const createDatabaseService = <
+export const createDatabaseService = <ActionType, StateType>(): DatabaseService<
   ActionType,
-  StateType,
-  ValidationResultType,
->(): DatabaseService<ActionType, StateType, ValidationResultType> => {
+  StateType
+> => {
   // Return service with properly typed functions
   return {
     // Game operations
@@ -686,7 +674,6 @@ export const createDatabaseService = <
       actionType: string;
       actionData: ActionType;
       gameState: StateType;
-      validationResult: ValidationResultType;
     }): Promise<{
       id: string;
       gameId: string;
@@ -695,7 +682,6 @@ export const createDatabaseService = <
       actionData: ActionType;
       gameState: StateType;
       timestamp: Date;
-      validationResult: ValidationResultType;
     }> => {
       return recordAction(actionData);
     },
@@ -711,7 +697,6 @@ export const createDatabaseService = <
         actionData: ActionType;
         gameState: StateType;
         timestamp: Date;
-        validationResult: ValidationResultType;
       }[]
     > => {
       return getActionsForGame(gameId);
@@ -775,7 +760,6 @@ export const createGameWithInitialState = async <S>(
         playerId: 'system',
         actionType: 'initial',
         actionData: null,
-        validationResult: null,
       },
       { transaction }
     );

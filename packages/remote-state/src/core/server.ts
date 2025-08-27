@@ -162,8 +162,8 @@ export const createRemoteStateServer = async <StateType, ActionType>(
 
       if (!executionResult.success) {
         return res.status(400).json({
-          error: executionResult.validationResult.message || 'Action execution failed',
-          code: executionResult.validationResult.code || 'ACTION_FAILED',
+          error: 'Action execution failed',
+          code: 'ACTION_FAILED',
         });
       }
 
@@ -175,7 +175,6 @@ export const createRemoteStateServer = async <StateType, ActionType>(
         actionType: action.type || 'unknown',
         actionData: action,
         gameState: executionResult.state,
-        validationResult: executionResult.validationResult,
       });
 
       // Update game state with the new state
@@ -189,7 +188,6 @@ export const createRemoteStateServer = async <StateType, ActionType>(
         success: true,
         actionId: newAction.id,
         message: 'Action submitted successfully',
-        validationResult: executionResult.validationResult,
         gameOver: executionResult.gameOver,
         winner: executionResult.winner,
       });
