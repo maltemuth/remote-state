@@ -1,10 +1,11 @@
 import express, { Express, Request, Response, NextFunction } from 'express';
 import cors from 'cors';
 import { createServer } from 'http';
-import { createLogger } from './logger';
-import { initializeDatabase, closeDatabase } from './db/instance';
-import { validateGameAction } from './game-engine/validator';
-import { Player } from './db/models/Player';
+import { createLogger } from '../utils/logger';
+import { initializeDatabase, closeDatabase } from '../database/instance';
+import { validateGameAction } from '../game-engine/validator';
+import { Player } from '../database/models/Player';
+import { GamePlugin } from './types';
 import * as process from 'process';
 import {
   createGame,
@@ -15,44 +16,9 @@ import {
   createGameOwner,
   createJoiningPlayer,
   validatePlayerToken,
-} from './db/service';
+} from '../database/service';
 
 // Database initialization will happen when needed during requests
-
-export interface GameValidationResult {
-  valid: boolean;
-  message: string;
-  error?: string;
-  code?: string;
-}
-
-export interface GameMoveResult<StateType> {
-  success: boolean;
-  state: StateType;
-  validationResult: GameValidationResult;
-  gameOver: boolean;
-  winner: string | null;
-}
-
-export interface RemoteStateServerConfig<StateType, ActionType> {
-  /** Function to create initial game state */
-  getInitialState: (gameId: string) => StateType;
-  /** Function to validate an action */
-  validateAction: (state: StateType, action: ActionType) => GameValidationResult;
-  /** Function to execute an action and return new state */
-  executeAction: (
-    state: StateType,
-    action: ActionType & { playerId: string; timestamp: Date }
-  ) => GameMoveResult<StateType>;
-  /** Optional game-specific configuration */
-  gameConfig?: {
-    name: string;
-    description?: string;
-  };
-  /** Database persistence configuration */
-  persistDatabase?: boolean;
-  databaseFilename?: string;
-}
 
 export interface RemoteStateServer {
   app: Express;
@@ -63,14 +29,14 @@ export interface RemoteStateServer {
 }
 
 export const createRemoteStateServer = async <StateType, ActionType>(
-  config: RemoteStateServerConfig<StateType, ActionType>,
+  plugin: GamePlugin<StateType, ActionType>,
   port: number = 3000
 ): Promise<RemoteStateServer> => {
   const { info, error } = createLogger({
     scope: 'remote-state-server',
   });
 
-  const databasePath = config.persistDatabase ? config.databaseFilename || 'games.db' : ':memory:';
+  const databasePath = plugin.persistDatabase ? plugin.databaseFilename || 'games.db' : ':memory:';
   await initializeDatabase({ databasePath, sync: true }).catch(err => {
     error('Failed to initialize database:', err);
   });
@@ -103,12 +69,12 @@ export const createRemoteStateServer = async <StateType, ActionType>(
         // Create game if it doesn't exist
         game = await createGame({
           id: gameId,
-          name: config.gameConfig?.name || `Game ${gameId}`,
+          name: plugin.gameConfig?.name || `Game ${gameId}`,
           status: 'waiting',
         });
 
         // Initialize game state
-        const initialState = config.getInitialState(gameId);
+        const initialState = plugin.getInitialState(gameId);
         await updateGameState({
           gameId,
           state: initialState,
@@ -159,7 +125,7 @@ export const createRemoteStateServer = async <StateType, ActionType>(
       let currentState = currentStateResult?.state;
       if (!currentState) {
         info(`No game state found, creating initial state for game: ${gameId}`);
-        const initialState = config.getInitialState(gameId);
+        const initialState = plugin.getInitialState(gameId);
         await updateGameState({
           gameId,
           state: initialState,
@@ -171,7 +137,7 @@ export const createRemoteStateServer = async <StateType, ActionType>(
       const validationResult = validateGameAction(
         currentState as StateType,
         action as ActionType,
-        config
+        plugin
       );
       if (!validationResult.valid) {
         return res.status(400).json({
@@ -190,7 +156,7 @@ export const createRemoteStateServer = async <StateType, ActionType>(
         timestamp: new Date(),
       };
 
-      const executionResult = config.executeAction(
+      const executionResult = plugin.executeAction(
         currentState as StateType,
         actionWithPlayer as ActionType & { playerId: string; timestamp: Date }
       );
@@ -254,7 +220,7 @@ export const createRemoteStateServer = async <StateType, ActionType>(
 
       // If no state exists, create initial state
       if (!gameState?.state) {
-        const initialState = config.getInitialState(gameId);
+        const initialState = plugin.getInitialState(gameId);
         await updateGameState({
           gameId,
           state: initialState,
@@ -392,7 +358,7 @@ export const createRemoteStateServer = async <StateType, ActionType>(
     res.json({
       status: 'ok',
       timestamp: new Date().toISOString(),
-      game: config.gameConfig?.name || 'Unknown Game',
+      game: plugin.gameConfig?.name || 'Unknown Game',
     });
   });
 
@@ -411,7 +377,7 @@ export const createRemoteStateServer = async <StateType, ActionType>(
   const startServer = () => {
     server.listen(port, () => {
       info(`Remote State server listening at http://localhost:${port}`);
-      info(`Game: ${config.gameConfig?.name || 'Unknown Game'}`);
+      info(`Game: ${plugin.gameConfig?.name || 'Unknown Game'}`);
       info('Endpoints:');
       info('  POST /api/auth/register/owner - Register as game owner (creates new game)');
       info('  POST /api/auth/register/join - Register as joining player (joins existing game)');

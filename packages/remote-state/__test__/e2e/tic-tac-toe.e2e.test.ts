@@ -1,5 +1,5 @@
 import request from 'supertest';
-import { createRemoteStateServer } from '../../src/server-factory';
+import { createRemoteStateServer } from '../../src/core/server';
 import type { Express } from 'express';
 import { createServer } from 'http';
 

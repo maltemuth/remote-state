@@ -1,8 +1,9 @@
-import { createLogger } from '../logger';
+import { createLogger } from '../utils/logger';
+import { safeJsonParse, safeJsonStringify } from '../utils/json';
 import { GameState } from './models/GameState';
 import { Game } from './models/Game';
 import { Player } from './models/Player';
-import { GameDataSchema, PlayerDataSchema } from '../validation';
+import { GameDataSchema, PlayerDataSchema } from './validation';
 import { Op } from 'sequelize';
 import { Transaction } from 'sequelize';
 import { getSequelizeInstance } from './sequelize';
@@ -10,30 +11,6 @@ import { getSequelizeInstance } from './sequelize';
 const { info } = createLogger({
   scope: 'db-service',
 });
-
-/**
- * Helper function to safely parse JSON strings
- */
-const safeJsonParse = <T>(jsonString: string | null | undefined): T | null => {
-  if (!jsonString) return null;
-  try {
-    return JSON.parse(jsonString) as T;
-  } catch (_error) {
-    return null;
-  }
-};
-
-/**
- * Helper function to safely stringify JSON
- */
-const safeJsonStringify = (obj: unknown): string | null => {
-  if (obj === null || obj === undefined) return null;
-  try {
-    return JSON.stringify(obj);
-  } catch (_error) {
-    return null;
-  }
-};
 
 /**
  * Create a new game

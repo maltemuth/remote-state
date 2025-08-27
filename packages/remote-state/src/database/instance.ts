@@ -1,4 +1,4 @@
-import { createLogger } from '../logger';
+import { createLogger } from '../utils/logger';
 import { createSequelizeInstance, syncDatabase } from './sequelize';
 
 const { info, error } = createLogger({

@@ -1,5 +1,5 @@
 import { Sequelize } from 'sequelize-typescript';
-import { createLogger } from '../logger';
+import { createLogger } from '../utils/logger';
 
 const { info, error } = createLogger({
   scope: 'database',

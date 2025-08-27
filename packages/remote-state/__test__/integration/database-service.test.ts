@@ -1,6 +1,6 @@
 import { Sequelize } from 'sequelize-typescript';
-import { createLogger } from '../../src/logger';
-import { createSequelizeInstance, syncDatabase } from '../../src/db/sequelize';
+import { createLogger } from '../../src/utils/logger';
+import { createSequelizeInstance, syncDatabase } from '../../src/database/sequelize';
 import {
   createGame,
   getGame,
@@ -17,7 +17,7 @@ import {
   updateGameState,
   getCurrentGameState,
   updateGameStateWithValidation,
-} from '../../src/db/service';
+} from '../../src/database/service';
 
 // Import Jest globals
 import { describe, beforeAll, afterAll, test, expect } from '@jest/globals';
@@ -420,7 +420,7 @@ describe('Database Service Integration Tests', () => {
         role: 'invalid-role' as 'invalid-role', // Invalid role
       };
 
-      expect(() => addPlayerToGame(playerData)).rejects.toThrow();
+      await expect(() => addPlayerToGame(playerData)).rejects.toThrow();
     });
   });
 });

@@ -1,4 +1,4 @@
-import { GameValidationResult } from '../server-factory';
+import { GameValidationResult } from '../core/types';
 
 export const validateGameAction = <StateType, ActionType>(
   state: StateType,
