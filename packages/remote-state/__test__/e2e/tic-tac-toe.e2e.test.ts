@@ -5,9 +5,17 @@ import { initializeDatabase } from '../../src/db/instance';
 // Import Jest globals
 import { describe, beforeAll, afterAll, it, expect } from '@jest/globals';
 
+// Import Tic-Tac-Toe types
+import {
+  TicTacToeState,
+  TicTacToeAction,
+  GameValidationResult,
+  GameMoveResult,
+} from '../../../remote-state-example-server/src/games/tic-tac-toe/types';
+
 describe('Tic-Tac-Toe E2E Tests', () => {
-  let app: any;
-  let server: any;
+  let app: ReturnType<typeof createRemoteStateServer>['app'];
+  let server: ReturnType<typeof createRemoteStateServer>['server'];
   let gameId: string;
   let ownerToken: string;
   let joinerToken: string;
@@ -41,7 +49,7 @@ describe('Tic-Tac-Toe E2E Tests', () => {
           createdAt: new Date(),
           updatedAt: new Date(),
         }),
-        validateAction: (state: any, action: any) => {
+        validateAction: (state: TicTacToeState, action: TicTacToeAction): GameValidationResult => {
           // Check if game is finished
           if (state.status === 'finished') {
             return {
@@ -82,7 +90,7 @@ describe('Tic-Tac-Toe E2E Tests', () => {
             message: 'Action is valid',
           };
         },
-        executeAction: (state: any, action: any) => {
+        executeAction: (state: TicTacToeState, action: TicTacToeAction): GameMoveResult => {
           // Simple execution for tic-tac-toe moves
           const newState = JSON.parse(JSON.stringify(state)); // Deep copy
 
@@ -282,6 +290,7 @@ describe('Tic-Tac-Toe E2E Tests', () => {
       .send({
         action: {
           type: 'move',
+          playerId: 'player-x-id',
           position: [0, 0],
           timestamp: new Date(),
         },
@@ -300,6 +309,7 @@ describe('Tic-Tac-Toe E2E Tests', () => {
       .send({
         action: {
           type: 'move',
+          playerId: 'player-o-id',
           position: [1, 1],
           timestamp: new Date(),
         },
@@ -318,6 +328,7 @@ describe('Tic-Tac-Toe E2E Tests', () => {
       .send({
         action: {
           type: 'move',
+          playerId: 'player-x-id',
           position: [0, 1],
           timestamp: new Date(),
         },
@@ -336,6 +347,7 @@ describe('Tic-Tac-Toe E2E Tests', () => {
       .send({
         action: {
           type: 'move',
+          playerId: 'player-o-id',
           position: [1, 0],
           timestamp: new Date(),
         },
@@ -354,6 +366,7 @@ describe('Tic-Tac-Toe E2E Tests', () => {
       .send({
         action: {
           type: 'move',
+          playerId: 'player-x-id',
           position: [0, 2],
           timestamp: new Date(),
         },
@@ -381,6 +394,7 @@ describe('Tic-Tac-Toe E2E Tests', () => {
       .send({
         action: {
           type: 'move',
+          playerId: 'player-o-id',
           position: [2, 2],
           timestamp: new Date(),
         },
