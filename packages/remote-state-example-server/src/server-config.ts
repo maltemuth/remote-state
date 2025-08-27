@@ -10,7 +10,8 @@ import {
 import { validateAction, executeAction } from "./games/tic-tac-toe/engine.js";
 
 export const createTicTacToeServer = (
-  port: number = 3000
+  port: number = 3000,
+  options: { persistDatabase?: boolean } = { persistDatabase: false }
 ): RemoteStateServer => {
   return createRemoteStateServer<TicTacToeState, TicTacToeAction>(
     {
@@ -21,6 +22,7 @@ export const createTicTacToeServer = (
         name: "Tic-Tac-Toe",
         description: "Classic 3x3 tic-tac-toe game",
       },
+      persistDatabase: options.persistDatabase,
     },
     port
   );

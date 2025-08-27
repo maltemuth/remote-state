@@ -12,8 +12,10 @@ const { info } = createLogger({
   scope: "example-server",
 });
 
-// Create and start the tic-tac-toe server
-const { app, startServer } = createTicTacToeServer(3000);
+// Create and start the tic-tac-toe server with persistent database
+const { app, startServer } = createTicTacToeServer(3000, {
+  persistDatabase: true,
+});
 
 // Start the server
 startServer();

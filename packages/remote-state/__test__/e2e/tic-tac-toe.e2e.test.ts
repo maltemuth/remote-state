@@ -1,6 +1,7 @@
 import request from 'supertest';
 import { createRemoteStateServer } from '../../src/server-factory';
-import { initializeDatabase } from '../../src/db/instance';
+import type { Express } from 'express';
+import { createServer } from 'http';
 
 // Import Jest globals
 import { describe, beforeAll, afterAll, it, expect } from '@jest/globals';
@@ -14,20 +15,17 @@ import {
 } from '../../../remote-state-example-server/src/games/tic-tac-toe/types';
 
 describe('Tic-Tac-Toe E2E Tests', () => {
-  let app: ReturnType<typeof createRemoteStateServer>['app'];
-  let server: ReturnType<typeof createRemoteStateServer>['server'];
+  let app: Express;
+  let server: ReturnType<typeof createServer>;
   let gameId: string;
   let ownerToken: string;
   let joinerToken: string;
 
   beforeAll(async () => {
-    // Initialize the database
-    await initializeDatabase({ databasePath: ':memory:', sync: true });
-
     // Create a test server instance with database initialization disabled
-    const testServer = createRemoteStateServer(
+    const testServer = await createRemoteStateServer(
       {
-        getInitialState: () => ({
+        getInitialState: (_gameId: string) => ({
           board: [
             [null, null, null],
             [null, null, null],
@@ -90,7 +88,10 @@ describe('Tic-Tac-Toe E2E Tests', () => {
             message: 'Action is valid',
           };
         },
-        executeAction: (state: TicTacToeState, action: TicTacToeAction): GameMoveResult => {
+        executeAction: (
+          state: TicTacToeState,
+          action: TicTacToeAction & { playerId: string; timestamp: Date }
+        ): GameMoveResult => {
           // Simple execution for tic-tac-toe moves
           const newState = JSON.parse(JSON.stringify(state)); // Deep copy
 
@@ -230,12 +231,12 @@ describe('Tic-Tac-Toe E2E Tests', () => {
           name: 'Tic-Tac-Toe',
           description: 'Classic 3x3 tic-tac-toe game',
         },
+        persistDatabase: false,
       },
-      0,
-      { initializeDatabase: false } // Skip database initialization in the server factory
+      0
     );
-    app = testServer.app;
-    server = testServer.server;
+    app = (await testServer).app;
+    server = (await testServer).server;
   });
 
   afterAll(async () => {

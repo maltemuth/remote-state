@@ -48,6 +48,9 @@ export interface RemoteStateServerConfig<StateType, ActionType> {
     name: string;
     description?: string;
   };
+  /** Database persistence configuration */
+  persistDatabase?: boolean;
+  databaseFilename?: string;
 }
 
 export interface RemoteStateServer {
@@ -57,21 +60,18 @@ export interface RemoteStateServer {
   port: number;
 }
 
-export function createRemoteStateServer<StateType, ActionType>(
+export const createRemoteStateServer = async <StateType, ActionType>(
   config: RemoteStateServerConfig<StateType, ActionType>,
-  port: number = 3000,
-  options: { initializeDatabase?: boolean } = { initializeDatabase: true }
-): RemoteStateServer {
+  port: number = 3000
+): Promise<RemoteStateServer> => {
   const { info, error } = createLogger({
     scope: 'remote-state-server',
   });
 
-  // Initialize database when server is created
-  if (options.initializeDatabase !== false) {
-    initializeDatabase({ databasePath: 'games.db', sync: true }).catch(err => {
-      error('Failed to initialize database:', err);
-    });
-  }
+  const databasePath = config.persistDatabase ? config.databaseFilename || 'games.db' : ':memory:';
+  await initializeDatabase({ databasePath, sync: true }).catch(err => {
+    error('Failed to initialize database:', err);
+  });
 
   const app = express();
 
@@ -433,4 +433,4 @@ export function createRemoteStateServer<StateType, ActionType>(
     startServer,
     port,
   };
-}
+};
