@@ -22,7 +22,7 @@ export class GameState extends Model<GameState> {
   @PrimaryKey
   @Default(uuidv4)
   @Column({
-    type: DataType.UUID,
+    type: DataType.STRING,
     allowNull: false,
     unique: true,
   })

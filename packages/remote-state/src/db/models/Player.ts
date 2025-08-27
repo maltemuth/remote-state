@@ -20,7 +20,7 @@ export class Player extends Model<Player> {
   @PrimaryKey
   @Default(uuidv4)
   @Column({
-    type: DataType.UUID,
+    type: DataType.STRING,
     allowNull: false,
     unique: true,
   })

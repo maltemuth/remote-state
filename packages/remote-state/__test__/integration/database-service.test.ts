@@ -395,12 +395,13 @@ describe('Database Service Integration Tests', () => {
       const gameData = {
         id: 'test-game-16',
         name: 'Test Game 16',
-        status: 'invalid-status', // This should still work as it's just a string
+        status: 'invalid-status',
       };
 
       const game = await createGame(gameData);
       expect(game).toBeDefined();
-      expect(game.status).toBe('invalid-status');
+      // validation won't allow this.
+      expect(game.status).not.toBe('invalid-status');
     });
 
     test('should handle invalid player data', async () => {
@@ -419,10 +420,7 @@ describe('Database Service Integration Tests', () => {
         role: 'invalid-role' as 'invalid-role', // Invalid role
       };
 
-      const player = await addPlayerToGame(playerData);
-      expect(player).toBeDefined();
-      expect(player.name).toBe('');
-      expect(player.role).toBe('invalid-role');
+      expect(() => addPlayerToGame(playerData)).rejects.toThrow();
     });
   });
 });

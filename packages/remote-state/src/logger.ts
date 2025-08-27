@@ -50,12 +50,14 @@ const createLoggerFunction = (options: StrictLoggerOptions): LoggerFunction => {
   const level = options.logLevel;
   return (message: string, meta?: unknown) => {
     const entry: LogEntry = {
-      scope: options.scope,
       timestamp: new Date().toISOString(),
       level,
       message,
       meta,
     };
+    if (options.scope !== undefined) {
+      entry.scope = options.scope;
+    }
 
     const formattedMessage = formatLogEntry(entry);
 

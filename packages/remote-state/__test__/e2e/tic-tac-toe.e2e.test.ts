@@ -28,7 +28,7 @@ describe('Tic-Tac-Toe E2E Tests', () => {
             [null, null, null],
             [null, null, null],
           ],
-          currentPlayer: 'X',
+          currentPlayer: 'X' as 'X' | 'O',
           status: 'waiting',
           winner: null,
           winLine: null,
@@ -37,7 +37,7 @@ describe('Tic-Tac-Toe E2E Tests', () => {
             O: null,
           },
           lastMove: {
-            player: 'X',
+            player: 'X' as 'X' | 'O',
             position: null,
             timestamp: null,
           },
@@ -57,6 +57,15 @@ describe('Tic-Tac-Toe E2E Tests', () => {
 
           // Simple validation for tic-tac-toe moves
           if (action.type === 'move') {
+            if (!action.position) {
+              return {
+                valid: false,
+                message: 'Position is required for move actions',
+                error: 'Position is required for move actions',
+                code: 'POSITION_REQUIRED',
+              };
+            }
+
             const [row, col] = action.position;
             if (row < 0 || row > 2 || col < 0 || col > 2) {
               return {
@@ -93,11 +102,15 @@ describe('Tic-Tac-Toe E2E Tests', () => {
           const newState = JSON.parse(JSON.stringify(state)); // Deep copy
 
           if (action.type === 'move') {
-            const [row, col] = action.position;
+            const position = action.position;
+            if (!position) {
+              throw new Error('Position is required');
+            }
+            const [row, col] = position;
             newState.board[row][col] = state.currentPlayer;
             newState.lastMove = {
               player: state.currentPlayer,
-              position: [row, col],
+              position: position,
               timestamp: action.timestamp,
             };
             newState.updatedAt = action.timestamp;

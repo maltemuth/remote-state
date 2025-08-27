@@ -2,8 +2,7 @@
   "extends": "../../tsconfig.json",
   "compilerOptions": {
     "outDir": "./dist",
-    "skipLibCheck": true,
-    "module": "commonjs"
+    "skipLibCheck": true
   },
 
   // Include only the source directory

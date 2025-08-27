@@ -2,6 +2,7 @@ import { createLogger } from '../logger';
 import { GameState } from './models/GameState';
 import { Game } from './models/Game';
 import { Player } from './models/Player';
+import { GameDataSchema, PlayerDataSchema } from '../validation';
 import { Op } from 'sequelize';
 import { Transaction } from 'sequelize';
 import { getSequelizeInstance } from './sequelize';
@@ -13,12 +14,10 @@ const { info } = createLogger({
 /**
  * Helper function to safely parse JSON strings
  */
-const safeJsonParse = <ExpectedType = unknown>(
-  jsonString: string | null | undefined
-): ExpectedType => {
+const safeJsonParse = <T>(jsonString: string | null | undefined): T | null => {
   if (!jsonString) return null;
   try {
-    return JSON.parse(jsonString);
+    return JSON.parse(jsonString) as T;
   } catch (_error) {
     return null;
   }
@@ -44,15 +43,17 @@ export const createGame = async (gameData: {
   name: string;
   status: string;
 }): Promise<{ id: string; name: string; status: string; createdAt: Date; updatedAt: Date }> => {
-  info(`Creating new game: ${gameData.name}`);
+  // Validate input
+  const validatedData = GameDataSchema.parse(gameData);
+
+  info(`Creating new game: ${validatedData.name}`);
 
   const now = new Date();
 
   // Create the game
   const newGame = await Game.create({
-    id: gameData.id,
-    name: gameData.name,
-    status: gameData.status,
+    id: validatedData.id,
+    name: validatedData.name,
     createdAt: now,
     updatedAt: now,
   });
@@ -60,8 +61,8 @@ export const createGame = async (gameData: {
   // Create initial game state
   try {
     await GameState.create({
-      id: `state-${gameData.id}`,
-      gameId: gameData.id,
+      id: `state-${validatedData.id}`,
+      gameId: validatedData.id,
       state: null,
       playerId: 'system',
       actionType: 'initial',
@@ -150,15 +151,18 @@ export const addPlayerToGame = async (playerData: {
   tokenType?: string;
   createdAt: Date;
 }> => {
-  info(`Adding player ${playerData.name} to game ${playerData.gameId}`);
+  // Validate input
+  const validatedData = PlayerDataSchema.parse(playerData);
+
+  info(`Adding player ${validatedData.name} to game ${validatedData.gameId}`);
 
   const newPlayer = await Player.create({
-    id: playerData.id,
-    gameId: playerData.gameId,
-    name: playerData.name,
-    role: playerData.role,
-    token: playerData.token,
-    tokenType: playerData.tokenType,
+    id: validatedData.id,
+    gameId: validatedData.gameId,
+    name: validatedData.name,
+    role: validatedData.role,
+    token: validatedData.token,
+    tokenType: validatedData.tokenType,
   });
 
   return {

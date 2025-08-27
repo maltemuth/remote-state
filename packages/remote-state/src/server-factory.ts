@@ -439,8 +439,8 @@ export const createRemoteStateServer = async <StateType, ActionType>(
       });
       info('Server shut down successfully');
       process.exit(0);
-    } catch (error) {
-      error('Error during shutdown:', { error });
+    } catch (_error) {
+      error('Error during shutdown:', { _error });
       process.exit(1);
     }
   };
