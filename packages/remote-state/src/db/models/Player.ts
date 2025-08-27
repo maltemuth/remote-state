@@ -59,6 +59,12 @@ export class Player extends Model<Player> {
   })
   declare tokenType?: string;
 
+  @Column({
+    type: DataType.DATE,
+    allowNull: true,
+  })
+  declare lastActivityAt: Date | null;
+
   // Associations
   @BelongsTo(() => Game)
   declare game: Game;

@@ -2,14 +2,16 @@ import express, { Express, Request, Response, NextFunction } from 'express';
 import cors from 'cors';
 import { createServer } from 'http';
 import { createLogger } from './logger';
-import { initializeDatabase } from './db/instance';
+import { initializeDatabase, closeDatabase } from './db/instance';
+import { validateGameAction } from './game-engine/validator';
+import { Player } from './db/models/Player';
+import * as process from 'process';
 import {
   createGame,
   getGame,
   recordAction,
   getCurrentGameState,
   updateGameState,
-  addPlayerToGame,
   createGameOwner,
   createJoiningPlayer,
   validatePlayerToken,
@@ -56,6 +58,7 @@ export interface RemoteStateServer {
   app: Express;
   server: ReturnType<typeof createServer>;
   startServer: () => void;
+  shutdown: () => Promise<void>;
   port: number;
 }
 
@@ -80,20 +83,6 @@ export const createRemoteStateServer = async <StateType, ActionType>(
   // Middleware
   app.use(cors());
   app.use(express.json());
-  app.use((req: Request, res: Response, next: NextFunction) => {
-    // Add CORS headers for development
-    res.header('Access-Control-Allow-Origin', '*');
-    res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-    res.header(
-      'Access-Control-Allow-Headers',
-      'Origin, X-Requested-With, Content-Type, Accept, Authorization'
-    );
-    if (req.method === 'OPTIONS') {
-      res.sendStatus(200);
-    } else {
-      next();
-    }
-  });
 
   // Action submission endpoint
   app.post('/api/games/:gameId/actions', async (req: Request, res: Response) => {
@@ -153,13 +142,11 @@ export const createRemoteStateServer = async <StateType, ActionType>(
           });
         }
       } else {
-        // Create a default player if no token is provided
-        const defaultPlayerId = `player-${Date.now()}`;
-        player = await addPlayerToGame({
-          id: defaultPlayerId,
-          gameId,
-          name: 'Default Player',
-          role: 'player',
+        // Return error if no token is provided
+        return res.status(401).json({
+          error: 'Authentication required',
+          code: 'MISSING_AUTHENTICATION',
+          timestamp: new Date().toISOString(),
         });
       }
 
@@ -180,10 +167,11 @@ export const createRemoteStateServer = async <StateType, ActionType>(
         currentState = initialState;
       }
 
-      // Use game-specific validation
-      const validationResult = config.validateAction(
+      // Use game-specific validation through dedicated module
+      const validationResult = validateGameAction(
         currentState as StateType,
-        action as ActionType
+        action as ActionType,
+        config
       );
       if (!validationResult.valid) {
         return res.status(400).json({
@@ -191,6 +179,9 @@ export const createRemoteStateServer = async <StateType, ActionType>(
           code: validationResult.code || 'INVALID_ACTION',
         });
       }
+
+      // Update player's last activity
+      await Player.update({ lastActivityAt: new Date() }, { where: { id: player.id } });
 
       // Execute the action
       const actionWithPlayer = {
@@ -430,10 +421,41 @@ export const createRemoteStateServer = async <StateType, ActionType>(
     });
   };
 
+  // Graceful shutdown handling
+  const shutdown = async () => {
+    info('Shutting down server...');
+    try {
+      // Close database connections
+      await closeDatabase();
+      // Close HTTP server
+      await new Promise<void>((resolve, reject) => {
+        server.close(err => {
+          if (err) {
+            reject(err);
+          } else {
+            resolve();
+          }
+        });
+      });
+      info('Server shut down successfully');
+      process.exit(0);
+    } catch (error) {
+      error('Error during shutdown:', { error });
+      process.exit(1);
+    }
+  };
+
+  // Listen for shutdown signals only in Node.js environment (not in tests)
+  if (typeof process !== 'undefined' && process.on) {
+    process.on('SIGTERM', shutdown);
+    process.on('SIGINT', shutdown);
+  }
+
   return {
     app,
     server,
     startServer,
+    shutdown,
     port,
   };
 };
