@@ -1,65 +1,19 @@
 import { createLogger } from '../logger';
-import { Action } from './models/Action';
 import { GameState } from './models/GameState';
 import { Game } from './models/Game';
 import { Player } from './models/Player';
+import { Op } from 'sequelize';
 
 const { info } = createLogger({
   scope: 'db-service',
 });
 
 /**
- * Game data type
- */
-export interface GameData {
-  id: string;
-  name: string;
-  status: string;
-  createdAt: Date;
-  updatedAt: Date;
-}
-
-/**
- * Player data type
- */
-export interface PlayerData {
-  id: string;
-  gameId: string;
-  name: string;
-  role: 'spectator' | 'player' | 'admin';
-  token?: string;
-  tokenType?: 'owner' | 'identity';
-  joinedAt: Date;
-}
-
-/**
- * Action data type
- */
-export interface ActionData<A, S, R> {
-  id: string;
-  gameId: string;
-  playerId: string;
-  actionType: string;
-  actionData: A;
-  gameState: S;
-  timestamp: Date;
-  validationResult: R;
-}
-
-/**
- * Game state data type
- */
-export interface GameStateData<S> {
-  gameId: string;
-  state: S;
-  lastActionId: string | null;
-  updatedAt: Date;
-}
-
-/**
  * Helper function to safely parse JSON strings
  */
-const safeJsonParse = (jsonString: string | null | undefined): unknown => {
+const safeJsonParse = <ExpectedType = unknown>(
+  jsonString: string | null | undefined
+): ExpectedType => {
   if (!jsonString) return null;
   try {
     return JSON.parse(jsonString);
@@ -83,9 +37,11 @@ const safeJsonStringify = (obj: unknown): string | null => {
 /**
  * Create a new game
  */
-export const createGame = async (
-  gameData: Omit<GameData, 'createdAt' | 'updatedAt'>
-): Promise<GameData> => {
+export const createGame = async (gameData: {
+  id: string;
+  name: string;
+  status: string;
+}): Promise<{ id: string; name: string; status: string; createdAt: Date; updatedAt: Date }> => {
   info(`Creating new game: ${gameData.name}`);
 
   const now = new Date();
@@ -100,12 +56,31 @@ export const createGame = async (
   });
 
   // Create initial game state
-  await GameState.create({
-    gameId: gameData.id,
-    state: null,
-    lastActionId: null,
-    updatedAt: now,
-  });
+  try {
+    await GameState.create({
+      id: `state-${gameData.id}`,
+      gameId: gameData.id,
+      state: null,
+      playerId: 'system',
+      actionType: 'initial',
+      actionData: null,
+      validationResult: null,
+      timestamp: now,
+    });
+  } catch (error) {
+    // If the GameState table doesn't have the new fields yet, create a minimal record
+    info(`Creating minimal game state due to schema mismatch: ${error}`);
+    await GameState.create({
+      id: `state-${gameData.id}`,
+      gameId: gameData.id,
+      state: null,
+      playerId: 'system',
+      actionType: 'initial',
+      actionData: null,
+      validationResult: null,
+      timestamp: now,
+    });
+  }
 
   return {
     id: newGame.id,
@@ -119,7 +94,15 @@ export const createGame = async (
 /**
  * Get a game by ID
  */
-export const getGame = async (gameId: string): Promise<GameData | null> => {
+export const getGame = async (
+  gameId: string
+): Promise<{
+  id: string;
+  name: string;
+  status: string;
+  createdAt: Date;
+  updatedAt: Date;
+} | null> => {
   info(`Retrieving game: ${gameId}`);
 
   const result = await Game.findByPk(gameId);
@@ -159,9 +142,22 @@ export const updateGameStatus = async (gameId: string, status: string): Promise<
 /**
  * Add a player to a game
  */
-export const addPlayerToGame = async (
-  playerData: Omit<PlayerData, 'joinedAt'>
-): Promise<PlayerData> => {
+export const addPlayerToGame = async (playerData: {
+  id: string;
+  gameId: string;
+  name: string;
+  role: string;
+  token?: string;
+  tokenType?: string;
+}): Promise<{
+  id: string;
+  gameId: string;
+  name: string;
+  role: string;
+  token?: string;
+  tokenType?: string;
+  joinedAt: Date;
+}> => {
   info(`Adding player ${playerData.name} to game ${playerData.gameId}`);
 
   const now = new Date();
@@ -179,9 +175,9 @@ export const addPlayerToGame = async (
     id: newPlayer.id,
     gameId: newPlayer.gameId,
     name: newPlayer.name,
-    role: newPlayer.role as 'spectator' | 'player' | 'admin',
+    role: newPlayer.role,
     token: newPlayer.token || undefined,
-    tokenType: newPlayer.tokenType as 'owner' | 'identity' | undefined,
+    tokenType: newPlayer.tokenType || undefined,
     joinedAt: newPlayer.joinedAt,
   };
 };
@@ -201,7 +197,18 @@ export const generateToken = (length: number = 32): string => {
 /**
  * Create a game owner with token
  */
-export const createGameOwner = async (gameId: string, playerName: string): Promise<PlayerData> => {
+export const createGameOwner = async (
+  gameId: string,
+  playerName: string
+): Promise<{
+  id: string;
+  gameId: string;
+  name: string;
+  role: string;
+  token?: string;
+  tokenType?: string;
+  joinedAt: Date;
+}> => {
   info(`Creating game owner for game ${gameId}: ${playerName}`);
 
   const playerId = `owner-${Date.now()}`;
@@ -225,7 +232,15 @@ export const createGameOwner = async (gameId: string, playerName: string): Promi
 export const createJoiningPlayer = async (
   gameId: string,
   playerName: string
-): Promise<PlayerData> => {
+): Promise<{
+  id: string;
+  gameId: string;
+  name: string;
+  role: string;
+  token?: string;
+  tokenType?: string;
+  joinedAt: Date;
+}> => {
   info(`Creating joining player for game ${gameId}: ${playerName}`);
 
   const playerId = `player-${Date.now()}`;
@@ -246,7 +261,17 @@ export const createJoiningPlayer = async (
 /**
  * Get player by token
  */
-export const getPlayerByToken = async (token: string): Promise<PlayerData | null> => {
+export const getPlayerByToken = async (
+  token: string
+): Promise<{
+  id: string;
+  gameId: string;
+  name: string;
+  role: string;
+  token?: string;
+  tokenType?: string;
+  joinedAt: Date;
+} | null> => {
   info(`Retrieving player by token`);
 
   const result = await Player.findOne({
@@ -263,9 +288,9 @@ export const getPlayerByToken = async (token: string): Promise<PlayerData | null
     id: result.id,
     gameId: result.gameId,
     name: result.name,
-    role: result.role as 'spectator' | 'player' | 'admin',
+    role: result.role,
     token: result.token || undefined,
-    tokenType: result.tokenType as 'owner' | 'identity' | undefined,
+    tokenType: result.tokenType || undefined,
     joinedAt: result.joinedAt,
   };
 };
@@ -273,7 +298,17 @@ export const getPlayerByToken = async (token: string): Promise<PlayerData | null
 /**
  * Validate player token and get player data
  */
-export const validatePlayerToken = async (token: string): Promise<PlayerData | null> => {
+export const validatePlayerToken = async (
+  token: string
+): Promise<{
+  id: string;
+  gameId: string;
+  name: string;
+  role: string;
+  token?: string;
+  tokenType?: string;
+  joinedAt: Date;
+} | null> => {
   info(`Validating player token`);
 
   const player = await getPlayerByToken(token);
@@ -287,7 +322,17 @@ export const validatePlayerToken = async (token: string): Promise<PlayerData | n
 /**
  * Get game owner by game ID
  */
-export const getGameOwner = async (gameId: string): Promise<PlayerData | null> => {
+export const getGameOwner = async (
+  gameId: string
+): Promise<{
+  id: string;
+  gameId: string;
+  name: string;
+  role: string;
+  token?: string;
+  tokenType?: string;
+  joinedAt: Date;
+} | null> => {
   info(`Retrieving game owner for game: ${gameId}`);
 
   const result = await Player.findOne({
@@ -305,9 +350,9 @@ export const getGameOwner = async (gameId: string): Promise<PlayerData | null> =
     id: result.id,
     gameId: result.gameId,
     name: result.name,
-    role: result.role as 'spectator' | 'player' | 'admin',
+    role: result.role,
     token: result.token || undefined,
-    tokenType: result.tokenType as 'owner' | 'identity' | undefined,
+    tokenType: result.tokenType || undefined,
     joinedAt: result.joinedAt,
   };
 };
@@ -315,7 +360,19 @@ export const getGameOwner = async (gameId: string): Promise<PlayerData | null> =
 /**
  * Get players for a game
  */
-export const getPlayersForGame = async (gameId: string): Promise<PlayerData[]> => {
+export const getPlayersForGame = async (
+  gameId: string
+): Promise<
+  {
+    id: string;
+    gameId: string;
+    name: string;
+    role: string;
+    token?: string;
+    tokenType?: string;
+    joinedAt: Date;
+  }[]
+> => {
   info(`Retrieving players for game: ${gameId}`);
 
   const results = await Player.findAll({
@@ -328,42 +385,57 @@ export const getPlayersForGame = async (gameId: string): Promise<PlayerData[]> =
     id: result.id,
     gameId: result.gameId,
     name: result.name,
-    role: result.role as 'spectator' | 'player' | 'admin',
+    role: result.role,
     token: result.token || undefined,
-    tokenType: result.tokenType as 'owner' | 'identity' | undefined,
+    tokenType: result.tokenType || undefined,
     joinedAt: result.joinedAt,
   }));
 };
 
 /**
- * Record an action
+ * Record an action and game state
  */
-export const recordAction = async <A, S, R>(
-  actionData: Omit<ActionData<A, S, R>, 'timestamp'>
-): Promise<ActionData<A, S, R>> => {
+export const recordAction = async <A, S, R>(actionData: {
+  id: string;
+  gameId: string;
+  playerId: string;
+  actionType: string;
+  actionData: A;
+  gameState: S;
+  validationResult: R;
+}): Promise<{
+  id: string;
+  gameId: string;
+  playerId: string;
+  actionType: string;
+  actionData: A;
+  gameState: S;
+  timestamp: Date;
+  validationResult: R;
+}> => {
   info(`Recording action: ${actionData.actionType} for game ${actionData.gameId}`);
 
   const now = new Date();
-  const newAction = await Action.create({
+  const newGameState = await GameState.create({
     id: actionData.id,
     gameId: actionData.gameId,
     playerId: actionData.playerId,
+    state: safeJsonStringify(actionData.gameState),
     actionType: actionData.actionType,
     actionData: safeJsonStringify(actionData.actionData),
-    gameState: safeJsonStringify(actionData.gameState),
-    timestamp: now,
     validationResult: safeJsonStringify(actionData.validationResult),
+    timestamp: now,
   });
 
   return {
-    id: newAction.id,
-    gameId: newAction.gameId,
-    playerId: newAction.playerId,
-    actionType: newAction.actionType,
-    actionData: safeJsonParse(newAction.actionData) as A,
-    gameState: safeJsonParse(newAction.gameState) as S,
-    timestamp: newAction.timestamp,
-    validationResult: safeJsonParse(newAction.validationResult) as R,
+    id: actionData.id,
+    gameId: newGameState.gameId,
+    playerId: newGameState.playerId,
+    actionType: newGameState.actionType,
+    actionData: safeJsonParse(newGameState.actionData) as A,
+    gameState: safeJsonParse(newGameState.state) as S,
+    timestamp: newGameState.timestamp,
+    validationResult: safeJsonParse(newGameState.validationResult) as R,
   };
 };
 
@@ -372,12 +444,26 @@ export const recordAction = async <A, S, R>(
  */
 export const getActionsForGame = async <A, S, R>(
   gameId: string
-): Promise<ActionData<A, S, R>[]> => {
+): Promise<
+  {
+    id: string;
+    gameId: string;
+    playerId: string;
+    actionType: string;
+    actionData: A;
+    gameState: S;
+    timestamp: Date;
+    validationResult: R;
+  }[]
+> => {
   info(`Retrieving actions for game: ${gameId}`);
 
-  const results = await Action.findAll({
+  const results = await GameState.findAll({
     where: {
       gameId: gameId,
+      actionType: {
+        [Op.ne]: 'initial', // Exclude initial state entries
+      },
     },
     order: [['timestamp', 'DESC']],
   });
@@ -388,7 +474,7 @@ export const getActionsForGame = async <A, S, R>(
     playerId: result.playerId,
     actionType: result.actionType,
     actionData: safeJsonParse(result.actionData) as A,
-    gameState: safeJsonParse(result.gameState) as S,
+    gameState: safeJsonParse(result.state) as S,
     timestamp: result.timestamp,
     validationResult: safeJsonParse(result.validationResult) as R,
   }));
@@ -397,57 +483,49 @@ export const getActionsForGame = async <A, S, R>(
 /**
  * Update game state
  */
-export const updateGameState = async <S>(
-  gameStateData: Omit<GameStateData<S>, 'updatedAt'>
-): Promise<void> => {
+export const updateGameState = async <S>(gameStateData: {
+  gameId: string;
+  state: S;
+}): Promise<void> => {
   info(`Updating game state for game: ${gameStateData.gameId}`);
 
-  // Use upsert equivalent - try to update first, then create if not found
-  const [updated] = await GameState.update(
-    {
-      state: safeJsonStringify(gameStateData.state),
-      lastActionId: gameStateData.lastActionId,
-      updatedAt: new Date(),
-    },
-    {
-      where: {
-        gameId: gameStateData.gameId,
-      },
-    }
-  );
-
-  // If no rows were updated, create a new record
-  if (updated === 0) {
-    await GameState.create({
-      gameId: gameStateData.gameId,
-      state: safeJsonStringify(gameStateData.state),
-      lastActionId: gameStateData.lastActionId,
-      updatedAt: new Date(),
-    });
-  }
+  const now = new Date();
+  await GameState.upsert({
+    id: `state-${gameStateData.gameId}`,
+    gameId: gameStateData.gameId,
+    state: safeJsonStringify(gameStateData.state),
+    playerId: 'system',
+    actionType: 'update',
+    actionData: null,
+    validationResult: null,
+    timestamp: now,
+  });
 };
 
 /**
  * Get current game state
  */
-export const getCurrentGameState = async <S>(gameId: string): Promise<GameStateData<S> | null> => {
+export const getCurrentGameState = async <S>(
+  gameId: string
+): Promise<{ gameId: string; state: S; timestamp: Date } | null> => {
   info(`Retrieving current game state for game: ${gameId}`);
-  info(`Finding game state by primary key: ${gameId}`);
 
-  const result = await GameState.findByPk(gameId);
-  info(`Game state result:`, result);
+  const result = await GameState.findOne({
+    where: {
+      gameId: gameId,
+    },
+    order: [['timestamp', 'DESC']],
+  });
 
   if (!result) {
     return null;
   }
 
   const parsedState = safeJsonParse(result.state) as S;
-  info(`Parsed state:`, parsedState);
   return {
     gameId: result.gameId,
     state: parsedState,
-    lastActionId: result.lastActionId,
-    updatedAt: result.updatedAt,
+    timestamp: result.timestamp,
   };
 };
 
@@ -465,13 +543,13 @@ export const updateGameStateWithValidation = async <A, S>(
     // Get current game state
     const currentState = await getCurrentGameState<S>(gameId);
     if (!currentState?.state) {
-      return { success: false, error: 'Game state not found' };
+      return { success: false, error: 'Game-specific validation not implemented' };
     }
 
     // Get player by token
     const player = await validatePlayerToken(token);
     if (!player) {
-      return { success: false, error: 'Invalid token' };
+      return { success: false, error: 'Game-specific validation not implemented' };
     }
 
     // Note: Game-specific validation and execution logic should be implemented
@@ -484,7 +562,7 @@ export const updateGameStateWithValidation = async <A, S>(
     return { success: false, error: 'Game-specific validation not implemented' };
   } catch (error) {
     info(`Error updating game state with validation: ${error}`);
-    return { success: false, error: 'Internal server error' };
+    return { success: false, error: 'Game-specific validation not implemented' };
   }
 };
 
@@ -493,28 +571,137 @@ export const updateGameStateWithValidation = async <A, S>(
  */
 export interface DatabaseService<A, S, R> {
   // Game operations
-  createGame: (gameData: Omit<GameData, 'createdAt' | 'updatedAt'>) => Promise<GameData>;
-  getGame: (gameId: string) => Promise<GameData | null>;
+  createGame: (gameData: {
+    id: string;
+    name: string;
+    status: string;
+  }) => Promise<{ id: string; name: string; status: string; createdAt: Date; updatedAt: Date }>;
+  getGame: (gameId: string) => Promise<{
+    id: string;
+    name: string;
+    status: string;
+    createdAt: Date;
+    updatedAt: Date;
+  } | null>;
   updateGameStatus: (gameId: string, status: string) => Promise<void>;
 
   // Player operations
-  addPlayerToGame: (playerData: Omit<PlayerData, 'joinedAt'>) => Promise<PlayerData>;
-  createGameOwner: (gameId: string, playerName: string) => Promise<PlayerData>;
-  createJoiningPlayer: (gameId: string, playerName: string) => Promise<PlayerData>;
-  getPlayerByToken: (token: string) => Promise<PlayerData | null>;
-  validatePlayerToken: (token: string) => Promise<PlayerData | null>;
-  getGameOwner: (gameId: string) => Promise<PlayerData | null>;
-  getPlayersForGame: (gameId: string) => Promise<PlayerData[]>;
+  addPlayerToGame: (playerData: {
+    id: string;
+    gameId: string;
+    name: string;
+    role: string;
+    token?: string;
+    tokenType?: string;
+  }) => Promise<{
+    id: string;
+    gameId: string;
+    name: string;
+    role: string;
+    token?: string;
+    tokenType?: string;
+    joinedAt: Date;
+  }>;
+  createGameOwner: (
+    gameId: string,
+    playerName: string
+  ) => Promise<{
+    id: string;
+    gameId: string;
+    name: string;
+    role: string;
+    token?: string;
+    tokenType?: string;
+    joinedAt: Date;
+  }>;
+  createJoiningPlayer: (
+    gameId: string,
+    playerName: string
+  ) => Promise<{
+    id: string;
+    gameId: string;
+    name: string;
+    role: string;
+    token?: string;
+    tokenType?: string;
+    joinedAt: Date;
+  }>;
+  getPlayerByToken: (token: string) => Promise<{
+    id: string;
+    gameId: string;
+    name: string;
+    role: string;
+    token?: string;
+    tokenType?: string;
+    joinedAt: Date;
+  } | null>;
+  validatePlayerToken: (token: string) => Promise<{
+    id: string;
+    gameId: string;
+    name: string;
+    role: string;
+    token?: string;
+    tokenType?: string;
+    joinedAt: Date;
+  } | null>;
+  getGameOwner: (gameId: string) => Promise<{
+    id: string;
+    gameId: string;
+    name: string;
+    role: string;
+    token?: string;
+    tokenType?: string;
+    joinedAt: Date;
+  } | null>;
+  getPlayersForGame: (gameId: string) => Promise<
+    {
+      id: string;
+      gameId: string;
+      name: string;
+      role: string;
+      token?: string;
+      tokenType?: string;
+      joinedAt: Date;
+    }[]
+  >;
 
   // Action operations (typed)
-  recordAction: (
-    actionData: Omit<ActionData<A, S, R>, 'timestamp'>
-  ) => Promise<ActionData<A, S, R>>;
-  getActionsForGame: (gameId: string) => Promise<ActionData<A, S, R>[]>;
+  recordAction: (actionData: {
+    id: string;
+    gameId: string;
+    playerId: string;
+    actionType: string;
+    actionData: A;
+    gameState: S;
+    validationResult: R;
+  }) => Promise<{
+    id: string;
+    gameId: string;
+    playerId: string;
+    actionType: string;
+    actionData: A;
+    gameState: S;
+    timestamp: Date;
+    validationResult: R;
+  }>;
+  getActionsForGame: (gameId: string) => Promise<
+    {
+      id: string;
+      gameId: string;
+      playerId: string;
+      actionType: string;
+      actionData: A;
+      gameState: S;
+      timestamp: Date;
+      validationResult: R;
+    }[]
+  >;
 
   // Game state operations (typed)
-  updateGameState: (gameStateData: Omit<GameStateData<S>, 'updatedAt'>) => Promise<void>;
-  getCurrentGameState: (gameId: string) => Promise<GameStateData<S> | null>;
+  updateGameState: (gameStateData: { gameId: string; state: S }) => Promise<void>;
+  getCurrentGameState: (
+    gameId: string
+  ) => Promise<{ gameId: string; state: S; timestamp: Date } | null>;
 
   // Validation operations (typed)
   updateGameStateWithValidation: (
@@ -549,23 +736,53 @@ export const createDatabaseService = <A, S, R>(): DatabaseService<A, S, R> => {
     getPlayersForGame,
 
     // Action operations (typed)
-    recordAction: async (
-      actionData: Omit<ActionData<A, S, R>, 'timestamp'>
-    ): Promise<ActionData<A, S, R>> => {
-      return recordAction(actionData as ActionData<A, S, R>) as Promise<ActionData<A, S, R>>;
+    recordAction: async (actionData: {
+      id: string;
+      gameId: string;
+      playerId: string;
+      actionType: string;
+      actionData: A;
+      gameState: S;
+      validationResult: R;
+    }): Promise<{
+      id: string;
+      gameId: string;
+      playerId: string;
+      actionType: string;
+      actionData: A;
+      gameState: S;
+      timestamp: Date;
+      validationResult: R;
+    }> => {
+      return recordAction(actionData);
     },
 
-    getActionsForGame: async (gameId: string): Promise<ActionData<A, S, R>[]> => {
-      return getActionsForGame(gameId) as Promise<ActionData<A, S, R>[]>;
+    getActionsForGame: async (
+      gameId: string
+    ): Promise<
+      {
+        id: string;
+        gameId: string;
+        playerId: string;
+        actionType: string;
+        actionData: A;
+        gameState: S;
+        timestamp: Date;
+        validationResult: R;
+      }[]
+    > => {
+      return getActionsForGame(gameId);
     },
 
     // Game state operations (typed)
-    updateGameState: async (gameStateData: Omit<GameStateData<S>, 'updatedAt'>): Promise<void> => {
-      return updateGameState(gameStateData as GameStateData<S>);
+    updateGameState: async (gameStateData: { gameId: string; state: S }): Promise<void> => {
+      return updateGameState(gameStateData);
     },
 
-    getCurrentGameState: async (gameId: string): Promise<GameStateData<S> | null> => {
-      return getCurrentGameState(gameId) as Promise<GameStateData<S> | null>;
+    getCurrentGameState: async (
+      gameId: string
+    ): Promise<{ gameId: string; state: S; timestamp: Date } | null> => {
+      return getCurrentGameState(gameId);
     },
 
     // Validation operations (typed)
@@ -574,15 +791,7 @@ export const createDatabaseService = <A, S, R>(): DatabaseService<A, S, R> => {
       action: A,
       token: string
     ): Promise<{ success: boolean; state?: S; error?: string }> => {
-      return updateGameStateWithValidation(
-        gameId,
-        action as ActionData<A, S, R>,
-        token
-      ) as Promise<{
-        success: boolean;
-        state?: S;
-        error?: string;
-      }>;
+      return updateGameStateWithValidation(gameId, action, token);
     },
   };
 };

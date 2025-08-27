@@ -1,7 +1,5 @@
-import { Table, Column, Model, DataType, PrimaryKey, HasMany, HasOne } from 'sequelize-typescript';
+import { Table, Column, Model, DataType, PrimaryKey, HasMany } from 'sequelize-typescript';
 import { Player } from './Player';
-import { Action } from './Action';
-import { GameState } from './GameState';
 
 @Table({
   tableName: 'games',
@@ -31,10 +29,4 @@ export class Game extends Model<Game> {
   // Associations
   @HasMany(() => Player)
   declare players: Player[];
-
-  @HasMany(() => Action)
-  declare actions: Action[];
-
-  @HasOne(() => GameState)
-  declare gameState: GameState;
 }

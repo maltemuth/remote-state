@@ -6,11 +6,9 @@ import {
   PrimaryKey,
   ForeignKey,
   BelongsTo,
-  HasMany,
   CreatedAt,
 } from 'sequelize-typescript';
 import { Game } from './Game';
-import { Action } from './Action';
 
 @Table({
   tableName: 'players',
@@ -67,7 +65,4 @@ export class Player extends Model<Player> {
   // Associations
   @BelongsTo(() => Game)
   declare game: Game;
-
-  @HasMany(() => Action)
-  declare actions: Action[];
 }

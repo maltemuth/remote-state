@@ -13,7 +13,6 @@ import {
   createGameOwner,
   createJoiningPlayer,
   validatePlayerToken,
-  PlayerData,
 } from './db/service';
 
 // Database initialization will happen when needed during requests
@@ -124,12 +123,19 @@ export const createRemoteStateServer = async <StateType, ActionType>(
         await updateGameState({
           gameId,
           state: initialState,
-          lastActionId: null,
         });
       }
 
       // Validate player token if provided
-      let player: PlayerData | null = null;
+      let player: {
+        id: string;
+        gameId: string;
+        name: string;
+        role: string;
+        token?: string;
+        tokenType?: string;
+        joinedAt: Date;
+      } | null = null;
       if (token) {
         player = await validatePlayerToken(token);
         if (!player) {
@@ -170,7 +176,6 @@ export const createRemoteStateServer = async <StateType, ActionType>(
         await updateGameState({
           gameId,
           state: initialState,
-          lastActionId: null,
         });
         currentState = initialState;
       }
@@ -221,7 +226,6 @@ export const createRemoteStateServer = async <StateType, ActionType>(
       await updateGameState({
         gameId,
         state: executionResult.state,
-        lastActionId: newAction.id,
       });
 
       // Return success response
@@ -263,7 +267,6 @@ export const createRemoteStateServer = async <StateType, ActionType>(
         await updateGameState({
           gameId,
           state: initialState,
-          lastActionId: null,
         });
 
         const transformedState = initialState;

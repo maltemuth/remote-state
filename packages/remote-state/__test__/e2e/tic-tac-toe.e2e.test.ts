@@ -17,9 +17,6 @@ import {
 describe('Tic-Tac-Toe E2E Tests', () => {
   let app: Express;
   let server: ReturnType<typeof createServer>;
-  let gameId: string;
-  let ownerToken: string;
-  let joinerToken: string;
 
   beforeAll(async () => {
     // Create a test server instance with database initialization disabled
@@ -263,13 +260,23 @@ describe('Tic-Tac-Toe E2E Tests', () => {
     expect(response.body.gameId).toBeDefined();
     expect(response.body.token).toBeDefined();
     expect(response.body.playerId).toBeDefined();
-
-    gameId = response.body.gameId;
-    ownerToken = response.body.token;
   });
 
   it('should allow another player to join the game', async () => {
-    const response = await request(app)
+    // First create a game
+    const ownerResponse = await request(app)
+      .post('/api/auth/register/owner')
+      .send({
+        playerName: 'Player X',
+        gameName: 'Test Tic-Tac-Toe Game',
+      })
+      .expect(201);
+
+    const gameId = ownerResponse.body.gameId;
+    const ownerToken = ownerResponse.body.token;
+
+    // Then join the game
+    const joinResponse = await request(app)
       .post('/api/auth/register/join')
       .send({
         playerName: 'Player O',
@@ -277,15 +284,36 @@ describe('Tic-Tac-Toe E2E Tests', () => {
       })
       .expect(201);
 
-    expect(response.body.success).toBe(true);
-    expect(response.body.gameId).toBe(gameId);
-    expect(response.body.token).toBeDefined();
-    expect(response.body.playerId).toBeDefined();
-
-    joinerToken = response.body.token;
+    expect(joinResponse.body.success).toBe(true);
+    expect(joinResponse.body.gameId).toBe(gameId);
+    expect(joinResponse.body.token).toBeDefined();
+    expect(joinResponse.body.playerId).toBeDefined();
   });
 
   it('should make the first move (X player)', async () => {
+    // Setup game
+    const ownerResponse = await request(app)
+      .post('/api/auth/register/owner')
+      .send({
+        playerName: 'Player X',
+        gameName: 'Test Tic-Tac-Toe Game',
+      })
+      .expect(201);
+
+    const gameId = ownerResponse.body.gameId;
+    const ownerToken = ownerResponse.body.token;
+
+    const joinerResponse = await request(app)
+      .post('/api/auth/register/join')
+      .send({
+        playerName: 'Player O',
+        gameId: gameId,
+      })
+      .expect(201);
+
+    const joinerToken = joinerResponse.body.token;
+
+    // Make first move
     const response = await request(app)
       .post(`/api/games/${gameId}/actions`)
       .send({
@@ -305,6 +333,43 @@ describe('Tic-Tac-Toe E2E Tests', () => {
   });
 
   it('should make the second move (O player)', async () => {
+    // Setup game
+    const ownerResponse = await request(app)
+      .post('/api/auth/register/owner')
+      .send({
+        playerName: 'Player X',
+        gameName: 'Test Tic-Tac-Toe Game',
+      })
+      .expect(201);
+
+    const gameId = ownerResponse.body.gameId;
+    const ownerToken = ownerResponse.body.token;
+
+    const joinerResponse = await request(app)
+      .post('/api/auth/register/join')
+      .send({
+        playerName: 'Player O',
+        gameId: gameId,
+      })
+      .expect(201);
+
+    const joinerToken = joinerResponse.body.token;
+
+    // Make first move
+    await request(app)
+      .post(`/api/games/${gameId}/actions`)
+      .send({
+        action: {
+          type: 'move',
+          playerId: 'player-x-id',
+          position: [0, 0],
+          timestamp: new Date(),
+        },
+        token: ownerToken,
+      })
+      .expect(201);
+
+    // Make second move
     const response = await request(app)
       .post(`/api/games/${gameId}/actions`)
       .send({
@@ -324,6 +389,56 @@ describe('Tic-Tac-Toe E2E Tests', () => {
   });
 
   it('should make the third move (X player)', async () => {
+    // Setup game
+    const ownerResponse = await request(app)
+      .post('/api/auth/register/owner')
+      .send({
+        playerName: 'Player X',
+        gameName: 'Test Tic-Tac-Toe Game',
+      })
+      .expect(201);
+
+    const gameId = ownerResponse.body.gameId;
+    const ownerToken = ownerResponse.body.token;
+
+    const joinerResponse = await request(app)
+      .post('/api/auth/register/join')
+      .send({
+        playerName: 'Player O',
+        gameId: gameId,
+      })
+      .expect(201);
+
+    const joinerToken = joinerResponse.body.token;
+
+    // Make moves
+    await request(app)
+      .post(`/api/games/${gameId}/actions`)
+      .send({
+        action: {
+          type: 'move',
+          playerId: 'player-x-id',
+          position: [0, 0],
+          timestamp: new Date(),
+        },
+        token: ownerToken,
+      })
+      .expect(201);
+
+    await request(app)
+      .post(`/api/games/${gameId}/actions`)
+      .send({
+        action: {
+          type: 'move',
+          playerId: 'player-o-id',
+          position: [1, 1],
+          timestamp: new Date(),
+        },
+        token: joinerToken,
+      })
+      .expect(201);
+
+    // Make third move
     const response = await request(app)
       .post(`/api/games/${gameId}/actions`)
       .send({
@@ -343,6 +458,69 @@ describe('Tic-Tac-Toe E2E Tests', () => {
   });
 
   it('should make the fourth move (O player)', async () => {
+    // Setup game
+    const ownerResponse = await request(app)
+      .post('/api/auth/register/owner')
+      .send({
+        playerName: 'Player X',
+        gameName: 'Test Tic-Tac-Toe Game',
+      })
+      .expect(201);
+
+    const gameId = ownerResponse.body.gameId;
+    const ownerToken = ownerResponse.body.token;
+
+    const joinerResponse = await request(app)
+      .post('/api/auth/register/join')
+      .send({
+        playerName: 'Player O',
+        gameId: gameId,
+      })
+      .expect(201);
+
+    const joinerToken = joinerResponse.body.token;
+
+    // Make moves
+    await request(app)
+      .post(`/api/games/${gameId}/actions`)
+      .send({
+        action: {
+          type: 'move',
+          playerId: 'player-x-id',
+          position: [0, 0],
+          timestamp: new Date(),
+        },
+        token: ownerToken,
+      })
+      .expect(201);
+
+    await request(app)
+      .post(`/api/games/${gameId}/actions`)
+      .send({
+        action: {
+          type: 'move',
+          playerId: 'player-o-id',
+          position: [1, 1],
+          timestamp: new Date(),
+        },
+        token: joinerToken,
+      })
+      .expect(201);
+
+    await request(app)
+      .post(`/api/games/${gameId}/actions`)
+      .send({
+        action: {
+          type: 'move',
+          playerId: 'player-x-id',
+          position: [0, 1],
+          timestamp: new Date(),
+        },
+        token: ownerToken,
+      })
+      .expect(201);
+
+    // Make fourth move
     const response = await request(app)
       .post(`/api/games/${gameId}/actions`)
       .send({
@@ -362,6 +540,82 @@ describe('Tic-Tac-Toe E2E Tests', () => {
   });
 
   it('should make the fifth move (X player) and win the game', async () => {
+    // Setup game
+    const ownerResponse = await request(app)
+      .post('/api/auth/register/owner')
+      .send({
+        playerName: 'Player X',
+        gameName: 'Test Tic-Tac-Toe Game',
+      })
+      .expect(201);
+
+    const gameId = ownerResponse.body.gameId;
+    const ownerToken = ownerResponse.body.token;
+
+    const joinerResponse = await request(app)
+      .post('/api/auth/register/join')
+      .send({
+        playerName: 'Player O',
+        gameId: gameId,
+      })
+      .expect(201);
+
+    const joinerToken = joinerResponse.body.token;
+
+    // Make moves
+    await request(app)
+      .post(`/api/games/${gameId}/actions`)
+      .send({
+        action: {
+          type: 'move',
+          playerId: 'player-x-id',
+          position: [0, 0],
+          timestamp: new Date(),
+        },
+        token: ownerToken,
+      })
+      .expect(201);
+
+    await request(app)
+      .post(`/api/games/${gameId}/actions`)
+      .send({
+        action: {
+          type: 'move',
+          playerId: 'player-o-id',
+          position: [1, 1],
+          timestamp: new Date(),
+        },
+        token: joinerToken,
+      })
+      .expect(201);
+
+    await request(app)
+      .post(`/api/games/${gameId}/actions`)
+      .send({
+        action: {
+          type: 'move',
+          playerId: 'player-x-id',
+          position: [0, 1],
+          timestamp: new Date(),
+        },
+        token: ownerToken,
+      })
+      .expect(201);
+
+    await request(app)
+      .post(`/api/games/${gameId}/actions`)
+      .send({
+        action: {
+          type: 'move',
+          playerId: 'player-o-id',
+          position: [1, 0],
+          timestamp: new Date(),
+        },
+        token: joinerToken,
+      })
+      .expect(201);
+
+    // Make fifth move (winning move)
     const response = await request(app)
       .post(`/api/games/${gameId}/actions`)
       .send({
@@ -381,6 +635,95 @@ describe('Tic-Tac-Toe E2E Tests', () => {
   });
 
   it('should retrieve the final game state', async () => {
+    // Setup game and play to completion
+    const ownerResponse = await request(app)
+      .post('/api/auth/register/owner')
+      .send({
+        playerName: 'Player X',
+        gameName: 'Test Tic-Tac-Toe Game',
+      })
+      .expect(201);
+
+    const gameId = ownerResponse.body.gameId;
+    const ownerToken = ownerResponse.body.token;
+
+    const joinerResponse = await request(app)
+      .post('/api/auth/register/join')
+      .send({
+        playerName: 'Player O',
+        gameId: gameId,
+      })
+      .expect(201);
+
+    const joinerToken = joinerResponse.body.token;
+
+    // Make moves to win the game
+    await request(app)
+      .post(`/api/games/${gameId}/actions`)
+      .send({
+        action: {
+          type: 'move',
+          playerId: 'player-x-id',
+          position: [0, 0],
+          timestamp: new Date(),
+        },
+        token: ownerToken,
+      })
+      .expect(201);
+
+    await request(app)
+      .post(`/api/games/${gameId}/actions`)
+      .send({
+        action: {
+          type: 'move',
+          playerId: 'player-o-id',
+          position: [1, 1],
+          timestamp: new Date(),
+        },
+        token: joinerToken,
+      })
+      .expect(201);
+
+    await request(app)
+      .post(`/api/games/${gameId}/actions`)
+      .send({
+        action: {
+          type: 'move',
+          playerId: 'player-x-id',
+          position: [0, 1],
+          timestamp: new Date(),
+        },
+        token: ownerToken,
+      })
+      .expect(201);
+
+    await request(app)
+      .post(`/api/games/${gameId}/actions`)
+      .send({
+        action: {
+          type: 'move',
+          playerId: 'player-o-id',
+          position: [1, 0],
+          timestamp: new Date(),
+        },
+        token: joinerToken,
+      })
+      .expect(201);
+
+    await request(app)
+      .post(`/api/games/${gameId}/actions`)
+      .send({
+        action: {
+          type: 'move',
+          playerId: 'player-x-id',
+          position: [0, 2],
+          timestamp: new Date(),
+        },
+        token: ownerToken,
+      })
+      .expect(201);
+
+    // Retrieve final state
     const response = await request(app).get(`/api/games/${gameId}/state/current`).expect(200);
 
     expect(response.body.gameId).toBe(gameId);
@@ -390,6 +733,95 @@ describe('Tic-Tac-Toe E2E Tests', () => {
   });
 
   it('should not allow additional moves after game is finished', async () => {
+    // Setup game and play to completion
+    const ownerResponse = await request(app)
+      .post('/api/auth/register/owner')
+      .send({
+        playerName: 'Player X',
+        gameName: 'Test Tic-Tac-Toe Game',
+      })
+      .expect(201);
+
+    const gameId = ownerResponse.body.gameId;
+    const ownerToken = ownerResponse.body.token;
+
+    const joinerResponse = await request(app)
+      .post('/api/auth/register/join')
+      .send({
+        playerName: 'Player O',
+        gameId: gameId,
+      })
+      .expect(201);
+
+    const joinerToken = joinerResponse.body.token;
+
+    // Make moves to win the game
+    await request(app)
+      .post(`/api/games/${gameId}/actions`)
+      .send({
+        action: {
+          type: 'move',
+          playerId: 'player-x-id',
+          position: [0, 0],
+          timestamp: new Date(),
+        },
+        token: ownerToken,
+      })
+      .expect(201);
+
+    await request(app)
+      .post(`/api/games/${gameId}/actions`)
+      .send({
+        action: {
+          type: 'move',
+          playerId: 'player-o-id',
+          position: [1, 1],
+          timestamp: new Date(),
+        },
+        token: joinerToken,
+      })
+      .expect(201);
+
+    await request(app)
+      .post(`/api/games/${gameId}/actions`)
+      .send({
+        action: {
+          type: 'move',
+          playerId: 'player-x-id',
+          position: [0, 1],
+          timestamp: new Date(),
+        },
+        token: ownerToken,
+      })
+      .expect(201);
+
+    await request(app)
+      .post(`/api/games/${gameId}/actions`)
+      .send({
+        action: {
+          type: 'move',
+          playerId: 'player-o-id',
+          position: [1, 0],
+          timestamp: new Date(),
+        },
+        token: joinerToken,
+      })
+      .expect(201);
+
+    await request(app)
+      .post(`/api/games/${gameId}/actions`)
+      .send({
+        action: {
+          type: 'move',
+          playerId: 'player-x-id',
+          position: [0, 2],
+          timestamp: new Date(),
+        },
+        token: ownerToken,
+      })
+      .expect(201);
+
+    // Try to make another move after game is finished
     const response = await request(app)
       .post(`/api/games/${gameId}/actions`)
       .send({
