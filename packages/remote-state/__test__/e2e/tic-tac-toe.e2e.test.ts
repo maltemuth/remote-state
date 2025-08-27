@@ -273,7 +273,6 @@ describe('Tic-Tac-Toe E2E Tests', () => {
       .expect(201);
 
     const gameId = ownerResponse.body.gameId;
-    const ownerToken = ownerResponse.body.token;
 
     // Then join the game
     const joinResponse = await request(app)
@@ -303,15 +302,13 @@ describe('Tic-Tac-Toe E2E Tests', () => {
     const gameId = ownerResponse.body.gameId;
     const ownerToken = ownerResponse.body.token;
 
-    const joinerResponse = await request(app)
+    await request(app)
       .post('/api/auth/register/join')
       .send({
         playerName: 'Player O',
         gameId: gameId,
       })
       .expect(201);
-
-    const joinerToken = joinerResponse.body.token;
 
     // Make first move
     const response = await request(app)

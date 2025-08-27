@@ -19,7 +19,10 @@ import {
   updateGameStateWithValidation,
 } from '../../src/db/service';
 
-const { info, error } = createLogger({
+// Import Jest globals
+import { describe, beforeAll, afterAll, test, expect } from '@jest/globals';
+
+const { info: _info, error: _error } = createLogger({
   scope: 'database-service-test',
 });
 
@@ -413,7 +416,7 @@ describe('Database Service Integration Tests', () => {
         id: 'test-player-2',
         gameId: gameData.id,
         name: '', // Empty name
-        role: 'invalid-role' as any, // Invalid role
+        role: 'invalid-role' as 'invalid-role', // Invalid role
       };
 
       const player = await addPlayerToGame(playerData);
