@@ -70,7 +70,6 @@ export const createRemoteStateServer = async <StateType, ActionType>(
         game = await createGame({
           id: gameId,
           name: plugin.gameConfig?.name || `Game ${gameId}`,
-          status: 'waiting',
         });
 
         // Initialize game state
@@ -287,7 +286,6 @@ export const createRemoteStateServer = async <StateType, ActionType>(
       const game = await createGame({
         id: gameId,
         name: gameName,
-        status: 'waiting',
       });
 
       // Create the game owner
@@ -325,11 +323,6 @@ export const createRemoteStateServer = async <StateType, ActionType>(
       const game = await getGame(gameId);
       if (!game) {
         return res.status(404).json({ error: 'Game not found' });
-      }
-
-      // Check if game is accepting players
-      if (game.status !== 'waiting') {
-        return res.status(400).json({ error: 'Game is not accepting new players' });
       }
 
       // Create the joining player

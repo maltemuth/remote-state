@@ -18,8 +18,7 @@ const { info } = createLogger({
 export const createGame = async (gameData: {
   id: string;
   name: string;
-  status: string;
-}): Promise<{ id: string; name: string; status: string; createdAt: Date; updatedAt: Date }> => {
+}): Promise<{ id: string; name: string; createdAt: Date; updatedAt: Date }> => {
   // Validate input
   const validatedData = GameDataSchema.parse(gameData);
 
@@ -55,7 +54,6 @@ export const createGame = async (gameData: {
   return {
     id: newGame.id,
     name: newGame.name,
-    status: newGame.status,
     createdAt: newGame.createdAt,
     updatedAt: newGame.updatedAt,
   };
@@ -69,7 +67,6 @@ export const getGame = async (
 ): Promise<{
   id: string;
   name: string;
-  status: string;
   createdAt: Date;
   updatedAt: Date;
 } | null> => {
@@ -84,29 +81,9 @@ export const getGame = async (
   return {
     id: result.id,
     name: result.name,
-    status: result.status,
     createdAt: result.createdAt,
     updatedAt: result.updatedAt,
   };
-};
-
-/**
- * Update game status
- */
-export const updateGameStatus = async (gameId: string, status: string): Promise<void> => {
-  info(`Updating game status: ${gameId} -> ${status}`);
-
-  await Game.update(
-    {
-      status,
-      updatedAt: new Date(),
-    },
-    {
-      where: {
-        id: gameId,
-      },
-    }
-  );
 };
 
 /**
@@ -540,16 +517,13 @@ export interface DatabaseService<ActionType, StateType, ValidationResultType> {
   createGame: (gameData: {
     id: string;
     name: string;
-    status: string;
-  }) => Promise<{ id: string; name: string; status: string; createdAt: Date; updatedAt: Date }>;
+  }) => Promise<{ id: string; name: string; createdAt: Date; updatedAt: Date }>;
   getGame: (gameId: string) => Promise<{
     id: string;
     name: string;
-    status: string;
     createdAt: Date;
     updatedAt: Date;
   } | null>;
-  updateGameStatus: (gameId: string, status: string) => Promise<void>;
 
   // Player operations
   addPlayerToGame: (playerData: {
@@ -694,7 +668,6 @@ export const createDatabaseService = <
     // Game operations
     createGame,
     getGame,
-    updateGameStatus,
 
     // Player operations
     addPlayerToGame,
@@ -773,13 +746,11 @@ export const createGameWithInitialState = async <S>(
   gameData: {
     id: string;
     name: string;
-    status: string;
   },
   initialState: S
 ): Promise<{
   id: string;
   name: string;
-  status: string;
   createdAt: Date;
   updatedAt: Date;
 }> => {
@@ -791,7 +762,6 @@ export const createGameWithInitialState = async <S>(
       {
         id: gameData.id,
         name: gameData.name,
-        status: gameData.status,
       },
       { transaction }
     );
@@ -813,7 +783,6 @@ export const createGameWithInitialState = async <S>(
     return {
       id: newGame.id,
       name: newGame.name,
-      status: newGame.status,
       createdAt: newGame.createdAt,
       updatedAt: newGame.updatedAt,
     };

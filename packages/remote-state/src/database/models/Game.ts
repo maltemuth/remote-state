@@ -22,13 +22,6 @@ export class Game extends Model<Game> {
   })
   declare name: string;
 
-  @Column({
-    type: DataType.STRING,
-    allowNull: false,
-    defaultValue: 'waiting',
-  })
-  declare status: string;
-
   // Associations
   @HasMany(() => Player)
   declare players: Player[];

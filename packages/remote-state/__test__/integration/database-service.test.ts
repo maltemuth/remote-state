@@ -4,7 +4,6 @@ import { createSequelizeInstance, syncDatabase } from '../../src/database/sequel
 import {
   createGame,
   getGame,
-  updateGameStatus,
   addPlayerToGame,
   createGameOwner,
   createJoiningPlayer,
@@ -46,7 +45,6 @@ describe('Database Service Integration Tests', () => {
       const gameData = {
         id: 'test-game-1',
         name: 'Test Game',
-        status: 'waiting',
       };
 
       const game = await createGame(gameData);
@@ -54,7 +52,6 @@ describe('Database Service Integration Tests', () => {
       expect(game).toBeDefined();
       expect(game.id).toBe(gameData.id);
       expect(game.name).toBe(gameData.name);
-      expect(game.status).toBe(gameData.status);
       expect(game.createdAt).toBeDefined();
       expect(game.updatedAt).toBeDefined();
     });
@@ -63,7 +60,6 @@ describe('Database Service Integration Tests', () => {
       const gameData = {
         id: 'test-game-2',
         name: 'Test Game 2',
-        status: 'waiting',
       };
 
       await createGame(gameData);
@@ -72,26 +68,11 @@ describe('Database Service Integration Tests', () => {
       expect(game).toBeDefined();
       expect(game!.id).toBe(gameData.id);
       expect(game!.name).toBe(gameData.name);
-      expect(game!.status).toBe(gameData.status);
     });
 
     test('should return null for non-existent game', async () => {
       const game = await getGame('non-existent-game');
       expect(game).toBeNull();
-    });
-
-    test('should update game status', async () => {
-      const gameData = {
-        id: 'test-game-3',
-        name: 'Test Game 3',
-        status: 'waiting',
-      };
-
-      await createGame(gameData);
-      await updateGameStatus(gameData.id, 'playing');
-
-      const game = await getGame(gameData.id);
-      expect(game!.status).toBe('playing');
     });
   });
 
@@ -100,7 +81,6 @@ describe('Database Service Integration Tests', () => {
       const gameData = {
         id: 'test-game-4',
         name: 'Test Game 4',
-        status: 'waiting',
       };
 
       await createGame(gameData);
@@ -126,7 +106,6 @@ describe('Database Service Integration Tests', () => {
       const gameData = {
         id: 'test-game-5',
         name: 'Test Game 5',
-        status: 'waiting',
       };
 
       await createGame(gameData);
@@ -143,7 +122,6 @@ describe('Database Service Integration Tests', () => {
       const gameData = {
         id: 'test-game-6',
         name: 'Test Game 6',
-        status: 'waiting',
       };
 
       await createGame(gameData);
@@ -160,7 +138,6 @@ describe('Database Service Integration Tests', () => {
       const gameData = {
         id: 'test-game-7',
         name: 'Test Game 7',
-        status: 'waiting',
       };
 
       await createGame(gameData);
@@ -182,7 +159,6 @@ describe('Database Service Integration Tests', () => {
       const gameData = {
         id: 'test-game-8',
         name: 'Test Game 8',
-        status: 'waiting',
       };
 
       await createGame(gameData);
@@ -198,7 +174,6 @@ describe('Database Service Integration Tests', () => {
       const gameData = {
         id: 'test-game-9',
         name: 'Test Game 9',
-        status: 'waiting',
       };
 
       await createGame(gameData);
@@ -214,7 +189,6 @@ describe('Database Service Integration Tests', () => {
       const gameData = {
         id: 'test-game-10',
         name: 'Test Game 10',
-        status: 'waiting',
       };
 
       await createGame(gameData);
@@ -234,7 +208,6 @@ describe('Database Service Integration Tests', () => {
       const gameData = {
         id: 'test-game-11',
         name: 'Test Game 11',
-        status: 'waiting',
       };
 
       await createGame(gameData);
@@ -271,7 +244,6 @@ describe('Database Service Integration Tests', () => {
       const gameData = {
         id: 'test-game-12',
         name: 'Test Game 12',
-        status: 'waiting',
       };
 
       await createGame(gameData);
@@ -318,7 +290,6 @@ describe('Database Service Integration Tests', () => {
       const gameData = {
         id: 'test-game-13',
         name: 'Test Game 13',
-        status: 'waiting',
       };
 
       await createGame(gameData);
@@ -341,7 +312,6 @@ describe('Database Service Integration Tests', () => {
       const gameData = {
         id: 'test-game-14',
         name: 'Test Game 14',
-        status: 'waiting',
       };
 
       await createGame(gameData);
@@ -369,7 +339,6 @@ describe('Database Service Integration Tests', () => {
       const gameData = {
         id: 'test-game-15',
         name: 'Test Game 15',
-        status: 'waiting',
       };
 
       await createGame(gameData);
@@ -395,20 +364,16 @@ describe('Database Service Integration Tests', () => {
       const gameData = {
         id: 'test-game-16',
         name: 'Test Game 16',
-        status: 'invalid-status',
       };
 
       const game = await createGame(gameData);
       expect(game).toBeDefined();
-      // validation won't allow this.
-      expect(game.status).not.toBe('invalid-status');
     });
 
     test('should handle invalid player data', async () => {
       const gameData = {
         id: 'test-game-17',
         name: 'Test Game 17',
-        status: 'waiting',
       };
 
       await createGame(gameData);

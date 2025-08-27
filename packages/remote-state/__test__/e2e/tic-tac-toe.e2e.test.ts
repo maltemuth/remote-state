@@ -29,7 +29,6 @@ describe('Tic-Tac-Toe E2E Tests', () => {
             [null, null, null],
           ],
           currentPlayer: 'X' as 'X' | 'O',
-          status: 'waiting',
           winner: null,
           winLine: null,
           players: {
@@ -46,7 +45,7 @@ describe('Tic-Tac-Toe E2E Tests', () => {
         }),
         validateAction: (state: TicTacToeState, action: TicTacToeAction): GameValidationResult => {
           // Check if game is finished
-          if (state.status === 'finished') {
+          if (state.winner !== null) {
             return {
               valid: false,
               message: 'Game is already finished',
@@ -217,9 +216,8 @@ describe('Tic-Tac-Toe E2E Tests', () => {
             if (winner) {
               newState.winner = winner;
               newState.winLine = winLine;
-              newState.status = 'finished';
             } else if (isDraw) {
-              newState.status = 'finished';
+              // Draw state is indicated by winner being null and board being full
             } else {
               // Switch players
               newState.currentPlayer = state.currentPlayer === 'X' ? 'O' : 'X';
@@ -233,7 +231,7 @@ describe('Tic-Tac-Toe E2E Tests', () => {
               valid: true,
               message: 'Action executed successfully',
             },
-            gameOver: newState.status === 'finished',
+            gameOver: newState.winner !== null,
             winner: newState.winner,
           };
         },
@@ -738,7 +736,6 @@ describe('Tic-Tac-Toe E2E Tests', () => {
 
     expect(response.body.gameId).toBe(gameId);
     expect(response.body.state.winner).toBe('X');
-    expect(response.body.state.status).toBe('finished');
     expect(response.body.state.board[0]).toEqual(['X', 'X', 'X']); // Winning row
   });
 
