@@ -432,16 +432,20 @@ export const updateGameState = async <S>(
  */
 export const getCurrentGameState = async <S>(gameId: string): Promise<GameStateData<S> | null> => {
   info(`Retrieving current game state for game: ${gameId}`);
+  info(`Finding game state by primary key: ${gameId}`);
 
   const result = await GameState.findByPk(gameId);
+  info(`Game state result:`, result);
 
   if (!result) {
     return null;
   }
 
+  const parsedState = safeJsonParse(result.state) as S;
+  info(`Parsed state:`, parsedState);
   return {
     gameId: result.gameId,
-    state: safeJsonParse(result.state) as S,
+    state: parsedState,
     lastActionId: result.lastActionId,
     updatedAt: result.updatedAt,
   };

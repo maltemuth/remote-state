@@ -1,14 +1,4 @@
-import {
-  Table,
-  Column,
-  Model,
-  DataType,
-  PrimaryKey,
-  CreatedAt,
-  UpdatedAt,
-  HasMany,
-  HasOne,
-} from 'sequelize-typescript';
+import { Table, Column, Model, DataType, PrimaryKey, HasMany, HasOne } from 'sequelize-typescript';
 import { Player } from './Player';
 import { Action } from './Action';
 import { GameState } from './GameState';
@@ -23,28 +13,28 @@ export class Game extends Model<Game> {
     type: DataType.STRING,
     allowNull: false,
   })
-  id: string = '';
+  declare id: string;
 
   @Column({
     type: DataType.STRING,
     allowNull: false,
   })
-  name!: string;
+  declare name: string;
 
   @Column({
     type: DataType.STRING,
     allowNull: false,
     defaultValue: 'waiting',
   })
-  status!: string;
+  declare status: string;
 
   // Associations
   @HasMany(() => Player)
-  players!: Player[];
+  declare players: Player[];
 
   @HasMany(() => Action)
-  actions!: Action[];
+  declare actions: Action[];
 
   @HasOne(() => GameState)
-  gameState!: GameState;
+  declare gameState: GameState;
 }

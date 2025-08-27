@@ -21,39 +21,39 @@ export class Action extends Model<Action> {
     type: DataType.STRING,
     allowNull: false,
   })
-  id: string = '';
+  declare id: string;
 
   @ForeignKey(() => Game)
   @Column({
     type: DataType.STRING,
     allowNull: false,
   })
-  gameId!: string;
+  declare gameId: string;
 
   @ForeignKey(() => Player)
   @Column({
     type: DataType.STRING,
     allowNull: false,
   })
-  playerId!: string;
+  declare playerId: string;
 
   @Column({
     type: DataType.STRING,
     allowNull: false,
   })
-  actionType!: string;
+  declare actionType: string;
 
   @Column({
     type: DataType.TEXT,
     allowNull: true,
   })
-  actionData?: string;
+  declare actionData?: string;
 
   @Column({
     type: DataType.TEXT,
     allowNull: true,
   })
-  gameState?: string;
+  declare gameState?: string;
 
   @CreatedAt
   @Column({
@@ -61,18 +61,18 @@ export class Action extends Model<Action> {
     allowNull: false,
     field: 'timestamp',
   })
-  timestamp!: Date;
+  declare timestamp: Date;
 
   @Column({
     type: DataType.TEXT,
     allowNull: true,
   })
-  validationResult?: string;
+  declare validationResult?: string;
 
   // Associations
   @BelongsTo(() => Game)
-  game!: Game;
+  declare game: Game;
 
   @BelongsTo(() => Player)
-  player!: Player;
+  declare player: Player;
 }

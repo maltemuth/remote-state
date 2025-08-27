@@ -6,7 +6,6 @@ import {
   PrimaryKey,
   ForeignKey,
   BelongsTo,
-  UpdatedAt,
 } from 'sequelize-typescript';
 import { Game } from './Game';
 
@@ -21,21 +20,21 @@ export class GameState extends Model<GameState> {
     type: DataType.STRING,
     allowNull: false,
   })
-  gameId!: string;
+  declare gameId: string;
 
   @Column({
     type: DataType.TEXT,
     allowNull: true,
   })
-  state?: string;
+  declare state?: string;
 
   @Column({
     type: DataType.STRING,
     allowNull: true,
   })
-  lastActionId?: string;
+  declare lastActionId?: string;
 
   // Associations
   @BelongsTo(() => Game)
-  game!: Game;
+  declare game: Game;
 }

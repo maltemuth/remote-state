@@ -59,16 +59,19 @@ export interface RemoteStateServer {
 
 export function createRemoteStateServer<StateType, ActionType>(
   config: RemoteStateServerConfig<StateType, ActionType>,
-  port: number = 3000
+  port: number = 3000,
+  options: { initializeDatabase?: boolean } = { initializeDatabase: true }
 ): RemoteStateServer {
   const { info, error } = createLogger({
     scope: 'remote-state-server',
   });
 
   // Initialize database when server is created
-  initializeDatabase({ databasePath: 'games.db', sync: true }).catch(err => {
-    error('Failed to initialize database:', err);
-  });
+  if (options.initializeDatabase !== false) {
+    initializeDatabase({ databasePath: 'games.db', sync: true }).catch(err => {
+      error('Failed to initialize database:', err);
+    });
+  }
 
   const app = express();
 
@@ -155,14 +158,26 @@ export function createRemoteStateServer<StateType, ActionType>(
       }
 
       // Get current game state
+      info(`Getting current game state for game: ${gameId}`);
       const currentStateResult = await getCurrentGameState(gameId);
-      if (!currentStateResult?.state) {
-        return res.status(500).json({ error: 'Game state not found' });
+      info(`Current state result:`, currentStateResult);
+
+      // If no state exists, create initial state
+      let currentState = currentStateResult?.state;
+      if (!currentState) {
+        info(`No game state found, creating initial state for game: ${gameId}`);
+        const initialState = config.getInitialState(gameId);
+        await updateGameState({
+          gameId,
+          state: initialState,
+          lastActionId: null,
+        });
+        currentState = initialState;
       }
 
       // Use game-specific validation
       const validationResult = config.validateAction(
-        currentStateResult.state as StateType,
+        currentState as StateType,
         action as ActionType
       );
       if (!validationResult.valid) {
@@ -180,7 +195,7 @@ export function createRemoteStateServer<StateType, ActionType>(
       };
 
       const executionResult = config.executeAction(
-        currentStateResult.state as StateType,
+        currentState as StateType,
         actionWithPlayer as ActionType & { playerId: string; timestamp: Date }
       );
 

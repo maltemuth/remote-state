@@ -22,39 +22,39 @@ export class Player extends Model<Player> {
     type: DataType.STRING,
     allowNull: false,
   })
-  id: string = '';
+  declare id: string;
 
   @ForeignKey(() => Game)
   @Column({
     type: DataType.STRING,
     allowNull: false,
   })
-  gameId!: string;
+  declare gameId: string;
 
   @Column({
     type: DataType.STRING,
     allowNull: false,
   })
-  name!: string;
+  declare name: string;
 
   @Column({
     type: DataType.STRING,
     allowNull: false,
     defaultValue: 'player',
   })
-  role!: string;
+  declare role: string;
 
   @Column({
     type: DataType.STRING,
     allowNull: true,
   })
-  token?: string;
+  declare token?: string;
 
   @Column({
     type: DataType.STRING,
     allowNull: true,
   })
-  tokenType?: string;
+  declare tokenType?: string;
 
   @CreatedAt
   @Column({
@@ -62,12 +62,12 @@ export class Player extends Model<Player> {
     allowNull: false,
     field: 'joinedAt',
   })
-  joinedAt!: Date;
+  declare joinedAt: Date;
 
   // Associations
   @BelongsTo(() => Game)
-  game!: Game;
+  declare game: Game;
 
   @HasMany(() => Action)
-  actions!: Action[];
+  declare actions: Action[];
 }
