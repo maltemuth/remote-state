@@ -6,15 +6,15 @@ import {
   PrimaryKey,
   ForeignKey,
   BelongsTo,
-  CreatedAt,
   Default,
+  Index,
 } from 'sequelize-typescript';
 import { Game } from './Game';
 import { v4 as uuidv4 } from 'uuid';
 
 @Table({
   tableName: 'players',
-  timestamps: false,
+  timestamps: true,
 })
 export class Player extends Model<Player> {
   @PrimaryKey
@@ -27,6 +27,7 @@ export class Player extends Model<Player> {
   declare id: string;
 
   @ForeignKey(() => Game)
+  @Index
   @Column({
     type: DataType.STRING,
     allowNull: false,
@@ -57,14 +58,6 @@ export class Player extends Model<Player> {
     allowNull: true,
   })
   declare tokenType?: string;
-
-  @CreatedAt
-  @Column({
-    type: DataType.DATE,
-    allowNull: false,
-    field: 'joinedAt',
-  })
-  declare joinedAt: Date;
 
   // Associations
   @BelongsTo(() => Game)

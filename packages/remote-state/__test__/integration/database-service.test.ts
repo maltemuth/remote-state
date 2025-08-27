@@ -119,7 +119,7 @@ describe('Database Service Integration Tests', () => {
       expect(player.gameId).toBe(playerData.gameId);
       expect(player.name).toBe(playerData.name);
       expect(player.role).toBe(playerData.role);
-      expect(player.joinedAt).toBeDefined();
+      expect(player.createdAt).toBeDefined();
     });
 
     test('should create a game owner', async () => {

@@ -7,14 +7,16 @@ import {
   ForeignKey,
   BelongsTo,
   CreatedAt,
+  UpdatedAt,
   Default,
+  Index,
 } from 'sequelize-typescript';
 import { Game } from './Game';
 import { v4 as uuidv4 } from 'uuid';
 
 @Table({
   tableName: 'gameStates',
-  timestamps: false,
+  timestamps: true,
 })
 export class GameState extends Model<GameState> {
   @PrimaryKey
@@ -27,6 +29,7 @@ export class GameState extends Model<GameState> {
   declare id: string;
 
   @ForeignKey(() => Game)
+  @Index
   @Column({
     type: DataType.STRING,
     allowNull: false,
@@ -38,13 +41,6 @@ export class GameState extends Model<GameState> {
     allowNull: true,
   })
   declare state?: string;
-
-  @Column({
-    type: DataType.BOOLEAN,
-    allowNull: false,
-    defaultValue: false,
-  })
-  declare isJoinable: boolean;
 
   @Column({
     type: DataType.STRING,
@@ -74,9 +70,15 @@ export class GameState extends Model<GameState> {
   @Column({
     type: DataType.DATE,
     allowNull: false,
-    field: 'timestamp',
   })
-  declare timestamp: Date;
+  declare createdAt: Date;
+
+  @UpdatedAt
+  @Column({
+    type: DataType.DATE,
+    allowNull: false,
+  })
+  declare updatedAt: Date;
 
   // Associations
   @BelongsTo(() => Game)

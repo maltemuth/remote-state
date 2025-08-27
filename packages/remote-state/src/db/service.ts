@@ -65,7 +65,6 @@ export const createGame = async (gameData: {
       actionType: 'initial',
       actionData: null,
       validationResult: null,
-      timestamp: now,
     });
   } catch (error) {
     // If the GameState table doesn't have the new fields yet, create a minimal record
@@ -78,7 +77,6 @@ export const createGame = async (gameData: {
       actionType: 'initial',
       actionData: null,
       validationResult: null,
-      timestamp: now,
     });
   }
 
@@ -156,11 +154,10 @@ export const addPlayerToGame = async (playerData: {
   role: string;
   token?: string;
   tokenType?: string;
-  joinedAt: Date;
+  createdAt: Date;
 }> => {
   info(`Adding player ${playerData.name} to game ${playerData.gameId}`);
 
-  const now = new Date();
   const newPlayer = await Player.create({
     id: playerData.id,
     gameId: playerData.gameId,
@@ -168,7 +165,6 @@ export const addPlayerToGame = async (playerData: {
     role: playerData.role,
     token: playerData.token,
     tokenType: playerData.tokenType,
-    joinedAt: now,
   });
 
   return {
@@ -178,7 +174,7 @@ export const addPlayerToGame = async (playerData: {
     role: newPlayer.role,
     token: newPlayer.token || undefined,
     tokenType: newPlayer.tokenType || undefined,
-    joinedAt: newPlayer.joinedAt,
+    createdAt: newPlayer.createdAt,
   };
 };
 
@@ -207,7 +203,7 @@ export const createGameOwner = async (
   role: string;
   token?: string;
   tokenType?: string;
-  joinedAt: Date;
+  createdAt: Date;
 }> => {
   info(`Creating game owner for game ${gameId}: ${playerName}`);
 
@@ -239,7 +235,7 @@ export const createJoiningPlayer = async (
   role: string;
   token?: string;
   tokenType?: string;
-  joinedAt: Date;
+  createdAt: Date;
 }> => {
   info(`Creating joining player for game ${gameId}: ${playerName}`);
 
@@ -270,7 +266,7 @@ export const getPlayerByToken = async (
   role: string;
   token?: string;
   tokenType?: string;
-  joinedAt: Date;
+  createdAt: Date;
 } | null> => {
   info(`Retrieving player by token`);
 
@@ -291,7 +287,7 @@ export const getPlayerByToken = async (
     role: result.role,
     token: result.token || undefined,
     tokenType: result.tokenType || undefined,
-    joinedAt: result.joinedAt,
+    createdAt: result.createdAt,
   };
 };
 
@@ -307,7 +303,7 @@ export const validatePlayerToken = async (
   role: string;
   token?: string;
   tokenType?: string;
-  joinedAt: Date;
+  createdAt: Date;
 } | null> => {
   info(`Validating player token`);
 
@@ -331,7 +327,7 @@ export const getGameOwner = async (
   role: string;
   token?: string;
   tokenType?: string;
-  joinedAt: Date;
+  createdAt: Date;
 } | null> => {
   info(`Retrieving game owner for game: ${gameId}`);
 
@@ -353,7 +349,7 @@ export const getGameOwner = async (
     role: result.role,
     token: result.token || undefined,
     tokenType: result.tokenType || undefined,
-    joinedAt: result.joinedAt,
+    createdAt: result.createdAt,
   };
 };
 
@@ -370,7 +366,7 @@ export const getPlayersForGame = async (
     role: string;
     token?: string;
     tokenType?: string;
-    joinedAt: Date;
+    createdAt: Date;
   }[]
 > => {
   info(`Retrieving players for game: ${gameId}`);
@@ -388,7 +384,7 @@ export const getPlayersForGame = async (
     role: result.role,
     token: result.token || undefined,
     tokenType: result.tokenType || undefined,
-    joinedAt: result.joinedAt,
+    createdAt: result.createdAt,
   }));
 };
 
@@ -415,7 +411,6 @@ export const recordAction = async <A, S, R>(actionData: {
 }> => {
   info(`Recording action: ${actionData.actionType} for game ${actionData.gameId}`);
 
-  const now = new Date();
   const newGameState = await GameState.create({
     id: actionData.id,
     gameId: actionData.gameId,
@@ -424,7 +419,6 @@ export const recordAction = async <A, S, R>(actionData: {
     actionType: actionData.actionType,
     actionData: safeJsonStringify(actionData.actionData),
     validationResult: safeJsonStringify(actionData.validationResult),
-    timestamp: now,
   });
 
   return {
@@ -434,7 +428,7 @@ export const recordAction = async <A, S, R>(actionData: {
     actionType: newGameState.actionType,
     actionData: safeJsonParse(newGameState.actionData) as A,
     gameState: safeJsonParse(newGameState.state) as S,
-    timestamp: newGameState.timestamp,
+    timestamp: newGameState.createdAt,
     validationResult: safeJsonParse(newGameState.validationResult) as R,
   };
 };
@@ -465,7 +459,7 @@ export const getActionsForGame = async <A, S, R>(
         [Op.ne]: 'initial', // Exclude initial state entries
       },
     },
-    order: [['timestamp', 'DESC']],
+    order: [['createdAt', 'DESC']],
   });
 
   return results.map(result => ({
@@ -475,7 +469,7 @@ export const getActionsForGame = async <A, S, R>(
     actionType: result.actionType,
     actionData: safeJsonParse(result.actionData) as A,
     gameState: safeJsonParse(result.state) as S,
-    timestamp: result.timestamp,
+    timestamp: result.createdAt,
     validationResult: safeJsonParse(result.validationResult) as R,
   }));
 };
@@ -489,7 +483,6 @@ export const updateGameState = async <S>(gameStateData: {
 }): Promise<void> => {
   info(`Updating game state for game: ${gameStateData.gameId}`);
 
-  const now = new Date();
   await GameState.upsert({
     id: `state-${gameStateData.gameId}`,
     gameId: gameStateData.gameId,
@@ -498,7 +491,6 @@ export const updateGameState = async <S>(gameStateData: {
     actionType: 'update',
     actionData: null,
     validationResult: null,
-    timestamp: now,
   });
 };
 
@@ -514,7 +506,7 @@ export const getCurrentGameState = async <S>(
     where: {
       gameId: gameId,
     },
-    order: [['timestamp', 'DESC']],
+    order: [['createdAt', 'DESC']],
   });
 
   if (!result) {
@@ -525,7 +517,7 @@ export const getCurrentGameState = async <S>(
   return {
     gameId: result.gameId,
     state: parsedState,
-    timestamp: result.timestamp,
+    timestamp: result.createdAt,
   };
 };
 
@@ -600,7 +592,7 @@ export interface DatabaseService<A, S, R> {
     role: string;
     token?: string;
     tokenType?: string;
-    joinedAt: Date;
+    createdAt: Date;
   }>;
   createGameOwner: (
     gameId: string,
@@ -612,7 +604,7 @@ export interface DatabaseService<A, S, R> {
     role: string;
     token?: string;
     tokenType?: string;
-    joinedAt: Date;
+    createdAt: Date;
   }>;
   createJoiningPlayer: (
     gameId: string,
@@ -624,7 +616,7 @@ export interface DatabaseService<A, S, R> {
     role: string;
     token?: string;
     tokenType?: string;
-    joinedAt: Date;
+    createdAt: Date;
   }>;
   getPlayerByToken: (token: string) => Promise<{
     id: string;
@@ -633,7 +625,7 @@ export interface DatabaseService<A, S, R> {
     role: string;
     token?: string;
     tokenType?: string;
-    joinedAt: Date;
+    createdAt: Date;
   } | null>;
   validatePlayerToken: (token: string) => Promise<{
     id: string;
@@ -642,7 +634,7 @@ export interface DatabaseService<A, S, R> {
     role: string;
     token?: string;
     tokenType?: string;
-    joinedAt: Date;
+    createdAt: Date;
   } | null>;
   getGameOwner: (gameId: string) => Promise<{
     id: string;
@@ -651,7 +643,7 @@ export interface DatabaseService<A, S, R> {
     role: string;
     token?: string;
     tokenType?: string;
-    joinedAt: Date;
+    createdAt: Date;
   } | null>;
   getPlayersForGame: (gameId: string) => Promise<
     {
@@ -661,7 +653,7 @@ export interface DatabaseService<A, S, R> {
       role: string;
       token?: string;
       tokenType?: string;
-      joinedAt: Date;
+      createdAt: Date;
     }[]
   >;
 

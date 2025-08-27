@@ -134,7 +134,7 @@ export const createRemoteStateServer = async <StateType, ActionType>(
         role: string;
         token?: string;
         tokenType?: string;
-        joinedAt: Date;
+        createdAt: Date;
       } | null = null;
       if (token) {
         player = await validatePlayerToken(token);
