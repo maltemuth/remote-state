@@ -40,6 +40,13 @@ export class GameState extends Model<GameState> {
   declare state?: string;
 
   @Column({
+    type: DataType.BOOLEAN,
+    allowNull: false,
+    defaultValue: false,
+  })
+  declare isJoinable: boolean;
+
+  @Column({
     type: DataType.STRING,
     allowNull: true,
   })
