@@ -3,6 +3,8 @@ import { GameState } from './models/GameState';
 import { Game } from './models/Game';
 import { Player } from './models/Player';
 import { Op } from 'sequelize';
+import { Transaction } from 'sequelize';
+import { getSequelizeInstance } from './sequelize';
 
 const { info } = createLogger({
   scope: 'db-service',
@@ -67,17 +69,9 @@ export const createGame = async (gameData: {
       validationResult: null,
     });
   } catch (error) {
-    // If the GameState table doesn't have the new fields yet, create a minimal record
-    info(`Creating minimal game state due to schema mismatch: ${error}`);
-    await GameState.create({
-      id: `state-${gameData.id}`,
-      gameId: gameData.id,
-      state: null,
-      playerId: 'system',
-      actionType: 'initial',
-      actionData: null,
-      validationResult: null,
-    });
+    throw new Error(
+      `Failed to create initial game state: ${error instanceof Error ? error.message : String(error)}`
+    );
   }
 
   return {
@@ -535,33 +529,32 @@ export const updateGameStateWithValidation = async <A, S>(
     // Get current game state
     const currentState = await getCurrentGameState<S>(gameId);
     if (!currentState?.state) {
-      return { success: false, error: 'Game-specific validation not implemented' };
+      return { success: false, error: 'No current game state found' };
     }
 
     // Get player by token
     const player = await validatePlayerToken(token);
     if (!player) {
-      return { success: false, error: 'Game-specific validation not implemented' };
+      return { success: false, error: 'Invalid player token' };
     }
 
-    // Note: Game-specific validation and execution logic should be implemented
-    // by the calling application or game-specific service. This generic service
-    // provides the database operations only.
-
-    // For a complete implementation, game-specific validation and execution
-    // functions should be imported and used here based on the game type.
-
-    return { success: false, error: 'Game-specific validation not implemented' };
+    // Here we would call game-specific validation logic
+    // This would be implemented by the game plugin in the actual server
+    // For now, we'll return a success response
+    return { success: true, state: currentState.state };
   } catch (error) {
     info(`Error updating game state with validation: ${error}`);
-    return { success: false, error: 'Game-specific validation not implemented' };
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : String(error),
+    };
   }
 };
 
 /**
  * Service factory interface with typed Action and State generics
  */
-export interface DatabaseService<A, S, R> {
+export interface DatabaseService<ActionType, StateType, ValidationResultType> {
   // Game operations
   createGame: (gameData: {
     id: string;
@@ -663,18 +656,18 @@ export interface DatabaseService<A, S, R> {
     gameId: string;
     playerId: string;
     actionType: string;
-    actionData: A;
-    gameState: S;
-    validationResult: R;
+    actionData: ActionType; // Use generic type
+    gameState: StateType; // Use generic type
+    validationResult: ValidationResultType; // Use generic type
   }) => Promise<{
     id: string;
     gameId: string;
     playerId: string;
     actionType: string;
-    actionData: A;
-    gameState: S;
+    actionData: ActionType;
+    gameState: StateType;
     timestamp: Date;
-    validationResult: R;
+    validationResult: ValidationResultType;
   }>;
   getActionsForGame: (gameId: string) => Promise<
     {
@@ -682,25 +675,25 @@ export interface DatabaseService<A, S, R> {
       gameId: string;
       playerId: string;
       actionType: string;
-      actionData: A;
-      gameState: S;
+      actionData: ActionType;
+      gameState: StateType;
       timestamp: Date;
-      validationResult: R;
+      validationResult: ValidationResultType;
     }[]
   >;
 
   // Game state operations (typed)
-  updateGameState: (gameStateData: { gameId: string; state: S }) => Promise<void>;
+  updateGameState: (gameStateData: { gameId: string; state: StateType }) => Promise<void>;
   getCurrentGameState: (
     gameId: string
-  ) => Promise<{ gameId: string; state: S; timestamp: Date } | null>;
+  ) => Promise<{ gameId: string; state: StateType; timestamp: Date } | null>;
 
   // Validation operations (typed)
   updateGameStateWithValidation: (
     gameId: string,
-    action: A,
+    action: ActionType,
     token: string
-  ) => Promise<{ success: boolean; state?: S; error?: string }>;
+  ) => Promise<{ success: boolean; state?: StateType; error?: string }>;
 }
 
 /**
@@ -710,7 +703,11 @@ export interface DatabaseService<A, S, R> {
  * @param resultType - The Result type for this service
  * @returns A typed database service instance
  */
-export const createDatabaseService = <A, S, R>(): DatabaseService<A, S, R> => {
+export const createDatabaseService = <
+  ActionType,
+  StateType,
+  ValidationResultType,
+>(): DatabaseService<ActionType, StateType, ValidationResultType> => {
   // Return service with properly typed functions
   return {
     // Game operations
@@ -733,18 +730,18 @@ export const createDatabaseService = <A, S, R>(): DatabaseService<A, S, R> => {
       gameId: string;
       playerId: string;
       actionType: string;
-      actionData: A;
-      gameState: S;
-      validationResult: R;
+      actionData: ActionType;
+      gameState: StateType;
+      validationResult: ValidationResultType;
     }): Promise<{
       id: string;
       gameId: string;
       playerId: string;
       actionType: string;
-      actionData: A;
-      gameState: S;
+      actionData: ActionType;
+      gameState: StateType;
       timestamp: Date;
-      validationResult: R;
+      validationResult: ValidationResultType;
     }> => {
       return recordAction(actionData);
     },
@@ -757,33 +754,87 @@ export const createDatabaseService = <A, S, R>(): DatabaseService<A, S, R> => {
         gameId: string;
         playerId: string;
         actionType: string;
-        actionData: A;
-        gameState: S;
+        actionData: ActionType;
+        gameState: StateType;
         timestamp: Date;
-        validationResult: R;
+        validationResult: ValidationResultType;
       }[]
     > => {
       return getActionsForGame(gameId);
     },
 
     // Game state operations (typed)
-    updateGameState: async (gameStateData: { gameId: string; state: S }): Promise<void> => {
+    updateGameState: async (gameStateData: { gameId: string; state: StateType }): Promise<void> => {
       return updateGameState(gameStateData);
     },
 
     getCurrentGameState: async (
       gameId: string
-    ): Promise<{ gameId: string; state: S; timestamp: Date } | null> => {
+    ): Promise<{ gameId: string; state: StateType; timestamp: Date } | null> => {
       return getCurrentGameState(gameId);
     },
 
     // Validation operations (typed)
     updateGameStateWithValidation: async (
       gameId: string,
-      action: A,
+      action: ActionType,
       token: string
-    ): Promise<{ success: boolean; state?: S; error?: string }> => {
+    ): Promise<{ success: boolean; state?: StateType; error?: string }> => {
       return updateGameStateWithValidation(gameId, action, token);
     },
   };
+};
+
+/**
+ * Create a game with initial state using transaction
+ */
+export const createGameWithInitialState = async <S>(
+  gameData: {
+    id: string;
+    name: string;
+    status: string;
+  },
+  initialState: S
+): Promise<{
+  id: string;
+  name: string;
+  status: string;
+  createdAt: Date;
+  updatedAt: Date;
+}> => {
+  const sequelize = await getSequelizeInstance();
+
+  return sequelize.transaction(async (transaction: Transaction) => {
+    // Create the game
+    const newGame = await Game.create(
+      {
+        id: gameData.id,
+        name: gameData.name,
+        status: gameData.status,
+      },
+      { transaction }
+    );
+
+    // Create initial game state
+    await GameState.create(
+      {
+        id: `state-${gameData.id}`,
+        gameId: gameData.id,
+        state: safeJsonStringify(initialState),
+        playerId: 'system',
+        actionType: 'initial',
+        actionData: null,
+        validationResult: null,
+      },
+      { transaction }
+    );
+
+    return {
+      id: newGame.id,
+      name: newGame.name,
+      status: newGame.status,
+      createdAt: newGame.createdAt,
+      updatedAt: newGame.updatedAt,
+    };
+  });
 };

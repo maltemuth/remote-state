@@ -382,10 +382,10 @@ describe('Database Service Integration Tests', () => {
         owner.token!
       );
 
-      // This should fail because game-specific validation is not implemented
+      // This should fail because there's no current game state
       expect(result.success).toBe(false);
       expect(result.error).toBeDefined();
-      expect(result.error).toBe('Game-specific validation not implemented');
+      expect(result.error).toBe('No current game state found');
     });
   });
 
