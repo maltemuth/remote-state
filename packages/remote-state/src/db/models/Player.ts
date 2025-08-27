@@ -7,8 +7,10 @@ import {
   ForeignKey,
   BelongsTo,
   CreatedAt,
+  Default,
 } from 'sequelize-typescript';
 import { Game } from './Game';
+import { v4 as uuidv4 } from 'uuid';
 
 @Table({
   tableName: 'players',
@@ -16,9 +18,11 @@ import { Game } from './Game';
 })
 export class Player extends Model<Player> {
   @PrimaryKey
+  @Default(uuidv4)
   @Column({
-    type: DataType.STRING,
+    type: DataType.UUID,
     allowNull: false,
+    unique: true,
   })
   declare id: string;
 
