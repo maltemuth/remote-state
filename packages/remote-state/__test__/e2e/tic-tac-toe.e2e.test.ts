@@ -256,7 +256,7 @@ describe('Tic-Tac-Toe E2E Tests', () => {
 
   it('should create a new game and register owner', async () => {
     const response = await request(app)
-      .post('/api/auth/register/owner')
+      .post('/api/games')
       .send({
         playerName: 'Player X',
         gameName: 'Test Tic-Tac-Toe Game',
@@ -272,7 +272,7 @@ describe('Tic-Tac-Toe E2E Tests', () => {
   it('should allow another player to join the game', async () => {
     // First create a game
     const ownerResponse = await request(app)
-      .post('/api/auth/register/owner')
+      .post('/api/games')
       .send({
         playerName: 'Player X',
         gameName: 'Test Tic-Tac-Toe Game',
@@ -283,10 +283,9 @@ describe('Tic-Tac-Toe E2E Tests', () => {
 
     // Then join the game
     const joinResponse = await request(app)
-      .post('/api/auth/register/join')
+      .post(`/api/games/${gameId}/players`)
       .send({
         playerName: 'Player O',
-        gameId: gameId,
       })
       .expect(201);
 
@@ -299,7 +298,7 @@ describe('Tic-Tac-Toe E2E Tests', () => {
   it('should make the first move (X player)', async () => {
     // Setup game
     const ownerResponse = await request(app)
-      .post('/api/auth/register/owner')
+      .post('/api/games')
       .send({
         playerName: 'Player X',
         gameName: 'Test Tic-Tac-Toe Game',
@@ -310,10 +309,9 @@ describe('Tic-Tac-Toe E2E Tests', () => {
     const ownerToken = ownerResponse.body.token;
 
     await request(app)
-      .post('/api/auth/register/join')
+      .post(`/api/games/${gameId}/players`)
       .send({
         playerName: 'Player O',
-        gameId: gameId,
       })
       .expect(201);
 
@@ -339,7 +337,7 @@ describe('Tic-Tac-Toe E2E Tests', () => {
   it('should make the second move (O player)', async () => {
     // Setup game
     const ownerResponse = await request(app)
-      .post('/api/auth/register/owner')
+      .post('/api/games')
       .send({
         playerName: 'Player X',
         gameName: 'Test Tic-Tac-Toe Game',
@@ -350,10 +348,9 @@ describe('Tic-Tac-Toe E2E Tests', () => {
     const ownerToken = ownerResponse.body.token;
 
     const joinerResponse = await request(app)
-      .post('/api/auth/register/join')
+      .post(`/api/games/${gameId}/players`)
       .send({
         playerName: 'Player O',
-        gameId: gameId,
       })
       .expect(201);
 
@@ -395,7 +392,7 @@ describe('Tic-Tac-Toe E2E Tests', () => {
   it('should make the third move (X player)', async () => {
     // Setup game
     const ownerResponse = await request(app)
-      .post('/api/auth/register/owner')
+      .post('/api/games')
       .send({
         playerName: 'Player X',
         gameName: 'Test Tic-Tac-Toe Game',
@@ -406,10 +403,9 @@ describe('Tic-Tac-Toe E2E Tests', () => {
     const ownerToken = ownerResponse.body.token;
 
     const joinerResponse = await request(app)
-      .post('/api/auth/register/join')
+      .post(`/api/games/${gameId}/players`)
       .send({
         playerName: 'Player O',
-        gameId: gameId,
       })
       .expect(201);
 
@@ -464,7 +460,7 @@ describe('Tic-Tac-Toe E2E Tests', () => {
   it('should make the fourth move (O player)', async () => {
     // Setup game
     const ownerResponse = await request(app)
-      .post('/api/auth/register/owner')
+      .post('/api/games')
       .send({
         playerName: 'Player X',
         gameName: 'Test Tic-Tac-Toe Game',
@@ -475,10 +471,9 @@ describe('Tic-Tac-Toe E2E Tests', () => {
     const ownerToken = ownerResponse.body.token;
 
     const joinerResponse = await request(app)
-      .post('/api/auth/register/join')
+      .post(`/api/games/${gameId}/players`)
       .send({
         playerName: 'Player O',
-        gameId: gameId,
       })
       .expect(201);
 
@@ -546,7 +541,7 @@ describe('Tic-Tac-Toe E2E Tests', () => {
   it('should make the fifth move (X player) and win the game', async () => {
     // Setup game
     const ownerResponse = await request(app)
-      .post('/api/auth/register/owner')
+      .post('/api/games')
       .send({
         playerName: 'Player X',
         gameName: 'Test Tic-Tac-Toe Game',
@@ -557,10 +552,9 @@ describe('Tic-Tac-Toe E2E Tests', () => {
     const ownerToken = ownerResponse.body.token;
 
     const joinerResponse = await request(app)
-      .post('/api/auth/register/join')
+      .post(`/api/games/${gameId}/players`)
       .send({
         playerName: 'Player O',
-        gameId: gameId,
       })
       .expect(201);
 
@@ -641,7 +635,7 @@ describe('Tic-Tac-Toe E2E Tests', () => {
   it('should retrieve the final game state', async () => {
     // Setup game and play to completion
     const ownerResponse = await request(app)
-      .post('/api/auth/register/owner')
+      .post('/api/games')
       .send({
         playerName: 'Player X',
         gameName: 'Test Tic-Tac-Toe Game',
@@ -652,10 +646,9 @@ describe('Tic-Tac-Toe E2E Tests', () => {
     const ownerToken = ownerResponse.body.token;
 
     const joinerResponse = await request(app)
-      .post('/api/auth/register/join')
+      .post(`/api/games/${gameId}/players`)
       .send({
         playerName: 'Player O',
-        gameId: gameId,
       })
       .expect(201);
 
@@ -738,7 +731,7 @@ describe('Tic-Tac-Toe E2E Tests', () => {
   it('should not allow additional moves after game is finished', async () => {
     // Setup game and play to completion
     const ownerResponse = await request(app)
-      .post('/api/auth/register/owner')
+      .post('/api/games')
       .send({
         playerName: 'Player X',
         gameName: 'Test Tic-Tac-Toe Game',
@@ -749,10 +742,9 @@ describe('Tic-Tac-Toe E2E Tests', () => {
     const ownerToken = ownerResponse.body.token;
 
     const joinerResponse = await request(app)
-      .post('/api/auth/register/join')
+      .post(`/api/games/${gameId}/players`)
       .send({
         playerName: 'Player O',
-        gameId: gameId,
       })
       .expect(201);
 

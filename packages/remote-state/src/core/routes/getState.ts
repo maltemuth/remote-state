@@ -28,7 +28,7 @@ export const getState = <StateType, ActionType>(
 
       const response = {
         gameId,
-        state: gameState,
+        state: gameState?.state || null,
         lastAction: null,
         timestamp: new Date().toISOString(),
         cursor: {

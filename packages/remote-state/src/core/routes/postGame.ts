@@ -2,7 +2,7 @@ import { Application, Request, Response } from 'express';
 import { Sequelize } from 'sequelize';
 import { GamePlugin } from '../types';
 import { createLogger } from '../../utils/logger';
-import { createGame, createGameOwner } from '../../database';
+import { createGame, createGameOwner, updateGameState } from '../../database';
 
 export const postGame = <StateType, ActionType>(
   _app: Application,
@@ -29,6 +29,15 @@ export const postGame = <StateType, ActionType>(
       const game = await createGame({
         id: gameId,
         name: gameName,
+      });
+
+      // Get the initial state from the plugin
+      const initialState = _plugin.getInitialState(gameId);
+
+      // Set the initial game state
+      await updateGameState({
+        gameId,
+        state: initialState,
       });
 
       // Create the game owner
