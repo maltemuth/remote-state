@@ -1,0 +1,51 @@
+import { Application, Request, Response } from 'express';
+import { Sequelize } from 'sequelize';
+import { GamePlugin } from '../types';
+import { createLogger } from '../../utils/logger';
+import { getCurrentGameState, getGame } from '../../database';
+
+// Current state retrieval endpoint
+export const getState = <StateType, ActionType>(
+  _app: Application,
+  _database: Sequelize,
+  _plugin: GamePlugin<StateType, ActionType>
+) => {
+  const { info, error } = createLogger({ scope: 'getState' });
+  return async (req: Request, res: Response) => {
+    try {
+      const { gameId } = req.params;
+
+      info(`Retrieving current state for game ${gameId}`);
+
+      // Check if game exists
+      const game = await getGame(gameId);
+      if (!game) {
+        return res.status(404).json({ error: 'Game not found' });
+      }
+
+      // Get current game state from database
+      const gameState = await getCurrentGameState<StateType>(gameId);
+
+      const response = {
+        gameId,
+        state: gameState,
+        lastAction: null,
+        timestamp: new Date().toISOString(),
+        cursor: {
+          id: `cursor-${Date.now()}`,
+          gameId,
+          timestamp: new Date().toISOString(),
+          stateHash: 'demo-hash',
+          position: 0,
+        },
+      };
+
+      res.json(response);
+    } catch (err) {
+      error('Error retrieving state:', {
+        error: err instanceof Error ? err.message : String(err),
+      });
+      res.status(500).json({ error: 'Internal server error' });
+    }
+  };
+};

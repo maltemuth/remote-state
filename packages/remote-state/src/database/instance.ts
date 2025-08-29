@@ -23,7 +23,7 @@ export const initializeDatabase = async (options: DatabaseOptions = {}) => {
 
   try {
     // Create the sequelize instance
-    await createSequelizeInstance(databasePath);
+    const database = await createSequelizeInstance(databasePath);
 
     // Sync the database schema
     if (sync) {
@@ -32,7 +32,7 @@ export const initializeDatabase = async (options: DatabaseOptions = {}) => {
 
     info('Database initialization completed successfully');
 
-    return true;
+    return database;
   } catch (err) {
     error('Error initializing database:', err);
     throw err;
