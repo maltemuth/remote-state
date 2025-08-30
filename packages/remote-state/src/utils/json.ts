@@ -7,7 +7,7 @@ export const safeJsonParse = <T>(jsonString: string | null | undefined): T | nul
   }
 };
 
-export const safeJsonStringify = (obj: unknown): string | null => {
+export const safeJsonStringify = <S = unknown>(obj: S): string | null => {
   if (obj === null || obj === undefined) return null;
   try {
     return JSON.stringify(obj);

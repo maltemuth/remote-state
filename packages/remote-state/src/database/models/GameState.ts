@@ -78,3 +78,7 @@ export class GameState extends Model<GameState> {
   @BelongsTo(() => Game)
   declare game: Game;
 }
+
+export interface DeserializedGameState<StateType> extends Omit<GameState, 'state'> {
+  state: StateType;
+}

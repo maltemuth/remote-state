@@ -1,16 +1,15 @@
-import { Application, Request, Response } from 'express';
-import { Sequelize } from 'sequelize';
+import { Request, Response } from 'express';
 import { GamePlugin } from '../types';
 import { createLogger } from '../../utils/logger';
-import { createJoiningPlayer, getGame } from '../../database';
+import { DatabaseService } from '../../database';
 
 export const postPlayer = <StateType, ActionType>(
-  _app: Application,
-  _database: Sequelize,
-  _plugin: GamePlugin<StateType, ActionType>
+  database: DatabaseService<StateType, ActionType>,
+  plugin: GamePlugin<StateType, ActionType>
 ) => {
   const { info, error } = createLogger({
     scope: 'postPlayer',
+    logLevel: plugin.serverConfiguration?.minimumLogLevel,
   });
   return async (req: Request, res: Response) => {
     try {
@@ -23,13 +22,16 @@ export const postPlayer = <StateType, ActionType>(
       }
 
       // Check if game exists
-      const game = await getGame(gameId);
+      const game = await database.getGame(gameId);
       if (!game) {
         return res.status(404).json({ error: 'Game not found' });
       }
 
       // Create the joining player
-      const player = await createJoiningPlayer(gameId, playerName);
+      const player = await database.addPlayerToGame(
+        { id: gameId },
+        { name: playerName, role: 'player' }
+      );
 
       info(`Created joining player: ${player.name} for game ${gameId}`);
 

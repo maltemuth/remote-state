@@ -1,13 +1,4 @@
-export interface BaseAction {
-  type: string;
-  playerId: string;
-  timestamp: Date;
-}
-
-export interface BaseState {
-  createdAt: Date;
-  updatedAt: Date;
-}
+import { RemoteStateServerConfiguration } from './server';
 
 export type GameAction =
   | {
@@ -41,7 +32,7 @@ export interface GameMoveResult<StateType> {
 }
 
 export interface GamePlugin<StateType, ActionType> {
-  getInitialState: (gameId: string) => StateType;
+  getInitialState: () => StateType;
   validateAction: (state: StateType, action: ActionType) => GameValidationResult;
   executeAction: (
     state: StateType,
@@ -51,7 +42,5 @@ export interface GamePlugin<StateType, ActionType> {
     name: string;
     description?: string;
   };
-  /** Database persistence configuration */
-  persistDatabase?: boolean;
-  databaseFilename?: string;
+  serverConfiguration?: RemoteStateServerConfiguration;
 }

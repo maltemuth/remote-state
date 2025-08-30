@@ -1,24 +1,17 @@
-import { Application, Request, Response } from 'express';
-import {
-  getCurrentGameState,
-  getGame,
-  recordAction,
-  updateGameState,
-  validatePlayerToken,
-} from '../../database';
-import { Sequelize } from 'sequelize';
+import { Request, Response } from 'express';
 import { GamePlugin } from '../types';
 import { createLogger } from '../../utils/logger';
 import { Player } from '../../database/models';
+import { DatabaseService } from '../../database';
 
 // Action submission endpoint
 export const postAction = <StateType, ActionType>(
-  app: Application,
-  database: Sequelize,
+  database: DatabaseService<StateType, ActionType>,
   gamePlugin: GamePlugin<StateType, ActionType>
 ) => {
   const { info, error } = createLogger({
     scope: 'postAction',
+    logLevel: gamePlugin.serverConfiguration?.minimumLogLevel,
   });
   return async (req: Request, res: Response) => {
     try {
@@ -36,63 +29,43 @@ export const postAction = <StateType, ActionType>(
       }
 
       // Check if game exists
-      const game = await getGame(gameId);
+      const game = await database.getGame(gameId);
       if (!game) {
         return res.status(404).json({ error: `No game found with id ${gameId}` });
       }
 
       // Validate player token if provided
-      let player: {
-        id: string;
-        gameId: string;
-        name: string;
-        role: string;
-        token?: string;
-        tokenType?: string;
-        createdAt: Date;
-      } | null = null;
+      let player: Player | null = null;
       if (token) {
-        player = await validatePlayerToken(token);
+        player = await database.getPlayerByToken(token);
         if (!player) {
           return res.status(401).json({
             error: 'Invalid or expired token',
-            code: 'INVALID_TOKEN',
           });
         }
 
         // Verify player belongs to this game
         if (player.gameId !== gameId) {
-          return res.status(403).json({
-            error: 'Token does not belong to this game',
-            code: 'WRONG_GAME',
+          return res.status(401).json({
+            error: 'Invalid or expired token',
           });
         }
       } else {
         // Return error if no token is provided
         return res.status(401).json({
-          error: 'Authentication required',
-          code: 'MISSING_AUTHENTICATION',
-          timestamp: new Date().toISOString(),
+          error: 'Invalid or expired token',
         });
       }
 
       // Get current game state
       info(`Getting current game state for game: ${gameId}`);
-      const currentStateResult = await getCurrentGameState(gameId);
-      info(`Current state result:`, currentStateResult);
-
-      // If no state exists, create initial state
-      const currentState = currentStateResult?.state;
-
+      const { state } = await database.getCurrentGameState<StateType>(gameId);
+      info(`Current state:`, state);
       // Use game-specific validation through dedicated module
-      const validationResult = gamePlugin.validateAction(
-        currentState as StateType,
-        action as ActionType
-      );
+      const validationResult = gamePlugin.validateAction(state, action as ActionType);
       if (!validationResult.valid) {
         return res.status(400).json({
           error: validationResult.error || 'Invalid action',
-          code: validationResult.code || 'INVALID_ACTION',
         });
       }
 
@@ -107,20 +80,12 @@ export const postAction = <StateType, ActionType>(
       };
 
       const executionResult = gamePlugin.executeAction(
-        currentState as StateType,
+        state,
         actionWithPlayer as ActionType & { playerId: string; timestamp: Date }
       );
 
-      if (!executionResult.success) {
-        return res.status(400).json({
-          error: 'Action execution failed',
-          code: 'ACTION_FAILED',
-        });
-      }
-
       // Record the action in the database
-      const newAction = await recordAction({
-        id: `action-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+      await database.recordAction({
         gameId,
         playerId: player.id,
         actionType: action.type || 'unknown',
@@ -128,20 +93,8 @@ export const postAction = <StateType, ActionType>(
         gameState: executionResult.state,
       });
 
-      // Update game state with the new state
-      await updateGameState({
-        gameId,
-        state: executionResult.state,
-      });
-
       // Return success response
-      res.status(201).json({
-        success: true,
-        actionId: newAction.id,
-        message: 'Action submitted successfully',
-        gameOver: executionResult.gameOver,
-        winner: executionResult.winner,
-      });
+      res.status(201).json(executionResult.state);
     } catch (err) {
       error('Error processing action:', {
         error: err instanceof Error ? err.message : String(err),

@@ -1,16 +1,15 @@
-import { Application, Request, Response } from 'express';
-import { Sequelize } from 'sequelize';
+import { Request, Response } from 'express';
 import { GamePlugin } from '../types';
 import { createLogger } from '../../utils/logger';
-import { createGame, createGameOwner, updateGameState } from '../../database';
+import { DatabaseService } from '../../database';
 
 export const postGame = <StateType, ActionType>(
-  _app: Application,
-  _database: Sequelize,
-  _plugin: GamePlugin<StateType, ActionType>
+  database: DatabaseService<StateType, ActionType>,
+  plugin: GamePlugin<StateType, ActionType>
 ) => {
   const { info, error } = createLogger({
     scope: 'postGame',
+    logLevel: plugin.serverConfiguration?.minimumLogLevel,
   });
 
   return async (req: Request, res: Response) => {
@@ -22,42 +21,28 @@ export const postGame = <StateType, ActionType>(
         return res.status(400).json({ error: 'Player name and game name are required' });
       }
 
-      // Generate a unique game ID
-      const gameId = `game-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-
       // Create the game in the database
-      const game = await createGame({
-        id: gameId,
-        name: gameName,
-      });
+      const { game, admin } = await database.createGameWithOwnerAndInitialState(
+        {
+          name: gameName,
+        },
+        { name: playerName },
+        plugin.getInitialState()
+      );
 
-      // Get the initial state from the plugin
-      const initialState = _plugin.getInitialState(gameId);
-
-      // Set the initial game state
-      await updateGameState({
-        gameId,
-        state: initialState,
-      });
-
-      // Create the game owner
-      const owner = await createGameOwner(gameId, playerName);
-
-      info(`Created new game with owner: ${game.id} - ${owner.name}`);
+      info(`Created new game with owner: ${game.id} - ${admin.name}`);
 
       // Return the game ID and owner token
       res.status(201).json({
-        success: true,
         gameId: game.id,
-        playerId: owner.id,
-        token: owner.token,
-        message: 'Game created and owner registered successfully',
+        token: admin.token,
+        playerId: admin.id,
       });
     } catch (err) {
       error('Error registering game owner:', {
         error: err instanceof Error ? err.message : String(err),
       });
-      res.status(500).json({ error: 'Internal server error' });
+      res.status(500);
     }
   };
 };

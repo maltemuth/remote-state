@@ -1,73 +1,55 @@
 import { Sequelize } from 'sequelize-typescript';
 import { createLogger } from '../utils/logger';
 
-const { info, error } = createLogger({
-  scope: 'database',
-});
-
 // Import models at module level to ensure they are registered
 import { Game } from './models/Game';
 import { Player } from './models/Player';
 import { GameState } from './models/GameState';
-
-// Sequelize instance storage
-let sequelizeInstance: Sequelize | null = null;
+import { RemoteStateServerConfiguration } from '../core/server';
 
 /**
  * Create a Sequelize instance
  */
 export const createSequelizeInstance = async (
-  databasePath: string = 'games.db'
+  databasePath: string = 'games.db',
+  configuration?: RemoteStateServerConfiguration
 ): Promise<Sequelize> => {
-  if (!sequelizeInstance) {
-    info(`Creating Sequelize instance with database path: ${databasePath}`);
+  const { info, error } = createLogger({
+    scope: 'createSequelizeInstance',
+    logLevel: configuration?.minimumLogLevel,
+  });
 
-    sequelizeInstance = new Sequelize({
-      dialect: 'sqlite',
-      storage: databasePath,
-      // logging: console.log, // Enable logging to see SQL queries
-      models: [Game, Player, GameState], // Register models directly
-    });
+  info(`Creating Sequelize instance with database path: ${databasePath}`);
 
-    try {
-      await sequelizeInstance.authenticate();
-      info('Database connection established successfully');
-    } catch (err) {
-      error('Unable to connect to the database:', err);
-      throw err;
-    }
+  const sequelizeInstance = new Sequelize({
+    dialect: 'sqlite',
+    storage: databasePath,
+    logging: info, // Enable logging to see SQL queries
+    models: [Game, Player, GameState], // Register models directly
+  });
+
+  try {
+    await sequelizeInstance.authenticate();
+    info('Database connection established successfully');
+  } catch (err) {
+    error('Unable to connect to the database:', err);
+    throw err;
   }
 
   return sequelizeInstance;
-};
-
-/**
- * Get the default Sequelize instance
- */
-export const getSequelizeInstance = async (): Promise<Sequelize> => {
-  if (!sequelizeInstance) {
-    sequelizeInstance = await createSequelizeInstance();
-  }
-  return sequelizeInstance;
-};
-
-/**
- * Close the Sequelize connection
- */
-export const closeSequelizeConnection = async (): Promise<void> => {
-  if (sequelizeInstance) {
-    await sequelizeInstance.close();
-    sequelizeInstance = null;
-    info('Database connection closed');
-  }
 };
 
 /**
  * Sync all models with the database
  */
-export const syncDatabase = async (): Promise<void> => {
-  const sequelize = await getSequelizeInstance();
-
+export const syncDatabase = async (
+  sequelize: Sequelize,
+  configuration?: RemoteStateServerConfiguration
+): Promise<void> => {
+  const { info, error } = createLogger({
+    scope: 'syncDatabase',
+    logLevel: configuration?.minimumLogLevel,
+  });
   try {
     await sequelize.sync({ alter: true }); // Use alter to update existing tables
     info('Database schema synchronized successfully');

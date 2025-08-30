@@ -3,8 +3,8 @@ import { GamePlugin } from './types';
 
 import cors from 'cors';
 import { createServer } from 'http';
-import { createLogger } from '../utils/logger';
-import { initializeDatabase, closeDatabase } from '../database/instance';
+import { createLogger, LogLevel } from '../utils/logger';
+import { initializeDatabase } from '../database/instance';
 
 import { getState } from './routes/getState';
 import { postAction } from './routes/postAction';
@@ -12,13 +12,21 @@ import { postGame } from './routes/postGame';
 import { postPlayer } from './routes/postPlayer';
 
 import * as process from 'process';
+import { createDatabaseService } from '../database';
 
 export interface RemoteStateServer {
   app: Express;
   server: ReturnType<typeof createServer>;
-  startServer: () => void;
-  shutdown: () => Promise<void>;
+  startServer: () => Promise<void>;
+  shutdown: (andExit?: boolean) => Promise<void>;
   port: number;
+}
+
+export interface RemoteStateServerConfiguration {
+  minimumLogLevel?: LogLevel;
+  /** Database persistence configuration */
+  persistDatabase?: boolean;
+  databaseFilename?: string;
 }
 
 export const createRemoteStateServer = async <StateType, ActionType>(
@@ -27,12 +35,19 @@ export const createRemoteStateServer = async <StateType, ActionType>(
 ): Promise<RemoteStateServer> => {
   const { info, error } = createLogger({
     scope: 'remote-state-server',
+    logLevel: plugin.serverConfiguration?.minimumLogLevel,
   });
 
-  const databasePath = plugin.persistDatabase ? plugin.databaseFilename || 'games.db' : ':memory:';
-  const database = await initializeDatabase({ databasePath, sync: true }).catch(err => {
+  const databasePath = plugin.serverConfiguration?.persistDatabase
+    ? plugin.serverConfiguration?.databaseFilename || 'games.db'
+    : ':memory:';
+  const database = await initializeDatabase(
+    { databasePath, sync: true },
+    plugin.serverConfiguration
+  ).catch(err => {
     throw new Error('Failed to initialize database:', err);
   });
+  const databaseService = createDatabaseService(database, plugin.serverConfiguration);
 
   const app = express();
 
@@ -44,16 +59,16 @@ export const createRemoteStateServer = async <StateType, ActionType>(
   app.use(express.json());
 
   // Action submission endpoint
-  app.post('/api/games/:gameId/actions', postAction(app, database, plugin));
+  app.post('/api/games/:gameId/actions', postAction(databaseService, plugin));
 
   // Current state retrieval endpoint
-  app.get('/api/games/:gameId/state/:cursor', getState(app, database, plugin));
+  app.get('/api/games/:gameId/state/:cursor', getState(databaseService, plugin));
 
   // Self-register as game owner endpoint
-  app.post('/api/games', postGame(app, database, plugin));
+  app.post('/api/games', postGame(databaseService, plugin));
 
   // Self-register as joining player endpoint
-  app.post('/api/games/:gameId/players', postPlayer(app, database, plugin));
+  app.post('/api/games/:gameId/players', postPlayer(databaseService, plugin));
 
   // Health check endpoint
   app.get('/health', (_req: Request, res: Response) => {
@@ -76,19 +91,21 @@ export const createRemoteStateServer = async <StateType, ActionType>(
   });
 
   // Helper function to start the server
-  const startServer = () => {
-    server.listen(port, () => {
-      info(`Remote State server listening at http://localhost:${port}`);
-      info(`Game: ${plugin.gameConfig?.name || 'Unknown Game'}`);
+  const startServer = () =>
+    new Promise<void>(resolve => {
+      server.listen(port, () => {
+        info(`Remote State server listening at http://localhost:${port}`);
+        info(`Game: ${plugin.gameConfig?.name || 'Unknown Game'}`);
+        resolve();
+      });
     });
-  };
 
   // Graceful shutdown handling
-  const shutdown = async () => {
+  const shutdown = async (andExit: boolean = true) => {
     info('Shutting down server...');
     try {
       // Close database connections
-      await closeDatabase();
+      await database.close();
       // Close HTTP server
       await new Promise<void>((resolve, reject) => {
         server.close(err => {
@@ -100,10 +117,10 @@ export const createRemoteStateServer = async <StateType, ActionType>(
         });
       });
       info('Server shut down successfully');
-      process.exit(0);
+      if (andExit) process.exit(0);
     } catch (_error) {
       error('Error during shutdown:', { _error });
-      process.exit(1);
+      if (andExit) process.exit(1);
     }
   };
 
