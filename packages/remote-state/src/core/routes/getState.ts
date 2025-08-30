@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
 import { GamePlugin } from '../types';
 import { createLogger } from '../../utils/logger';
-import { DatabaseService } from '../../database';
+import { DatabaseService } from '../../database/service';
 
 // Current state retrieval endpoint
 export const getState = <StateType, ActionType>(

@@ -11,6 +11,14 @@ export type GameAction =
   | { type: 'join'; playerId: string; timestamp: Date }
   | { type: 'leave'; playerId: string; timestamp: Date };
 
+export interface SocketIOServerConfiguration {
+  enabled?: boolean;
+  cors?: {
+    origin: string | string[];
+    methods: string[];
+  };
+}
+
 export const isMoveAction = (
   action: GameAction
 ): action is Extract<GameAction, { type: 'move' }> => {

@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
 import { GamePlugin } from '../types';
 import { createLogger } from '../../utils/logger';
-import { DatabaseService } from '../../database';
+import { DatabaseService } from '../../database/service';
 
 export const postPlayer = <StateType, ActionType>(
   database: DatabaseService<StateType, ActionType>,

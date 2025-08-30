@@ -10,4 +10,9 @@ module.exports = {
   transform: {
     '^.+\\.tsx?$': 'ts-jest',
   },
+  globals: {
+    jest: {
+      globals: true,
+    },
+  },
 };

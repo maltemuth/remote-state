@@ -2,12 +2,14 @@ import { Request, Response } from 'express';
 import { GamePlugin } from '../types';
 import { createLogger } from '../../utils/logger';
 import { Player } from '../../database/models';
-import { DatabaseService } from '../../database';
+import { DatabaseService } from '../../database/service';
+import { SocketIOManager } from '../socket';
 
 // Action submission endpoint
 export const postAction = <StateType, ActionType>(
   database: DatabaseService<StateType, ActionType>,
-  gamePlugin: GamePlugin<StateType, ActionType>
+  gamePlugin: GamePlugin<StateType, ActionType>,
+  socketIOManager?: SocketIOManager<StateType, ActionType>
 ) => {
   const { info, error } = createLogger({
     scope: 'postAction',
@@ -92,6 +94,18 @@ export const postAction = <StateType, ActionType>(
         actionData: action,
         gameState: executionResult.state,
       });
+
+      // Broadcast game state update via Socket.IO if manager is available
+      if (socketIOManager) {
+        const updateEvent = {
+          gameId,
+          state: executionResult.state,
+          timestamp: new Date(),
+          actionType: action.type || 'unknown',
+          playerId: player.id,
+        };
+        socketIOManager.broadcastGameStateUpdate(updateEvent);
+      }
 
       // Return success response
       res.status(201).json(executionResult.state);

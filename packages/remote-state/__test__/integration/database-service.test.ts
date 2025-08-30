@@ -4,7 +4,7 @@ import { createSequelizeInstance, syncDatabase } from '../../src/database/sequel
 
 // Import Jest globals
 import { describe, beforeAll, afterAll, test, expect } from '@jest/globals';
-import { createDatabaseService, DatabaseService } from '../../src/database';
+import { createDatabaseService, DatabaseService } from '../../src/database/service';
 
 const { info: _info, error: _error } = createLogger({
   scope: 'database-service-test',

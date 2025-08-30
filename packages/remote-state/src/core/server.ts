@@ -5,6 +5,7 @@ import cors from 'cors';
 import { createServer } from 'http';
 import { createLogger, LogLevel } from '../utils/logger';
 import { initializeDatabase } from '../database/instance';
+import { SocketIOManager } from './socket';
 
 import { getState } from './routes/getState';
 import { postAction } from './routes/postAction';
@@ -12,11 +13,12 @@ import { postGame } from './routes/postGame';
 import { postPlayer } from './routes/postPlayer';
 
 import * as process from 'process';
-import { createDatabaseService } from '../database';
+import { createDatabaseService } from '../database/service';
 
 export interface RemoteStateServer {
   app: Express;
   server: ReturnType<typeof createServer>;
+  socketIOManager?: SocketIOManager<any, any>;
   startServer: () => Promise<void>;
   shutdown: (andExit?: boolean) => Promise<void>;
   port: number;
@@ -27,6 +29,14 @@ export interface RemoteStateServerConfiguration {
   /** Database persistence configuration */
   persistDatabase?: boolean;
   databaseFilename?: string;
+  /** Socket.IO server configuration */
+  socketIO?: {
+    enabled?: boolean;
+    cors?: {
+      origin: string | string[];
+      methods: string[];
+    };
+  };
 }
 
 export const createRemoteStateServer = async <StateType, ActionType>(
@@ -54,12 +64,23 @@ export const createRemoteStateServer = async <StateType, ActionType>(
   // Create HTTP server
   const server = createServer(app);
 
+  // Socket.IO Manager
+  let socketIOManager: SocketIOManager<StateType, ActionType> | null = null;
+  if (plugin.serverConfiguration?.socketIO?.enabled !== false) {
+    socketIOManager = new SocketIOManager<StateType, ActionType>(
+      server,
+      databaseService,
+      plugin,
+      plugin.serverConfiguration?.socketIO
+    );
+  }
+
   // Middleware
   app.use(cors());
   app.use(express.json());
 
   // Action submission endpoint
-  app.post('/api/games/:gameId/actions', postAction(databaseService, plugin));
+  app.post('/api/games/:gameId/actions', postAction(databaseService, plugin, socketIOManager));
 
   // Current state retrieval endpoint
   app.get('/api/games/:gameId/state/:cursor', getState(databaseService, plugin));
@@ -133,6 +154,7 @@ export const createRemoteStateServer = async <StateType, ActionType>(
   return {
     app,
     server,
+    socketIOManager,
     startServer,
     shutdown,
     port,

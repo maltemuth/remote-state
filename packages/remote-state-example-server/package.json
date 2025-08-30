@@ -20,7 +20,9 @@
   },
   "dependencies": {
     "@malte.muth/remote-state": "file:../remote-state",
-    "express": "^5"
+    "express": "^5",
+    "socket.io": "^4.7.5",
+    "socket.io-client": "^4.7.5"
   },
   "devDependencies": {
     "@types/better-sqlite3": "^7.6.13",

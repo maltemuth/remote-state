@@ -24,7 +24,7 @@ export const createSequelizeInstance = async (
   const sequelizeInstance = new Sequelize({
     dialect: 'sqlite',
     storage: databasePath,
-    logging: info, // Enable logging to see SQL queries
+    logging: false, // Enable logging to see SQL queries
     models: [Game, Player, GameState], // Register models directly
   });
 
