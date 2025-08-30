@@ -7,6 +7,7 @@ import { AddPlayerDataSchema, GameDataSchema } from './validation';
 import { Sequelize } from 'sequelize';
 import { Transaction } from 'sequelize';
 import { RemoteStateServerConfiguration } from '../core/server';
+import * as crypto from 'crypto';
 
 /**
  * Create a new game
@@ -39,7 +40,7 @@ const createGameWithOwnerAndInitialState = async <StateType>(
         role: 'admin',
         gameId: game.id,
         token: generateToken(64, logger),
-        tokenType: 'insecure',
+        tokenType: 'secure',
       },
       { transaction }
     );
@@ -99,24 +100,32 @@ const addPlayerToGame = async (
     name: validatedData.name,
     role: validatedData.role,
     token: generateToken(64, logger),
-    tokenType: 'insecure',
+    tokenType: 'secure',
   });
 
   return newPlayer;
 };
 
 /**
- * Generate a secure random token
- * @deprecated
+ * Generate a cryptographically secure random token
+ * @param length - The desired length of the token (default: 32)
+ * @param logger - Logger instance for logging
+ * @returns A secure random token
  */
-const generateToken = (length: number = 32, { warn }: Logger): string => {
-  warn('Insecure token generator called.');
-  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
-  let result = '';
-  for (let i = 0; i < length; i++) {
-    result += chars.charAt(Math.floor(Math.random() * chars.length));
-  }
-  return result;
+const generateToken = (length: number = 32, { debug }: Logger): string => {
+  debug(`Generating secure token with length: ${length}`);
+
+  // Calculate the number of bytes needed to achieve the desired length
+  // Each byte can be represented as 2 hex characters, so we need length/2 bytes
+  const byteLength = Math.ceil(length / 2);
+
+  // Generate cryptographically secure random bytes
+  const randomBytes = crypto.randomBytes(byteLength);
+
+  // Convert to hexadecimal and truncate to desired length
+  const token = randomBytes.toString('hex').substring(0, length);
+
+  return token;
 };
 
 /**

@@ -84,7 +84,7 @@ describe('Database Service Integration Tests', () => {
       expect(admin.name).toBe(playerData.name);
       expect(admin.role).toBe('admin');
       expect(admin.createdAt).toBeDefined();
-      expect(admin.tokenType).toBe('insecure');
+      expect(admin.tokenType).toBe('secure');
       expect(admin.token).toBeDefined();
     });
 
@@ -105,7 +105,7 @@ describe('Database Service Integration Tests', () => {
 
       expect(player).toBeDefined();
       expect(player.role).toBe('player');
-      expect(player.tokenType).toBe('insecure');
+      expect(player.tokenType).toBe('secure');
       expect(player.token).toBeDefined();
     });
 
