@@ -13,7 +13,6 @@ export const postAction = <StateType, ActionType>(
 ) => {
   const { info, error } = createLogger({
     scope: 'postAction',
-    logLevel: gamePlugin.serverConfiguration?.minimumLogLevel,
   });
   return async (req: Request, res: Response) => {
     try {

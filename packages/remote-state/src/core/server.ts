@@ -3,7 +3,7 @@ import { GamePlugin } from './types';
 
 import cors from 'cors';
 import { createServer } from 'http';
-import { createLogger, LogLevel } from '../utils/logger';
+import { createLogger, LogLevel, setGlobalLogLevel } from '../utils/logger';
 import { initializeDatabase } from '../database/instance';
 import { SocketIOManager } from './socket';
 
@@ -43,9 +43,13 @@ export const createRemoteStateServer = async <StateType, ActionType>(
   plugin: GamePlugin<StateType, ActionType>,
   port: number = 3000
 ): Promise<RemoteStateServer> => {
+  // Set global log level from configuration
+  if (plugin.serverConfiguration?.minimumLogLevel !== undefined) {
+    setGlobalLogLevel(plugin.serverConfiguration.minimumLogLevel);
+  }
+
   const { info, error } = createLogger({
     scope: 'remote-state-server',
-    logLevel: plugin.serverConfiguration?.minimumLogLevel,
   });
 
   const databasePath = plugin.serverConfiguration?.persistDatabase
@@ -99,6 +103,24 @@ export const createRemoteStateServer = async <StateType, ActionType>(
       game: plugin.gameConfig?.name || 'Unknown Game',
     });
   });
+
+  // Runtime log level adjustment endpoint (development only)
+  if (process.env.NODE_ENV !== 'production') {
+    app.post('/admin/log-level', (req: Request, res: Response) => {
+      const { level } = req.body;
+      if (level !== undefined && LogLevel[level] !== undefined) {
+        const logLevel = LogLevel[level as keyof typeof LogLevel];
+        setGlobalLogLevel(logLevel);
+        info(`Log level changed to: ${level}`);
+        res.json({ success: true, message: `Log level set to ${level}` });
+      } else {
+        res.status(400).json({
+          success: false,
+          message: 'Invalid log level. Valid levels: debug, info, warn, error',
+        });
+      }
+    });
+  }
 
   // Error handling middleware
   app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {

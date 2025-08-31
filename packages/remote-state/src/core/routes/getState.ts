@@ -6,11 +6,10 @@ import { DatabaseService } from '../../database/service';
 // Current state retrieval endpoint
 export const getState = <StateType, ActionType>(
   database: DatabaseService<StateType, ActionType>,
-  plugin: GamePlugin<StateType, ActionType>
+  _plugin: GamePlugin<StateType, ActionType>
 ) => {
   const { info, error } = createLogger({
     scope: 'getState',
-    logLevel: plugin.serverConfiguration?.minimumLogLevel,
   });
   return async (req: Request, res: Response) => {
     try {

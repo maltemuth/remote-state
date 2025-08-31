@@ -12,6 +12,24 @@ export enum LogLevel {
 
 const { console } = globalThis;
 
+// Global log level that all loggers inherit by default
+let globalLogLevel: LogLevel = LogLevel.debug;
+
+/**
+ * Set the global log level for all loggers
+ * @param level The minimum log level to display
+ */
+export const setGlobalLogLevel = (level: LogLevel): void => {
+  globalLogLevel = level;
+};
+
+/**
+ * Get the current global log level
+ */
+export const getGlobalLogLevel = (): LogLevel => {
+  return globalLogLevel;
+};
+
 interface LogEntry {
   scope?: string;
   timestamp: string;
@@ -78,7 +96,7 @@ const createLevelLogger = (level: LogLevel, options: StrictLoggerOptions): Logge
 
 export const createLogger = (options?: LoggerOptions): Logger => {
   const optionsWithDefaults: StrictLoggerOptions = {
-    logLevel: LogLevel.debug,
+    logLevel: options?.logLevel ?? globalLogLevel,
     ...options,
   };
   return {

@@ -33,7 +33,6 @@ export class SocketIOManager<StateType, ActionType> {
   ) {
     this.logger = createLogger({
       scope: 'socket-io-manager',
-      logLevel: plugin.serverConfiguration?.minimumLogLevel,
     });
 
     this.io = new SocketIOServer(httpServer, {
