@@ -181,7 +181,7 @@ const recordAction = async <S, A>(
 const getCurrentGameState = async <S>(
   gameId: string,
   { info }: Logger
-): Promise<{ gameId: string; state: S; timestamp: Date } | null> => {
+): Promise<{ gameId: string; state: S; timestamp: Date; stateId: string } | null> => {
   info(`Retrieving current game state for game: ${gameId}`);
 
   const result = await GameState.findOne({
@@ -200,6 +200,7 @@ const getCurrentGameState = async <S>(
     gameId: result.gameId,
     state: parsedState,
     timestamp: result.createdAt,
+    stateId: result.id,
   };
 };
 
@@ -210,7 +211,7 @@ const getCurrentGameStateForPlayer = async <S>(
   gameId: string,
   playerId: string,
   { info }: Logger
-): Promise<{ gameId: string; state: S; timestamp: Date } | null> => {
+): Promise<{ gameId: string; state: S; timestamp: Date; stateId: string } | null> => {
   info(`Retrieving current game state for game: ${gameId} and player: ${playerId}`);
 
   const result = await GameState.findOne({
@@ -229,6 +230,7 @@ const getCurrentGameStateForPlayer = async <S>(
     gameId: result.gameId,
     state: parsedState,
     timestamp: result.createdAt,
+    stateId: result.id,
   };
 };
 

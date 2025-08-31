@@ -63,7 +63,7 @@ export const postAction = <StateType, ActionType>(
       const { state } = await database.getCurrentGameState<StateType>(gameId);
       info(`Current state:`, state);
       // Use game-specific validation through dedicated module
-      const validationResult = gamePlugin.validateAction(state, action as ActionType);
+      const validationResult = gamePlugin.validateAction(state, action as ActionType, player.id);
       if (!validationResult.valid) {
         return res.status(400).json({
           error: validationResult.error || 'Invalid action',
@@ -82,7 +82,8 @@ export const postAction = <StateType, ActionType>(
 
       const executionResult = gamePlugin.executeAction(
         state,
-        actionWithPlayer as ActionType & { playerId: string; timestamp: Date }
+        actionWithPlayer as ActionType & { playerId: string; timestamp: Date },
+        player.id
       );
 
       // Record the action in the database
@@ -94,14 +95,14 @@ export const postAction = <StateType, ActionType>(
         gameState: executionResult.state,
       });
 
+      // Get the current game state to get the state ID
+      const currentGameState = await database.getCurrentGameState<StateType>(gameId);
+
       // Broadcast game state update via Socket.IO if manager is available
-      if (socketIOManager) {
+      if (socketIOManager && currentGameState) {
         const updateEvent = {
           gameId,
-          state: executionResult.state,
-          timestamp: new Date(),
-          actionType: action.type || 'unknown',
-          playerId: player.id,
+          stateId: currentGameState.stateId,
         };
         socketIOManager.broadcastGameStateUpdate(updateEvent);
       }

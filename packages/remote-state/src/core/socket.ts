@@ -1,6 +1,6 @@
 import { Server as SocketIOServer, Socket } from 'socket.io';
 import { Server as HTTPServer } from 'http';
-import { createLogger } from '../utils/logger';
+import { createLogger, Logger } from '../utils/logger';
 import { GamePlugin } from './types';
 import { DatabaseService } from '../database/service';
 
@@ -11,17 +11,14 @@ export interface SocketIOServerConfig {
   };
 }
 
-export interface GameStateUpdateEvent<StateType> {
+export interface GameStateUpdateEvent {
   gameId: string;
-  state: StateType;
-  timestamp: Date;
-  actionType: string;
-  playerId: string;
+  stateId: string;
 }
 
 export class SocketIOManager<StateType, ActionType> {
   private io: SocketIOServer;
-  private logger;
+  private logger: Logger;
   public gameRooms: Map<string, Set<string>> = new Map();
   public playerSockets: Map<string, string> = new Map(); // playerId -> socketId
 
@@ -73,16 +70,6 @@ export class SocketIOManager<StateType, ActionType> {
 
           // Track player socket mapping
           this.playerSockets.set(playerId, socket.id);
-
-          // Send current game state to the player
-          const gameState = await this.database.getCurrentGameState<StateType>(gameId);
-          if (gameState) {
-            socket.emit('game-state', {
-              gameId: gameState.gameId,
-              state: gameState.state,
-              timestamp: gameState.timestamp,
-            });
-          }
 
           // Notify other players in the game
           socket.to(gameId).emit('player-joined', {
@@ -142,23 +129,47 @@ export class SocketIOManager<StateType, ActionType> {
 
   /**
    * Broadcast game state update to all players in the game room
+   * Each player receives the state ID
    */
-  public broadcastGameStateUpdate(event: GameStateUpdateEvent<StateType>): void {
-    const { gameId, state, timestamp, actionType, playerId } = event;
+  public broadcastGameStateUpdate(event: GameStateUpdateEvent): void {
+    const { gameId, stateId } = event;
 
     this.logger.info(`Broadcasting state update for game ${gameId}`, {
-      actionType,
-      playerId,
+      stateId,
     });
 
-    // Emit to all clients in the game room
-    this.io.to(gameId).emit('game-state-update', {
-      gameId,
-      state,
-      timestamp,
-      actionType,
-      playerId,
+    // Get all connected players in the game room
+    const connectedPlayers = this.getConnectedPlayersInGame(gameId);
+
+    // Send state ID to each connected player individually
+    connectedPlayers.forEach(playerId => {
+      this.sendToPlayer(playerId, 'game-state-update', {
+        gameId,
+        stateId,
+      });
     });
+  }
+
+  /**
+   * Get all connected player IDs in a specific game room
+   */
+  private getConnectedPlayersInGame(gameId: string): string[] {
+    const players: string[] = [];
+
+    // Get all socket IDs in the game room
+    const socketIds = this.gameRooms.get(gameId);
+    if (!socketIds) {
+      return players;
+    }
+
+    // Find which player IDs correspond to these socket IDs
+    for (const [playerId, socketId] of this.playerSockets.entries()) {
+      if (socketIds.has(socketId)) {
+        players.push(playerId);
+      }
+    }
+
+    return players;
   }
 
   /**

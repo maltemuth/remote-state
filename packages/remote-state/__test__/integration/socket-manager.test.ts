@@ -70,22 +70,33 @@ describe('SocketIOManager', () => {
   });
 
   describe('broadcastGameStateUpdate', () => {
-    it('should broadcast game state update to all clients in game room', () => {
+    it('should send game state update to all connected players in game room', () => {
       const mockEmit = jest.fn();
       const mockTo = jest.fn().mockReturnValue({ emit: mockEmit });
       mockSocketIO.to = mockTo as any;
 
+      // Mock player sockets
+      // @ts-ignore - Accessing private property for testing
+      socketManager.playerSockets.set('player1', 'socket1');
+      // @ts-ignore - Accessing private property for testing
+      socketManager.playerSockets.set('player2', 'socket2');
+
+      // Mock game room with connected players
+      // @ts-ignore - Accessing private property for testing
+      socketManager.gameRooms.set('test-game', new Set(['socket1', 'socket2']));
+
       const updateEvent = {
         gameId: 'test-game',
-        state: { board: Array(9).fill(null) },
-        timestamp: new Date(),
-        actionType: 'move',
-        playerId: 'player1',
+        stateId: 'state-123',
       };
 
       socketManager.broadcastGameStateUpdate(updateEvent);
 
-      expect(mockTo).toHaveBeenCalledWith('test-game');
+      // Should emit to each individual player socket
+      expect(mockTo).toHaveBeenCalledTimes(2);
+      expect(mockTo).toHaveBeenCalledWith('socket1');
+      expect(mockTo).toHaveBeenCalledWith('socket2');
+      expect(mockEmit).toHaveBeenCalledTimes(2);
       expect(mockEmit).toHaveBeenCalledWith('game-state-update', updateEvent);
     });
   });
