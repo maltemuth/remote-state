@@ -106,7 +106,7 @@ export const createRemoteStateServer = async <StateType, ActionType, PlayerState
   app.post('/api/games', postGame(databaseService, plugin));
 
   // Self-register as joining player endpoint
-  app.post('/api/games/:gameId/players', postPlayer(databaseService, plugin));
+  app.post('/api/games/:gameId/players', postPlayer(databaseService, plugin, socketIOManager));
 
   // Health check endpoint
   app.get('/health', (_req: Request, res: Response) => {

@@ -2,10 +2,12 @@ import { Request, Response } from 'express';
 import { GamePlugin } from '../types';
 import { createLogger } from '../../utils/logger';
 import { DatabaseService } from '../../database/service';
+import { SocketIOManager } from '../socket';
 
 export const postPlayer = <StateType, ActionType, PlayerStateType>(
   database: DatabaseService<StateType, ActionType, PlayerStateType>,
-  plugin: GamePlugin<StateType, ActionType, PlayerStateType>
+  plugin: GamePlugin<StateType, ActionType, PlayerStateType>,
+  socketIOManager?: SocketIOManager<StateType, ActionType, PlayerStateType>
 ) => {
   const { info, error } = createLogger({
     scope: 'postPlayer',
@@ -34,6 +36,14 @@ export const postPlayer = <StateType, ActionType, PlayerStateType>(
       );
 
       info(`Created joining player: ${player.name} for game ${gameId}`);
+
+      // Notify other players in the game about the new player
+      if (socketIOManager) {
+        socketIOManager.broadcastToGame(gameId, 'player-joined', {
+          playerId: player.id,
+          playerName: player.name,
+        });
+      }
 
       // Return the player ID and token
       res.status(201).json({
