@@ -188,18 +188,4 @@ export class SocketIOManager<StateType, ActionType, PlayerStateType> {
       this.io.to(socketId).emit(event, data);
     }
   }
-
-  /**
-   * Get the number of connected players in a game
-   */
-  public getGamePlayerCount(gameId: string): number {
-    return this.gameRooms.get(gameId)?.size || 0;
-  }
-
-  /**
-   * Get all socket.io server instance for custom event handling
-   */
-  public getIO(): SocketIOServer {
-    return this.io;
-  }
 }

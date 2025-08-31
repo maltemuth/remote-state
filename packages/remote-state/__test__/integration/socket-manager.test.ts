@@ -139,29 +139,4 @@ describe('SocketIOManager', () => {
       expect(mockEmit).not.toHaveBeenCalled();
     });
   });
-
-  describe('getGamePlayerCount', () => {
-    it('should return number of players in game room', () => {
-      // @ts-ignore - Accessing private property for testing
-      socketManager.gameRooms.set('test-game', new Set(['socket1', 'socket2', 'socket3']));
-
-      const count = socketManager.getGamePlayerCount('test-game');
-
-      expect(count).toBe(3);
-    });
-
-    it('should return 0 if game room does not exist', () => {
-      const count = socketManager.getGamePlayerCount('non-existent-game');
-
-      expect(count).toBe(0);
-    });
-  });
-
-  describe('getIO', () => {
-    it('should return socket.io server instance', () => {
-      const ioInstance = socketManager.getIO();
-
-      expect(ioInstance).toBe(mockSocketIO);
-    });
-  });
 });
