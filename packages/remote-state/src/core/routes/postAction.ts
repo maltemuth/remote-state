@@ -3,13 +3,13 @@ import { GamePlugin } from '../types';
 import { createLogger } from '../../utils/logger';
 import { Player } from '../../database/models';
 import { DatabaseService } from '../../database/service';
-import { SocketIOManager } from '../socket';
+import { SocketManager } from '../socket';
 
 // Action submission endpoint
 export const postAction = <StateType, ActionType, PlayerStateType>(
   database: DatabaseService<StateType, ActionType, PlayerStateType>,
   gamePlugin: GamePlugin<StateType, ActionType, PlayerStateType>,
-  socketIOManager?: SocketIOManager<StateType, ActionType, PlayerStateType>
+  socketIOManager?: SocketManager<PlayerStateType>
 ) => {
   const { debug, error } = createLogger({
     scope: 'postAction',

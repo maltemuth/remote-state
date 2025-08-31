@@ -2,12 +2,12 @@ import { Request, Response } from 'express';
 import { GamePlugin } from '../types';
 import { createLogger } from '../../utils/logger';
 import { DatabaseService } from '../../database/service';
-import { SocketIOManager } from '../socket';
+import { SocketManager } from '../socket';
 
 export const postPlayer = <StateType, ActionType, PlayerStateType>(
   database: DatabaseService<StateType, ActionType, PlayerStateType>,
   plugin: GamePlugin<StateType, ActionType, PlayerStateType>,
-  socketIOManager?: SocketIOManager<StateType, ActionType, PlayerStateType>
+  socketIOManager?: SocketManager<PlayerStateType>
 ) => {
   const { info, error } = createLogger({
     scope: 'postPlayer',

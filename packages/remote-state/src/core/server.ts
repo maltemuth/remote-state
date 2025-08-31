@@ -5,7 +5,7 @@ import cors from 'cors';
 import { createServer } from 'http';
 import { createLogger, LogLevel, setGlobalLogLevel } from '../utils/logger';
 import { initializeDatabase } from '../database/instance';
-import { SocketIOManager } from './socket';
+import { createSocketManager, SocketManager } from './socket';
 
 import { getState } from './routes/getState';
 import { postAction } from './routes/postAction';
@@ -15,10 +15,10 @@ import { postPlayer } from './routes/postPlayer';
 import * as process from 'process';
 import { createDatabaseService } from '../database/service';
 
-export interface RemoteStateServer<StateType, ActionType, PlayerStateType> {
+export interface RemoteStateServer<_StateType, _ActionType, PlayerStateType> {
   app: Express;
   server: ReturnType<typeof createServer>;
-  socketIOManager?: SocketIOManager<StateType, ActionType, PlayerStateType>;
+  socketIOManager?: SocketManager<PlayerStateType>;
   startServer: () => Promise<void>;
   shutdown: (andExit?: boolean) => Promise<void>;
   port: number;
@@ -69,7 +69,7 @@ export const createRemoteStateServer = async <StateType, ActionType, PlayerState
   const server = createServer(app);
 
   // Socket.IO Manager
-  let socketIOManager: SocketIOManager<StateType, ActionType, PlayerStateType> | null = null;
+  let socketIOManager: SocketManager<PlayerStateType> | null = null;
   if (plugin.serverConfiguration?.socketIO?.enabled !== false) {
     // Create authenticatePlayer function that uses the database service
     const authenticatePlayer = async (playerId: string, token: string, gameId: string) => {
@@ -81,7 +81,7 @@ export const createRemoteStateServer = async <StateType, ActionType, PlayerState
       return { player, game };
     };
 
-    socketIOManager = new SocketIOManager<StateType, ActionType, PlayerStateType>(
+    socketIOManager = createSocketManager<StateType, ActionType, PlayerStateType>(
       server,
       authenticatePlayer,
       plugin,
