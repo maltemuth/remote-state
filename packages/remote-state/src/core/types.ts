@@ -1,16 +1,5 @@
 import { RemoteStateServerConfiguration } from './server';
 
-export type GameAction =
-  | {
-      type: 'move';
-      position: [number, number];
-      playerId: string;
-      timestamp: Date;
-    }
-  | { type: 'restart'; playerId: string; timestamp: Date }
-  | { type: 'join'; playerId: string; timestamp: Date }
-  | { type: 'leave'; playerId: string; timestamp: Date };
-
 export interface SocketIOServerConfiguration {
   enabled?: boolean;
   cors?: {
@@ -18,12 +7,6 @@ export interface SocketIOServerConfiguration {
     methods: string[];
   };
 }
-
-export const isMoveAction = (
-  action: GameAction
-): action is Extract<GameAction, { type: 'move' }> => {
-  return action.type === 'move';
-};
 
 export interface GameValidationResult {
   valid: boolean;
@@ -41,10 +24,11 @@ export interface GameMoveResult<StateType> {
 
 export interface GamePlugin<StateType, ActionType> {
   getInitialState: () => StateType;
-  validateAction: (state: StateType, action: ActionType) => GameValidationResult;
+  validateAction: (state: StateType, action: ActionType, playerId: string) => GameValidationResult;
   executeAction: (
     state: StateType,
-    action: ActionType & { playerId: string; timestamp: Date }
+    action: ActionType,
+    playerId: string
   ) => GameMoveResult<StateType>;
   filterStateForPlayer?: (state: StateType, playerId: string) => StateType;
   gameConfig?: {
