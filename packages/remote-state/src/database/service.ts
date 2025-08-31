@@ -1,4 +1,4 @@
-import { createLogger, Logger } from '../utils/logger';
+import { createLogger } from '../utils/logger';
 import { safeJsonParse, safeJsonStringify } from '../utils/json';
 import { GameState } from './models/GameState';
 import { Game } from './models/Game';
@@ -6,8 +6,11 @@ import { Player } from './models/Player';
 import { AddPlayerDataSchema, GameDataSchema } from './validation';
 import { Sequelize } from 'sequelize';
 import { Transaction } from 'sequelize';
-import { RemoteStateServerConfiguration } from '../core/server';
 import * as crypto from 'crypto';
+
+const { debug, error } = createLogger({
+  scope: 'database',
+});
 
 /**
  * Create a new game
@@ -16,8 +19,7 @@ const createGameWithOwnerAndInitialState = async <StateType>(
   database: Sequelize,
   gameData: Pick<Game, 'name'>,
   ownerData: Pick<Player, 'name'>,
-  initialState: StateType,
-  logger: Logger
+  initialState: StateType
 ): Promise<{
   game: Game;
   admin: Player;
@@ -26,7 +28,7 @@ const createGameWithOwnerAndInitialState = async <StateType>(
   const validatedData = GameDataSchema.parse(gameData);
 
   return await database.transaction(async (transaction: Transaction) => {
-    logger.info(`Creating new game: ${validatedData.name}`);
+    debug(`Creating new game: ${validatedData.name}`);
     const game = await Game.create(
       {
         name: validatedData.name,
@@ -39,7 +41,7 @@ const createGameWithOwnerAndInitialState = async <StateType>(
         name: ownerData.name,
         role: 'admin',
         gameId: game.id,
-        token: generateToken(64, logger),
+        token: generateToken(64),
         tokenType: 'secure',
       },
       { transaction }
@@ -66,8 +68,8 @@ const createGameWithOwnerAndInitialState = async <StateType>(
 /**
  * Get a game by ID
  */
-const getGame = async (gameId: string, { info }: Logger): Promise<Game> => {
-  info(`Retrieving game: ${gameId}`);
+const getGame = async (gameId: string): Promise<Game> => {
+  debug(`Retrieving game: ${gameId}`);
 
   const result = await Game.findByPk(gameId);
 
@@ -83,8 +85,7 @@ const getGame = async (gameId: string, { info }: Logger): Promise<Game> => {
  */
 const addPlayerToGame = async (
   game: Pick<Game, 'id'>,
-  player: Pick<Player, 'name' | 'role'>,
-  logger: Logger
+  player: Pick<Player, 'name' | 'role'>
 ): Promise<Player> => {
   // Validate input
   const validatedData = AddPlayerDataSchema.parse({
@@ -93,13 +94,13 @@ const addPlayerToGame = async (
     role: player.role,
   });
 
-  logger.info(`Adding player ${validatedData.name} to game ${validatedData.id}`);
+  debug(`Adding player ${validatedData.name} to game ${validatedData.id}`);
 
   const newPlayer = await Player.create({
     gameId: validatedData.id,
     name: validatedData.name,
     role: validatedData.role,
-    token: generateToken(64, logger),
+    token: generateToken(64),
     tokenType: 'secure',
   });
 
@@ -112,7 +113,7 @@ const addPlayerToGame = async (
  * @param logger - Logger instance for logging
  * @returns A secure random token
  */
-const generateToken = (length: number = 32, { debug }: Logger): string => {
+const generateToken = (length: number = 32): string => {
   debug(`Generating secure token with length: ${length}`);
 
   // Calculate the number of bytes needed to achieve the desired length
@@ -131,8 +132,8 @@ const generateToken = (length: number = 32, { debug }: Logger): string => {
 /**
  * Get player by token
  */
-const getPlayerByToken = async (token: string, { info }: Logger): Promise<Player | null> => {
-  info(`Retrieving player by token`);
+const getPlayerByToken = async (token: string): Promise<Player | null> => {
+  debug(`Retrieving player by token`);
 
   const result = await Player.findOne({
     where: {
@@ -147,6 +148,8 @@ const getPlayerByToken = async (token: string, { info }: Logger): Promise<Player
   return result;
 };
 
+const findPlayer = async (playerId: string) => await Player.findByPk(playerId);
+
 interface ActionData<S, A> {
   gameId: string;
   playerId: string;
@@ -158,11 +161,8 @@ interface ActionData<S, A> {
 /**
  * Record an action and game state
  */
-const recordAction = async <S, A>(
-  actionData: ActionData<S, A>,
-  { info, error }: Logger
-): Promise<void> => {
-  info(`Recording action: ${actionData.actionType} for game ${actionData.gameId}`);
+const recordAction = async <S, A>(actionData: ActionData<S, A>): Promise<void> => {
+  debug(`Recording action: ${actionData.actionType} for game ${actionData.gameId}`);
 
   const _newGameState = await GameState.create({
     gameId: actionData.gameId,
@@ -179,40 +179,9 @@ const recordAction = async <S, A>(
  * Get current game state
  */
 const getCurrentGameState = async <S>(
-  gameId: string,
-  { info }: Logger
+  gameId: string
 ): Promise<{ gameId: string; state: S; timestamp: Date; stateId: string } | null> => {
-  info(`Retrieving current game state for game: ${gameId}`);
-
-  const result = await GameState.findOne({
-    where: {
-      gameId: gameId,
-    },
-    order: [['sequence', 'DESC']],
-  });
-
-  if (!result) {
-    return null;
-  }
-
-  const parsedState = safeJsonParse<S>(result.state);
-  return {
-    gameId: result.gameId,
-    state: parsedState,
-    timestamp: result.createdAt,
-    stateId: result.id,
-  };
-};
-
-/**
- * Get current game state filtered for a specific player
- */
-const getCurrentGameStateForPlayer = async <S>(
-  gameId: string,
-  playerId: string,
-  { info }: Logger
-): Promise<{ gameId: string; state: S; timestamp: Date; stateId: string } | null> => {
-  info(`Retrieving current game state for game: ${gameId} and player: ${playerId}`);
+  debug(`Retrieving current game state for game: ${gameId}`);
 
   const result = await GameState.findOne({
     where: {
@@ -241,37 +210,25 @@ const getCurrentGameStateForPlayer = async <S>(
 
  * @returns A typed database service instance
  */
-export const createDatabaseService = <StateType, ActionType, _PlayerStateType>(
-  db: Sequelize,
-  configuration?: RemoteStateServerConfiguration
-) => {
-  const logger = createLogger({
-    scope: 'db-service',
-    logLevel: configuration?.minimumLogLevel,
-  });
-
+export const createDatabaseService = <StateType, ActionType, _PlayerStateType>(db: Sequelize) => {
   // Return service with properly typed functions
   return {
-    getGame: (gameId: string) => getGame(gameId, logger),
-
-    // Player operations
-    addPlayerToGame: (game: Pick<Game, 'id'>, player: Pick<Player, 'name' | 'role'>) =>
-      addPlayerToGame(game, player, logger),
-    getPlayerByToken: (token: string) => getPlayerByToken(token, logger),
+    getGame,
+    addPlayerToGame,
+    getPlayerByToken,
 
     // Action operations (typed)
-    recordAction: (actionData: ActionData<StateType, ActionType>) =>
-      recordAction(actionData, logger),
+    recordAction: recordAction<StateType, ActionType>,
 
-    getCurrentGameState: (gameId: string) => getCurrentGameState<StateType>(gameId, logger),
-    getCurrentGameStateForPlayer: (gameId: string, playerId: string) =>
-      getCurrentGameStateForPlayer<StateType>(gameId, playerId, logger),
+    getCurrentGameState: getCurrentGameState<StateType>,
+
+    findPlayer,
 
     createGameWithOwnerAndInitialState: (
       game: Pick<Game, 'name'>,
       admin: Pick<Player, 'name'>,
       initialState: StateType
-    ) => createGameWithOwnerAndInitialState<StateType>(db, game, admin, initialState, logger),
+    ) => createGameWithOwnerAndInitialState<StateType>(db, game, admin, initialState),
   };
 };
 

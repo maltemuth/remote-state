@@ -61,10 +61,7 @@ export const createRemoteStateServer = async <StateType, ActionType, PlayerState
   ).catch(err => {
     throw new Error('Failed to initialize database:', err);
   });
-  const databaseService = createDatabaseService<StateType, ActionType, PlayerStateType>(
-    database,
-    plugin.serverConfiguration
-  );
+  const databaseService = createDatabaseService<StateType, ActionType, PlayerStateType>(database);
 
   const app = express();
 

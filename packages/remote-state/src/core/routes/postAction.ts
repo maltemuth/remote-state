@@ -11,7 +11,7 @@ export const postAction = <StateType, ActionType, PlayerStateType>(
   gamePlugin: GamePlugin<StateType, ActionType, PlayerStateType>,
   socketIOManager?: SocketIOManager<StateType, ActionType, PlayerStateType>
 ) => {
-  const { info, error } = createLogger({
+  const { debug, error } = createLogger({
     scope: 'postAction',
   });
   return async (req: Request, res: Response) => {
@@ -19,7 +19,7 @@ export const postAction = <StateType, ActionType, PlayerStateType>(
       const { gameId } = req.params;
       const { action, token } = req.body;
 
-      info(`Received action for game ${gameId}:`, { action, hasToken: !!token });
+      debug(`Received action for game ${gameId}:`, { action, hasToken: !!token });
 
       // Validate request
       if (!action) {
@@ -59,9 +59,9 @@ export const postAction = <StateType, ActionType, PlayerStateType>(
       }
 
       // Get current game state
-      info(`Getting current game state for game: ${gameId}`);
+      debug(`Getting current game state for game: ${gameId}`);
       const { state } = await database.getCurrentGameState(gameId);
-      info(`Current state:`, state);
+      debug(`Current state:`, state);
       // Use game-specific validation through dedicated module
       const validationResult = await gamePlugin.validateAction(
         state,
@@ -102,17 +102,19 @@ export const postAction = <StateType, ActionType, PlayerStateType>(
       // Get the current game state to get the state ID
       const currentGameState = await database.getCurrentGameState(gameId);
 
+      // Return success response
+      res.status(201).json(executionResult);
+
       // Broadcast game state update via Socket.IO if manager is available
       if (socketIOManager && currentGameState) {
         const updateEvent = {
           gameId,
           stateId: currentGameState.stateId,
         };
-        socketIOManager.broadcastGameStateUpdate(updateEvent);
+        socketIOManager.broadcastGameStateUpdate(updateEvent, async ({ id: playerId }) => {
+          return gamePlugin.filterStateForPlayer(executionResult, playerId);
+        });
       }
-
-      // Return success response
-      res.status(201).json(executionResult);
     } catch (err) {
       error('Error processing action:', {
         error: err instanceof Error ? err.message : String(err),

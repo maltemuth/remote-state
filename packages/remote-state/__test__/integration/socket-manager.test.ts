@@ -81,14 +81,20 @@ describe('SocketIOManager', () => {
         stateId: 'state-123',
       };
 
-      socketManager.broadcastGameStateUpdate(updateEvent);
+      const mockStateForPlayer = jest.fn(async () => ({ playerState: 'test' }) as any);
+      // Resolve the promise returned by mockStateForPlayer
+      mockStateForPlayer.mockResolvedValue({ playerState: 'test' });
+      socketManager.broadcastGameStateUpdate(updateEvent, mockStateForPlayer);
 
       // Should emit to each individual player socket
       expect(mockTo).toHaveBeenCalledTimes(2);
       expect(mockTo).toHaveBeenCalledWith('socket1');
       expect(mockTo).toHaveBeenCalledWith('socket2');
       expect(mockEmit).toHaveBeenCalledTimes(2);
-      expect(mockEmit).toHaveBeenCalledWith('game-state-update', updateEvent);
+      expect(mockEmit).toHaveBeenCalledWith(
+        'game-state-update',
+        Promise.resolve({ playerState: 'test' })
+      );
     });
   });
 

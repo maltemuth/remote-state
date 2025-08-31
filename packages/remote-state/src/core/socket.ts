@@ -140,7 +140,10 @@ export class SocketIOManager<StateType, ActionType, PlayerStateType> {
    * Broadcast game state update to all players in the game room
    * Each player receives the state ID
    */
-  public broadcastGameStateUpdate(event: GameStateUpdateEvent): void {
+  public broadcastGameStateUpdate(
+    event: GameStateUpdateEvent,
+    stateForPlayer: (player: Pick<Player, 'id'>) => Promise<PlayerStateType>
+  ): void {
     const { gameId, stateId } = event;
 
     this.logger.info(`Broadcasting state update for game ${gameId}`, {
@@ -152,10 +155,7 @@ export class SocketIOManager<StateType, ActionType, PlayerStateType> {
 
     // Send state ID to each connected player individually
     connectedPlayers.forEach(playerId => {
-      this.sendToPlayer(playerId, 'game-state-update', {
-        gameId,
-        stateId,
-      });
+      this.sendToPlayer(playerId, 'game-state-update', stateForPlayer({ id: playerId }));
     });
   }
 
