@@ -1,5 +1,6 @@
 import request from 'supertest';
 import { createRemoteStateServer } from '../../src/core/server';
+import { ActionValidationResult } from '../../src/core/types';
 
 // Import Jest globals
 import { describe, beforeAll, afterAll, it, expect, jest } from '@jest/globals';
@@ -8,13 +9,11 @@ import { describe, beforeAll, afterAll, it, expect, jest } from '@jest/globals';
 import {
   TicTacToeState,
   TicTacToeAction,
-  GameValidationResult,
-  GameMoveResult,
 } from '../../../remote-state-example-server/src/games/tic-tac-toe/types';
 import { LogLevel } from '../../src';
 
 describe('Tic-Tac-Toe E2E Tests', () => {
-  // Set test timeout to 30 seconds to prevent hanging
+  // Set test timeout to 5 seconds to prevent hanging
   jest.setTimeout(5000);
   let server: Awaited<ReturnType<typeof createRemoteStateServer>>;
 
@@ -41,60 +40,40 @@ describe('Tic-Tac-Toe E2E Tests', () => {
             timestamp: null,
           },
         }),
-        validateAction: (state: TicTacToeState, action: TicTacToeAction): GameValidationResult => {
+        validateAction: (
+          state: TicTacToeState,
+          action: TicTacToeAction & { playerId: string; timestamp: Date }
+        ): ActionValidationResult => {
           // Check if game is finished
           if (state.winner !== null) {
-            return {
-              valid: false,
-              message: 'Game is already finished',
-              error: 'Game is already finished',
-              code: 'GAME_FINISHED',
-            };
+            return 'Game is already finished';
           }
 
           // Simple validation for tic-tac-toe moves
           if (action.type === 'move') {
             if (!action.position) {
-              return {
-                valid: false,
-                message: 'Position is required for move actions',
-                error: 'Position is required for move actions',
-                code: 'POSITION_REQUIRED',
-              };
+              return 'Position is required for move actions';
             }
 
             const [row, col] = action.position;
             if (row < 0 || row > 2 || col < 0 || col > 2) {
-              return {
-                valid: false,
-                message: 'Position out of bounds',
-                error: 'Position out of bounds',
-                code: 'POSITION_OUT_OF_BOUNDS',
-              };
+              return 'Position out of bounds';
             }
 
             if (state.board[row][col] !== null) {
-              return {
-                valid: false,
-                message: 'Position already occupied',
-                error: 'Position already occupied',
-                code: 'POSITION_OCCUPIED',
-              };
+              return 'Position already occupied';
             }
 
             // Skip player validation for testing purposes
             // In a real implementation, we would check if the player ID matches the current player
           }
 
-          return {
-            valid: true,
-            message: 'Action is valid',
-          };
+          return true;
         },
         executeAction: (
           state: TicTacToeState,
           action: TicTacToeAction & { playerId: string; timestamp: Date }
-        ): GameMoveResult => {
+        ): TicTacToeState => {
           // Simple execution for tic-tac-toe moves
           const newState = JSON.parse(JSON.stringify(state)); // Deep copy
 
@@ -222,12 +201,7 @@ describe('Tic-Tac-Toe E2E Tests', () => {
             }
           }
 
-          return {
-            success: true,
-            state: newState,
-            gameOver: newState.winner !== null,
-            winner: newState.winner,
-          };
+          return newState;
         },
         gameConfig: {
           name: 'Tic-Tac-Toe',

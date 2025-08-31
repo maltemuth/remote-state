@@ -8,15 +8,13 @@ import { describe, beforeAll, afterAll, it, expect, jest } from '@jest/globals';
 import {
   BattleshipState,
   BattleshipAction,
-  GameValidationResult,
-  GameMoveResult,
   Player,
   createInitialGameState,
 } from '../../../remote-state-example-server/src/games/battleship/types';
 import { LogLevel } from '../../src';
 
 describe('Battleship E2E Tests', () => {
-  // Set test timeout to 30 seconds to prevent hanging
+  // Set test timeout to 5 seconds to prevent hanging
   jest.setTimeout(5000);
   let server: Awaited<ReturnType<typeof createRemoteStateServer>>;
 
@@ -29,118 +27,126 @@ describe('Battleship E2E Tests', () => {
           state: BattleshipState,
           action: BattleshipAction,
           playerId: string // playerId passed from authentication context
-        ): GameValidationResult => {
+        ): true | string => {
           // Check if game is finished
           if (state.status === 'finished') {
-            return {
-              valid: false,
-              message: 'Game is already finished',
-              error: 'Game is already finished',
-              code: 'GAME_FINISHED',
-            };
+            return 'Game is already finished';
           }
 
           // Simple validation for battleship actions
           if (action.type === 'place_ship') {
             if (!action.shipType || !action.position || !action.orientation) {
-              return {
-                valid: false,
-                message: 'Ship placement requires ship type, position, and orientation',
-                error: 'Missing required parameters',
-                code: 'MISSING_PARAMETERS',
-              };
+              return 'Ship placement requires ship type, position, and orientation';
             }
 
             const [row, col] = action.position;
             if (row < 0 || row > 4 || col < 0 || col > 4) {
-              return {
-                valid: false,
-                message: 'Position out of bounds',
-                error: 'Position out of bounds',
-                code: 'POSITION_OUT_OF_BOUNDS',
-              };
+              return 'Position out of bounds';
+            }
+
+            // Check if ship fits on the board
+            const shipSize =
+              action.shipType === 'destroyer'
+                ? 2
+                : action.shipType === 'submarine'
+                  ? 3
+                  : action.shipType === 'cruiser'
+                    ? 3
+                    : 4;
+
+            if (action.orientation === 'horizontal') {
+              if (col + shipSize > 5) {
+                return 'Ship does not fit horizontally at this position';
+              }
+            } else {
+              if (row + shipSize > 5) {
+                return 'Ship does not fit vertically at this position';
+              }
             }
 
             // Check if position is already occupied
-            const playerKey = playerId === state.players.player1 ? 'player1' : 'player2';
-            if (state.boards[playerKey][row][col] !== 'empty') {
-              return {
-                valid: false,
-                message: 'Position already occupied',
-                error: 'Position already occupied',
-                code: 'POSITION_OCCUPIED',
-              };
+            // Determine player key based on player IDs in state
+            let playerKey: 'player1' | 'player2' = 'player1';
+            if (state.players.player2 === playerId) {
+              playerKey = 'player2';
+            }
+            // If player1 is null (initial state), we can't determine playerKey based on IDs
+            // In this case, we'll assume that if player2 doesn't match, it's player1
+            // This is a simplification for the test environment
+            else if (state.players.player1 !== null && state.players.player1 !== playerId) {
+              playerKey = 'player2';
+            }
+            // If both player1 and player2 are null (initial state), we need another way to determine playerKey
+            // This is a limitation of the test environment - in a real game, the server would set these IDs
+            // For now, we'll assume the first player to place ships is player1 and the second is player2
+            // But since we can't track this in the validation function, we'll have to rely on the server
+            // to set the player IDs correctly
+
+            // Check if any part of the ship overlaps with existing ships
+            if (action.orientation === 'horizontal') {
+              for (let i = 0; i < shipSize; i++) {
+                if (state.boards[playerKey][row][col + i] !== 'empty') {
+                  return 'Position already occupied';
+                }
+              }
+            } else {
+              for (let i = 0; i < shipSize; i++) {
+                if (state.boards[playerKey][row + i][col] !== 'empty') {
+                  return 'Position already occupied';
+                }
+              }
             }
           }
 
           if (action.type === 'fire_shot') {
             if (!action.position) {
-              return {
-                valid: false,
-                message: 'Position is required for fire shot actions',
-                error: 'Position is required',
-                code: 'POSITION_REQUIRED',
-              };
+              return 'Position is required for fire shot actions';
             }
 
             const [row, col] = action.position;
             if (row < 0 || row > 4 || col < 0 || col > 4) {
-              return {
-                valid: false,
-                message: 'Position out of bounds',
-                error: 'Position out of bounds',
-                code: 'POSITION_OUT_OF_BOUNDS',
-              };
+              return 'Position out of bounds';
             }
 
             // Check if game is in playing state
             if (state.status !== 'playing') {
-              return {
-                valid: false,
-                message: 'Game is not in playing state',
-                error: 'Game not started',
-                code: 'GAME_NOT_STARTED',
-              };
+              return 'Game is not in playing state';
             }
 
             // Check if it's the correct player's turn
             if (playerId !== state.players[state.currentPlayer]) {
-              return {
-                valid: false,
-                message: `It's not your turn`,
-                error: 'Wrong player turn',
-                code: 'WRONG_PLAYER_TURN',
-              };
+              return `It's not your turn`;
             }
 
             // Check if position has already been fired at
             const opponentKey = state.currentPlayer === 'player1' ? 'player2' : 'player1';
             if (state.boards[opponentKey][row][col] !== 'empty') {
-              return {
-                valid: false,
-                message: 'Position already fired at',
-                error: 'Position already targeted',
-                code: 'POSITION_ALREADY_TARGETED',
-              };
+              return 'Position already fired at';
             }
           }
 
-          return {
-            valid: true,
-            message: 'Action is valid',
-          };
+          return true;
         },
         executeAction: (
           state: BattleshipState,
           action: BattleshipAction,
           playerId: string // playerId passed from authentication context
-        ): GameMoveResult => {
+        ): BattleshipState => {
           // Simple execution for battleship actions
           const newState = JSON.parse(JSON.stringify(state)); // Deep copy
 
           if (action.type === 'place_ship') {
             if (action.shipType && action.position && action.orientation) {
-              const playerKey = playerId === state.players.player1 ? 'player1' : 'player2';
+              // Determine player key based on player IDs in state
+              let playerKey: 'player1' | 'player2' = 'player1';
+              if (state.players.player2 === playerId) {
+                playerKey = 'player2';
+              }
+              // If player1 is null (initial state), assume the first player is player1
+              // If player1 is not null and doesn't match playerId, assume it's player2
+              else if (state.players.player1 !== null && state.players.player1 !== playerId) {
+                playerKey = 'player2';
+              }
 
               // Place ship on board (simplified - just mark positions as occupied)
               const [row, col] = action.position;
@@ -153,20 +159,72 @@ describe('Battleship E2E Tests', () => {
                       ? 3
                       : 4;
 
+              // Ensure the board arrays are initialized
+              if (!newState.boards) {
+                newState.boards = {
+                  player1: [
+                    ['empty', 'empty', 'empty', 'empty', 'empty'],
+                    ['empty', 'empty', 'empty', 'empty', 'empty'],
+                    ['empty', 'empty', 'empty', 'empty', 'empty'],
+                    ['empty', 'empty', 'empty', 'empty', 'empty'],
+                    ['empty', 'empty', 'empty', 'empty', 'empty'],
+                  ],
+                  player2: [
+                    ['empty', 'empty', 'empty', 'empty', 'empty'],
+                    ['empty', 'empty', 'empty', 'empty', 'empty'],
+                    ['empty', 'empty', 'empty', 'empty', 'empty'],
+                    ['empty', 'empty', 'empty', 'empty', 'empty'],
+                    ['empty', 'empty', 'empty', 'empty', 'empty'],
+                  ],
+                };
+              }
+
+              if (!newState.boards[playerKey]) {
+                newState.boards[playerKey] = [
+                  ['empty', 'empty', 'empty', 'empty', 'empty'],
+                  ['empty', 'empty', 'empty', 'empty', 'empty'],
+                  ['empty', 'empty', 'empty', 'empty', 'empty'],
+                  ['empty', 'empty', 'empty', 'empty', 'empty'],
+                  ['empty', 'empty', 'empty', 'empty', 'empty'],
+                ];
+              }
+
               if (action.orientation === 'horizontal') {
                 for (let i = 0; i < shipSize; i++) {
+                  // Ensure the row exists before trying to access it
+                  if (!newState.boards[playerKey][row]) {
+                    newState.boards[playerKey][row] = ['empty', 'empty', 'empty', 'empty', 'empty'];
+                  }
                   newState.boards[playerKey][row][col + i] = 'ship';
                 }
               } else {
                 for (let i = 0; i < shipSize; i++) {
+                  // Ensure the row exists before trying to access it
+                  if (!newState.boards[playerKey][row + i]) {
+                    newState.boards[playerKey][row + i] = [
+                      'empty',
+                      'empty',
+                      'empty',
+                      'empty',
+                      'empty',
+                    ];
+                  }
                   newState.boards[playerKey][row + i][col] = 'ship';
                 }
               }
 
               // Add ship to ships array
+              if (!newState.ships) {
+                newState.ships = {
+                  player1: [],
+                  player2: [],
+                };
+              }
+
               if (!newState.ships[playerKey]) {
                 newState.ships[playerKey] = [];
               }
+
               newState.ships[playerKey].push({
                 type: action.shipType,
                 positions: [],
@@ -187,7 +245,7 @@ describe('Battleship E2E Tests', () => {
               // Check if both players have placed ships (simplified check)
               const player1Ships = newState.ships.player1 ? newState.ships.player1.length : 0;
               const player2Ships = newState.ships.player2 ? newState.ships.player2.length : 0;
-              if (player1Ships >= 4 && player2Ships >= 4) {
+              if (player1Ships >= 2 && player2Ships >= 2) {
                 newState.status = 'playing';
               }
             }
@@ -198,6 +256,17 @@ describe('Battleship E2E Tests', () => {
               const opponentKey = newState.currentPlayer === 'player1' ? 'player2' : 'player1';
               const [row, col] = action.position;
               let result: 'hit' | 'miss' | 'sunk' = 'miss';
+
+              // Ensure the opponent board is initialized
+              if (!newState.boards[opponentKey]) {
+                newState.boards[opponentKey] = [
+                  ['empty', 'empty', 'empty', 'empty', 'empty'],
+                  ['empty', 'empty', 'empty', 'empty', 'empty'],
+                  ['empty', 'empty', 'empty', 'empty', 'empty'],
+                  ['empty', 'empty', 'empty', 'empty', 'empty'],
+                  ['empty', 'empty', 'empty', 'empty', 'empty'],
+                ];
+              }
 
               if (newState.boards[opponentKey][row][col] === 'ship') {
                 newState.boards[opponentKey][row][col] = 'hit';
@@ -240,12 +309,7 @@ describe('Battleship E2E Tests', () => {
             }
           }
 
-          return {
-            success: true,
-            state: newState,
-            gameOver: newState.status === 'finished',
-            winner: newState.winner,
-          };
+          return newState;
         },
         filterStateForPlayer: (state: BattleshipState, playerId: string): BattleshipState => {
           // Create a deep copy of the state to avoid mutating the original
@@ -392,6 +456,10 @@ describe('Battleship E2E Tests', () => {
 
     expect(response1.body).toBeDefined();
     expect(response1.body.status).toBe('setup');
+    expect(response1.body).toHaveProperty('boards');
+    expect(response1.body).toHaveProperty('ships');
+    expect(response1.body).toHaveProperty('currentPlayer');
+    expect(response1.body).toHaveProperty('status');
 
     // Place submarine vertically
     const response2 = await request(server.app)
@@ -410,6 +478,10 @@ describe('Battleship E2E Tests', () => {
 
     expect(response2.body).toBeDefined();
     expect(response2.body.status).toBe('setup');
+    expect(response2.body).toHaveProperty('boards');
+    expect(response2.body).toHaveProperty('ships');
+    expect(response2.body).toHaveProperty('currentPlayer');
+    expect(response2.body).toHaveProperty('status');
   });
 
   it('should place ships for player 2', async () => {
@@ -484,7 +556,7 @@ describe('Battleship E2E Tests', () => {
         action: {
           type: 'place_ship',
           shipType: 'submarine',
-          position: [4, 0],
+          position: [2, 0],
           orientation: 'vertical',
           timestamp: new Date(),
         },
@@ -572,6 +644,10 @@ describe('Battleship E2E Tests', () => {
     expect(shotResponse.body).toBeDefined();
     expect(shotResponse.body.status).toBe('playing');
     expect(shotResponse.body.currentPlayer).toBe('player2');
+    expect(shotResponse.body).toHaveProperty('boards');
+    expect(shotResponse.body).toHaveProperty('ships');
+    expect(shotResponse.body).toHaveProperty('currentPlayer');
+    expect(shotResponse.body).toHaveProperty('status');
 
     // Check that Player 1 cannot see Player 2's ships (incomplete information)
     const player1State = await request(server.app)
@@ -634,7 +710,7 @@ describe('Battleship E2E Tests', () => {
         action: {
           type: 'place_ship',
           shipType: 'destroyer',
-          position: [4, 4],
+          position: [4, 3],
           orientation: 'horizontal',
           timestamp: new Date(),
         },
@@ -648,7 +724,7 @@ describe('Battleship E2E Tests', () => {
       .send({
         action: {
           type: 'fire_shot',
-          position: [4, 4],
+          position: [4, 3],
           timestamp: new Date(),
         },
         token: ownerToken,
@@ -671,6 +747,11 @@ describe('Battleship E2E Tests', () => {
     expect(finalResponse.body).toBeDefined();
     expect(finalResponse.body.status).toBe('finished');
     expect(finalResponse.body.winner).toBeDefined();
+    expect(finalResponse.body).toHaveProperty('boards');
+    expect(finalResponse.body).toHaveProperty('ships');
+    expect(finalResponse.body).toHaveProperty('currentPlayer');
+    expect(finalResponse.body).toHaveProperty('status');
+    expect(finalResponse.body).toHaveProperty('winner');
 
     // Retrieve final state
     const stateResponse = await request(server.app)
@@ -724,7 +805,7 @@ describe('Battleship E2E Tests', () => {
         action: {
           type: 'place_ship',
           shipType: 'destroyer',
-          position: [4, 4],
+          position: [4, 3],
           orientation: 'horizontal',
           timestamp: new Date(),
         },
@@ -738,7 +819,7 @@ describe('Battleship E2E Tests', () => {
       .send({
         action: {
           type: 'fire_shot',
-          position: [4, 4],
+          position: [4, 3],
           timestamp: new Date(),
         },
         token: ownerToken,

@@ -8,28 +8,16 @@ export interface SocketIOServerConfiguration {
   };
 }
 
-export interface GameValidationResult {
-  valid: boolean;
-  message: string;
-  error?: string;
-  code?: string;
-}
-
-export interface GameMoveResult<StateType> {
-  success: boolean;
-  state: StateType;
-  gameOver: boolean;
-  winner: string | null;
-}
+export type ActionValidationResult = true | string;
 
 export interface GamePlugin<StateType, ActionType> {
   getInitialState: () => StateType;
-  validateAction: (state: StateType, action: ActionType, playerId: string) => GameValidationResult;
-  executeAction: (
+  validateAction: (
     state: StateType,
     action: ActionType,
     playerId: string
-  ) => GameMoveResult<StateType>;
+  ) => ActionValidationResult;
+  executeAction: (state: StateType, action: ActionType, playerId: string) => StateType;
   filterStateForPlayer?: (state: StateType, playerId: string) => StateType;
   gameConfig?: {
     name: string;

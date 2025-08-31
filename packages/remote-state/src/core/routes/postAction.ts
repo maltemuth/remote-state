@@ -64,9 +64,9 @@ export const postAction = <StateType, ActionType>(
       info(`Current state:`, state);
       // Use game-specific validation through dedicated module
       const validationResult = gamePlugin.validateAction(state, action as ActionType, player.id);
-      if (!validationResult.valid) {
+      if (validationResult !== true) {
         return res.status(400).json({
-          error: validationResult.error || 'Invalid action',
+          error: validationResult,
         });
       }
 
@@ -92,7 +92,7 @@ export const postAction = <StateType, ActionType>(
         playerId: player.id,
         actionType: action.type || 'unknown',
         actionData: action,
-        gameState: executionResult.state,
+        gameState: executionResult,
       });
 
       // Get the current game state to get the state ID
@@ -108,7 +108,7 @@ export const postAction = <StateType, ActionType>(
       }
 
       // Return success response
-      res.status(201).json(executionResult.state);
+      res.status(201).json(executionResult);
     } catch (err) {
       error('Error processing action:', {
         error: err instanceof Error ? err.message : String(err),
