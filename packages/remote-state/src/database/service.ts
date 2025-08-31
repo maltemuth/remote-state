@@ -204,6 +204,35 @@ const getCurrentGameState = async <S>(
 };
 
 /**
+ * Get current game state filtered for a specific player
+ */
+const getCurrentGameStateForPlayer = async <S>(
+  gameId: string,
+  playerId: string,
+  { info }: Logger
+): Promise<{ gameId: string; state: S; timestamp: Date } | null> => {
+  info(`Retrieving current game state for game: ${gameId} and player: ${playerId}`);
+
+  const result = await GameState.findOne({
+    where: {
+      gameId: gameId,
+    },
+    order: [['sequence', 'DESC']],
+  });
+
+  if (!result) {
+    return null;
+  }
+
+  const parsedState = safeJsonParse<S>(result.state);
+  return {
+    gameId: result.gameId,
+    state: parsedState,
+    timestamp: result.createdAt,
+  };
+};
+
+/**
  * Create a typed database service instance
  * @param actionType - The Action type for this service
  * @param stateType - The State type for this service
@@ -234,6 +263,8 @@ export const createDatabaseService = <StateType, ActionType>(
 
     getCurrentGameState: <StateType>(gameId: string) =>
       getCurrentGameState<StateType>(gameId, logger),
+    getCurrentGameStateForPlayer: <StateType>(gameId: string, playerId: string) =>
+      getCurrentGameStateForPlayer<StateType>(gameId, playerId, logger),
 
     createGameWithOwnerAndInitialState: (
       game: Pick<Game, 'name'>,

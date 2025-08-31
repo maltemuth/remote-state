@@ -21,12 +21,11 @@ const { info } = createLogger({
 });
 
 // Create and start the tic-tac-toe server with persistent database
-const { app, server, socketIOManager, startServer } = createTicTacToeServer(
-  3000,
-  {
-    persistDatabase: true,
-  }
-);
+const ticTacToeServer = await createTicTacToeServer(3000, {
+  persistDatabase: true,
+});
+
+const { app, server, socketIOManager, startServer } = ticTacToeServer;
 
 // Serve static files (the HTML client)
 app.use(express.static(path.join(__dirname, "../public")));

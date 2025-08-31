@@ -6,7 +6,7 @@ import { DatabaseService } from '../../database/service';
 // Current state retrieval endpoint
 export const getState = <StateType, ActionType>(
   database: DatabaseService<StateType, ActionType>,
-  _plugin: GamePlugin<StateType, ActionType>
+  plugin: GamePlugin<StateType, ActionType>
 ) => {
   const { info, error } = createLogger({
     scope: 'getState',
@@ -14,8 +14,11 @@ export const getState = <StateType, ActionType>(
   return async (req: Request, res: Response) => {
     try {
       const { gameId } = req.params;
+      const playerId = req.headers['x-player-id'] as string;
 
-      info(`Retrieving current state for game ${gameId}`);
+      info(
+        `Retrieving current state for game ${gameId}${playerId ? ` and player ${playerId}` : ''}`
+      );
 
       // Check if game exists
       const game = await database.getGame(gameId);
@@ -24,7 +27,15 @@ export const getState = <StateType, ActionType>(
       }
 
       // Get current game state from database
-      const gameState = await database.getCurrentGameState(gameId);
+      let gameState = await database.getCurrentGameState(gameId);
+
+      // Apply player filtering if playerId is provided and plugin supports it
+      if (playerId && gameState && plugin.filterStateForPlayer) {
+        gameState = {
+          ...gameState,
+          state: plugin.filterStateForPlayer(gameState.state as StateType, playerId),
+        };
+      }
 
       const response = {
         gameId,

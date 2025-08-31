@@ -46,6 +46,7 @@ export interface GamePlugin<StateType, ActionType> {
     state: StateType,
     action: ActionType & { playerId: string; timestamp: Date }
   ) => GameMoveResult<StateType>;
+  filterStateForPlayer?: (state: StateType, playerId: string) => StateType;
   gameConfig?: {
     name: string;
     description?: string;

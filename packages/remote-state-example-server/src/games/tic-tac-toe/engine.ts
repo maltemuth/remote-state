@@ -295,6 +295,56 @@ export const addPlayer = (
 };
 
 /**
+ * Filter game state for a specific player
+ * This ensures players only see information they should have access to
+ */
+export const filterStateForPlayer = (
+  state: TicTacToeState,
+  playerId: string
+): TicTacToeState => {
+  // Create a deep copy of the state to avoid mutating the original
+  const filteredState: TicTacToeState = JSON.parse(JSON.stringify(state));
+
+  // Hide opponent's identity if they haven't revealed it
+  // In Tic-Tac-Toe, we'll show which symbol each player controls
+  // but hide the actual player IDs for privacy
+  const playerSymbols: { [key: string]: Player | null } = {};
+
+  // Map player IDs to their symbols for the current player
+  if (filteredState.players.X === playerId) {
+    playerSymbols[playerId] = "X";
+    // Show opponent as "Player O" without revealing their actual ID
+    playerSymbols[filteredState.players.O || "unknown"] = "O";
+  } else if (filteredState.players.O === playerId) {
+    playerSymbols[playerId] = "O";
+    // Show opponent as "Player X" without revealing their actual ID
+    playerSymbols[filteredState.players.X || "unknown"] = "X";
+  } else {
+    // If player is not in this game, show minimal information
+    return {
+      ...filteredState,
+      players: { X: null, O: null },
+      board: Array(3)
+        .fill(null)
+        .map(() => Array(3).fill(null)),
+      currentPlayer: "X",
+      status: "waiting",
+      winner: null,
+      winLine: null,
+      lastMove: { player: "X", position: null, timestamp: null },
+    };
+  }
+
+  // Update the state with filtered player information
+  filteredState.players = {
+    X: playerSymbols[playerId] === "X" ? playerId : "Player O",
+    O: playerSymbols[playerId] === "O" ? playerId : "Player X",
+  };
+
+  return filteredState;
+};
+
+/**
  * Remove a player from the game
  */
 export const removePlayer = (
