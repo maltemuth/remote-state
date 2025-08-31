@@ -27,7 +27,7 @@ export const postGame = <StateType, ActionType>(
           name: gameName,
         },
         { name: playerName },
-        plugin.getInitialState()
+        await plugin.getInitialState()
       );
 
       info(`Created new game with owner: ${game.id} - ${admin.name}`);

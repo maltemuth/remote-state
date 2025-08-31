@@ -132,10 +132,11 @@ export const isGameOver = (state: TicTacToeState): boolean => {
 /**
  * Validate a game action
  */
-export const validateAction = (
+export const validateAction = async (
   state: TicTacToeState,
-  action: TicTacToeAction
-): GameValidationResult => {
+  action: TicTacToeAction,
+  playerId: string
+): Promise<GameValidationResult> => {
   // Check if game is over
   if (isGameOver(state)) {
     return {
@@ -151,10 +152,10 @@ export const validateAction = (
     const [row, col] = action.position;
 
     // Check if it's the correct player's turn
-    if (action.playerId !== state.players[state.currentPlayer]) {
+    if (playerId !== state.players[state.currentPlayer]) {
       return {
         valid: false,
-        message: `It's not ${action.playerId}'s turn`,
+        message: `It's not ${playerId}'s turn`,
         error: "Wrong player turn",
         code: "WRONG_PLAYER_TURN",
       };
@@ -190,11 +191,12 @@ export const validateAction = (
 /**
  * Execute a game action
  */
-export const executeAction = (
+export const executeAction = async (
   state: TicTacToeState,
-  action: TicTacToeAction
-): GameMoveResult => {
-  const validationResult = validateAction(state, action);
+  action: TicTacToeAction,
+  playerId: string
+): Promise<GameMoveResult> => {
+  const validationResult = await validateAction(state, action, playerId);
 
   if (!validationResult.valid) {
     return {

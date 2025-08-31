@@ -22,12 +22,12 @@ describe('Battleship E2E Tests', () => {
     // Create a test server instance with database initialization disabled
     const testServer = await createRemoteStateServer(
       {
-        getInitialState: () => createInitialGameState(''),
-        validateAction: (
+        getInitialState: async () => Promise.resolve(createInitialGameState('')),
+        validateAction: async (
           state: BattleshipState,
           action: BattleshipAction,
-          playerId: string // playerId passed from authentication context
-        ): true | string => {
+          _playerId: string // playerId passed from authentication context
+        ): Promise<true | string> => {
           // Check if game is finished
           if (state.status === 'finished') {
             return 'Game is already finished';
@@ -67,13 +67,13 @@ describe('Battleship E2E Tests', () => {
             // Check if position is already occupied
             // Determine player key based on player IDs in state
             let playerKey: 'player1' | 'player2' = 'player1';
-            if (state.players.player2 === playerId) {
+            if (state.players.player2 === _playerId) {
               playerKey = 'player2';
             }
             // If player1 is null (initial state), we can't determine playerKey based on IDs
             // In this case, we'll assume that if player2 doesn't match, it's player1
             // This is a simplification for the test environment
-            else if (state.players.player1 !== null && state.players.player1 !== playerId) {
+            else if (state.players.player1 !== null && state.players.player1 !== _playerId) {
               playerKey = 'player2';
             }
             // If both player1 and player2 are null (initial state), we need another way to determine playerKey
@@ -114,7 +114,7 @@ describe('Battleship E2E Tests', () => {
             }
 
             // Check if it's the correct player's turn
-            if (playerId !== state.players[state.currentPlayer]) {
+            if (_playerId !== state.players[state.currentPlayer]) {
               return `It's not your turn`;
             }
 
@@ -127,11 +127,11 @@ describe('Battleship E2E Tests', () => {
 
           return true;
         },
-        executeAction: (
+        executeAction: async (
           state: BattleshipState,
           action: BattleshipAction,
-          playerId: string // playerId passed from authentication context
-        ): BattleshipState => {
+          _playerId: string // playerId passed from authentication context
+        ): Promise<BattleshipState> => {
           // Simple execution for battleship actions
           const newState = JSON.parse(JSON.stringify(state)); // Deep copy
 
@@ -139,12 +139,12 @@ describe('Battleship E2E Tests', () => {
             if (action.shipType && action.position && action.orientation) {
               // Determine player key based on player IDs in state
               let playerKey: 'player1' | 'player2' = 'player1';
-              if (state.players.player2 === playerId) {
+              if (state.players.player2 === _playerId) {
                 playerKey = 'player2';
               }
               // If player1 is null (initial state), assume the first player is player1
               // If player1 is not null and doesn't match playerId, assume it's player2
-              else if (state.players.player1 !== null && state.players.player1 !== playerId) {
+              else if (state.players.player1 !== null && state.players.player1 !== _playerId) {
                 playerKey = 'player2';
               }
 
@@ -311,7 +311,10 @@ describe('Battleship E2E Tests', () => {
 
           return newState;
         },
-        filterStateForPlayer: (state: BattleshipState, playerId: string): BattleshipState => {
+        filterStateForPlayer: async (
+          state: BattleshipState,
+          playerId: string
+        ): Promise<BattleshipState> => {
           // Create a deep copy of the state to avoid mutating the original
           const filteredState: BattleshipState = JSON.parse(JSON.stringify(state));
 

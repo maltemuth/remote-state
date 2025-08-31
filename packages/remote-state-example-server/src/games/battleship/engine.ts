@@ -181,10 +181,11 @@ export const isGameOver = (state: BattleshipState): boolean => {
 /**
  * Validate a game action
  */
-export const validateAction = (
+export const validateAction = async (
   state: BattleshipState,
-  action: BattleshipAction
-): GameValidationResult => {
+  action: BattleshipAction,
+  playerId: string
+): Promise<GameValidationResult> => {
   // Check if game is over
   if (state.status === "finished") {
     return {
@@ -211,9 +212,7 @@ export const validateAction = (
     // Check if it's the correct player's turn during setup
     if (state.status === "setup") {
       const currentPlayerShips =
-        state.ships[
-          action.playerId === state.players.player1 ? "player1" : "player2"
-        ];
+        state.ships[playerId === state.players.player1 ? "player1" : "player2"];
       if (allShipsPlaced(currentPlayerShips)) {
         return {
           valid: false,
@@ -236,7 +235,7 @@ export const validateAction = (
 
     // Check if ship placement is valid
     const playerKey =
-      action.playerId === state.players.player1 ? "player1" : "player2";
+      playerId === state.players.player1 ? "player1" : "player2";
     if (
       !isValidShipPlacement(
         state.boards[playerKey],
@@ -268,10 +267,10 @@ export const validateAction = (
     const [row, col] = action.position;
 
     // Check if it's the correct player's turn
-    if (action.playerId !== state.players[state.currentPlayer]) {
+    if (playerId !== state.players[state.currentPlayer]) {
       return {
         valid: false,
-        message: `It's not ${action.playerId}'s turn`,
+        message: `It's not ${playerId}'s turn`,
         error: "Wrong player turn",
         code: "WRONG_PLAYER_TURN",
       };
@@ -319,11 +318,12 @@ export const validateAction = (
 /**
  * Execute a game action
  */
-export const executeAction = (
+export const executeAction = async (
   state: BattleshipState,
-  action: BattleshipAction
-): GameMoveResult => {
-  const validationResult = validateAction(state, action);
+  action: BattleshipAction,
+  playerId: string
+): Promise<GameMoveResult> => {
+  const validationResult = await validateAction(state, action, playerId);
 
   if (!validationResult.valid) {
     return {
@@ -343,7 +343,7 @@ export const executeAction = (
     case "place_ship":
       if (action.shipType && action.position && action.orientation) {
         const playerKey =
-          action.playerId === state.players.player1 ? "player1" : "player2";
+          playerId === state.players.player1 ? "player1" : "player2";
         const { board, ships } = placeShip(
           newState.boards[playerKey],
           newState.ships[playerKey],

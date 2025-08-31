@@ -21,29 +21,31 @@ describe('Tic-Tac-Toe E2E Tests', () => {
     // Create a test server instance with database initialization disabled
     const testServer = await createRemoteStateServer(
       {
-        getInitialState: () => ({
-          board: [
-            [null, null, null],
-            [null, null, null],
-            [null, null, null],
-          ],
-          currentPlayer: 'X' as 'X' | 'O',
-          winner: null,
-          winLine: null,
-          players: {
-            X: null,
-            O: null,
-          },
-          lastMove: {
-            player: 'X' as 'X' | 'O',
-            position: null,
-            timestamp: null,
-          },
-        }),
-        validateAction: (
+        getInitialState: async () =>
+          Promise.resolve({
+            board: [
+              [null, null, null],
+              [null, null, null],
+              [null, null, null],
+            ],
+            currentPlayer: 'X' as 'X' | 'O',
+            winner: null,
+            winLine: null,
+            players: {
+              X: null,
+              O: null,
+            },
+            lastMove: {
+              player: 'X' as 'X' | 'O',
+              position: null,
+              timestamp: null,
+            },
+          }),
+        validateAction: async (
           state: TicTacToeState,
-          action: TicTacToeAction & { playerId: string; timestamp: Date }
-        ): ActionValidationResult => {
+          action: TicTacToeAction & { playerId: string; timestamp: Date },
+          _playerId: string
+        ): Promise<ActionValidationResult> => {
           // Check if game is finished
           if (state.winner !== null) {
             return 'Game is already finished';
@@ -70,10 +72,11 @@ describe('Tic-Tac-Toe E2E Tests', () => {
 
           return true;
         },
-        executeAction: (
+        executeAction: async (
           state: TicTacToeState,
-          action: TicTacToeAction & { playerId: string; timestamp: Date }
-        ): TicTacToeState => {
+          action: TicTacToeAction & { playerId: string; timestamp: Date },
+          _playerId: string
+        ): Promise<TicTacToeState> => {
           // Simple execution for tic-tac-toe moves
           const newState = JSON.parse(JSON.stringify(state)); // Deep copy
 

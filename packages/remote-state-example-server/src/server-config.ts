@@ -15,9 +15,17 @@ export const createTicTacToeServer = (
 ): Promise<RemoteStateServer<TicTacToeState, TicTacToeAction>> => {
   return createRemoteStateServer<TicTacToeState, TicTacToeAction>(
     {
-      getInitialState: () => createInitialGameState(""),
-      validateAction,
-      executeAction,
+      getInitialState: () => Promise.resolve(createInitialGameState()),
+      validateAction: (state, action, playerId) => {
+        return validateAction(state, action, playerId).then((result) => {
+          return result.valid ? true : result.message;
+        });
+      },
+      executeAction: (state, action, playerId) => {
+        return executeAction(state, action, playerId).then((result) => {
+          return result.state;
+        });
+      },
       gameConfig: {
         name: "Tic-Tac-Toe",
         description: "Classic 3x3 tic-tac-toe game",

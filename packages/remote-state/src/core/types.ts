@@ -11,14 +11,14 @@ export interface SocketIOServerConfiguration {
 export type ActionValidationResult = true | string;
 
 export interface GamePlugin<StateType, ActionType> {
-  getInitialState: () => StateType;
+  getInitialState: () => Promise<StateType>;
   validateAction: (
     state: StateType,
     action: ActionType,
     playerId: string
-  ) => ActionValidationResult;
-  executeAction: (state: StateType, action: ActionType, playerId: string) => StateType;
-  filterStateForPlayer?: (state: StateType, playerId: string) => StateType;
+  ) => Promise<ActionValidationResult>;
+  executeAction: (state: StateType, action: ActionType, playerId: string) => Promise<StateType>;
+  filterStateForPlayer?: (state: StateType, playerId: string) => Promise<StateType>;
   gameConfig?: {
     name: string;
     description?: string;

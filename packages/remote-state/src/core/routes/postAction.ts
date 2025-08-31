@@ -63,7 +63,11 @@ export const postAction = <StateType, ActionType>(
       const { state } = await database.getCurrentGameState<StateType>(gameId);
       info(`Current state:`, state);
       // Use game-specific validation through dedicated module
-      const validationResult = gamePlugin.validateAction(state, action as ActionType, player.id);
+      const validationResult = await gamePlugin.validateAction(
+        state,
+        action as ActionType,
+        player.id
+      );
       if (validationResult !== true) {
         return res.status(400).json({
           error: validationResult,
@@ -80,7 +84,7 @@ export const postAction = <StateType, ActionType>(
         timestamp: new Date(),
       };
 
-      const executionResult = gamePlugin.executeAction(
+      const executionResult = await gamePlugin.executeAction(
         state,
         actionWithPlayer as ActionType & { playerId: string; timestamp: Date },
         player.id

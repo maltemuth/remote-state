@@ -68,7 +68,7 @@ export interface GameMoveResult {
 }
 
 // Initial game state
-export const createInitialGameState = (_gameId: string): TicTacToeState => ({
+export const createInitialGameState = (): TicTacToeState => ({
   board: [
     [null, null, null],
     [null, null, null],
