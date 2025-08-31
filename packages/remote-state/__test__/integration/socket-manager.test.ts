@@ -2,7 +2,6 @@ import { SocketIOManager } from '../../src/core/socket';
 import { Server as HTTPServer } from 'http';
 import { Server } from 'socket.io';
 import { jest, describe, expect, it, beforeEach } from '@jest/globals';
-import { DatabaseService } from '../../src/database/service';
 import { GamePlugin } from '../../src/core/types';
 import { LogLevel } from '../../src';
 import { RemoteStateServerConfiguration } from '../../src/core/server';
@@ -16,15 +15,11 @@ const mockHTTPServer = {
   emit: jest.fn(),
 } as unknown as HTTPServer;
 
-// Mock database service with all required methods
-const mockDatabaseService = {
-  getGame: jest.fn(),
-  getPlayerByToken: jest.fn(),
-  addPlayerToGame: jest.fn(),
-  recordAction: jest.fn(),
-  getCurrentGameState: jest.fn(),
-  createGameWithOwnerAndInitialState: jest.fn(),
-} as Partial<DatabaseService<unknown, unknown, unknown>>;
+// Mock authenticatePlayer function
+const mockAuthenticatePlayer = jest.fn(async () => ({
+  player: { id: 'player1', name: 'Player 1' } as any,
+  game: { id: 'game1', name: 'Test Game' } as any,
+}));
 
 // Mock game plugin
 const mockGamePlugin = {
@@ -47,11 +42,7 @@ describe('SocketIOManager', () => {
     mockSocketIO = new Server();
     (Server as unknown as jest.Mock).mockImplementation(() => mockSocketIO);
 
-    socketManager = new SocketIOManager(
-      mockHTTPServer,
-      mockDatabaseService as unknown as DatabaseService<unknown, unknown, unknown>,
-      mockGamePlugin
-    );
+    socketManager = new SocketIOManager(mockHTTPServer, mockAuthenticatePlayer, mockGamePlugin);
   });
 
   describe('constructor', () => {

@@ -2,7 +2,7 @@ import { Server as SocketIOServer, Socket } from 'socket.io';
 import { Server as HTTPServer } from 'http';
 import { createLogger, Logger } from '../utils/logger';
 import { GamePlugin } from './types';
-import { DatabaseService } from '../database/service';
+import { Game, Player } from '../database/models';
 
 export interface SocketIOServerConfig {
   cors?: {
@@ -24,7 +24,11 @@ export class SocketIOManager<StateType, ActionType, PlayerStateType> {
 
   constructor(
     httpServer: HTTPServer,
-    private database: DatabaseService<StateType, ActionType, PlayerStateType>,
+    private authenticatePlayer: (
+      playerId: string,
+      token: string,
+      gameId: string
+    ) => Promise<{ player: Player; game: Game }>,
     private plugin: GamePlugin<StateType, ActionType, PlayerStateType>,
     config: SocketIOServerConfig = {}
   ) {
@@ -44,86 +48,91 @@ export class SocketIOManager<StateType, ActionType, PlayerStateType> {
   }
 
   private setupEventHandlers(): void {
-    this.io.on('connection', (socket: Socket) => {
+    this.io.on('connection', async (socket: Socket) => {
       this.logger.info('Client connected:', { socketId: socket.id });
 
-      // Handle joining a game room
-      socket.on('join-game', async (gameId: string, playerToken: string) => {
-        try {
-          this.logger.info(`Player with token ${playerToken} joining game ${gameId}`);
+      try {
+        // Authenticate player on connection using auth data from handshake
+        const authentication = await this.authenticatePlayer(
+          socket.handshake.auth.playerId,
+          socket.handshake.auth.token,
+          socket.handshake.auth.gameId
+        );
 
-          // Verify the player exists and belongs to the game
-          const player = await this.database.getPlayerByToken(playerToken);
-          if (!player || player.gameId !== gameId) {
-            socket.emit('error', { message: 'Invalid player or game' });
-            return;
-          }
-
-          // Join the game room
-          socket.join(gameId);
-
-          // Track player in game room
-          if (!this.gameRooms.has(gameId)) {
-            this.gameRooms.set(gameId, new Set());
-          }
-          this.gameRooms.get(gameId).add(socket.id);
-
-          // Track player socket mapping
-          this.playerSockets.set(player.id, socket.id);
-
-          // Notify other players in the game
-          socket.to(gameId).emit('player-joined', {
-            playerId: player.id,
-            playerName: player.name,
-          });
-
-          this.logger.info(`Player ${player.id} successfully joined game ${gameId}`);
-        } catch (error) {
-          this.logger.error('Error joining game:', error);
-          socket.emit('error', { message: 'Failed to join game' });
-        }
-      });
-
-      // Handle leaving a game room
-      socket.on('leave-game', (gameId: string) => {
-        this.logger.info(`Client leaving game ${gameId}`, { socketId: socket.id });
-        socket.leave(gameId);
-
-        // Remove from game room tracking
-        if (this.gameRooms.has(gameId)) {
-          this.gameRooms.get(gameId).delete(socket.id);
-          if (this.gameRooms.get(gameId).size === 0) {
-            this.gameRooms.delete(gameId);
-          }
+        if (!authentication) {
+          socket.emit('error', { message: 'Invalid player or game' });
+          socket.disconnect();
+          return;
         }
 
-        // Notify other players
-        socket.to(gameId).emit('player-left', { socketId: socket.id });
-      });
+        const { player } = authentication;
 
-      // Handle disconnect
-      socket.on('disconnect', () => {
-        this.logger.info('Client disconnected:', { socketId: socket.id });
+        // Join the game room
+        socket.join(socket.handshake.auth.gameId);
 
-        // Clean up room memberships
-        for (const [gameId, sockets] of this.gameRooms.entries()) {
-          if (sockets.has(socket.id)) {
-            sockets.delete(socket.id);
-            if (sockets.size === 0) {
+        // Track player in game room
+        const gameId = socket.handshake.auth.gameId;
+        if (!this.gameRooms.has(gameId)) {
+          this.gameRooms.set(gameId, new Set());
+        }
+        this.gameRooms.get(gameId).add(socket.id);
+
+        // Track player socket mapping
+        this.playerSockets.set(player.id, socket.id);
+
+        // Notify other players in the game
+        socket.to(gameId).emit('player-joined', {
+          playerId: player.id,
+          playerName: player.name,
+        });
+
+        this.logger.info(`Player ${player.id} successfully connected to game ${gameId}`);
+
+        // Handle leaving a game room
+        socket.on('leave-game', (gameId: string) => {
+          this.logger.info(`Client leaving game ${gameId}`, { socketId: socket.id });
+          socket.leave(gameId);
+
+          // Remove from game room tracking
+          if (this.gameRooms.has(gameId)) {
+            this.gameRooms.get(gameId).delete(socket.id);
+            if (this.gameRooms.get(gameId).size === 0) {
               this.gameRooms.delete(gameId);
             }
-            socket.to(gameId).emit('player-left', { socketId: socket.id });
           }
-        }
 
-        // Clean up player socket mapping
-        for (const [playerId, socketId] of this.playerSockets.entries()) {
-          if (socketId === socket.id) {
-            this.playerSockets.delete(playerId);
-            break;
+          // Notify other players
+          socket.to(gameId).emit('player-left', { socketId: socket.id });
+        });
+
+        // Handle disconnect
+        socket.on('disconnect', () => {
+          this.logger.info('Client disconnected:', { socketId: socket.id });
+
+          // Clean up room memberships
+          for (const [gameId, sockets] of this.gameRooms.entries()) {
+            if (sockets.has(socket.id)) {
+              sockets.delete(socket.id);
+              if (sockets.size === 0) {
+                this.gameRooms.delete(gameId);
+              }
+              socket.to(gameId).emit('player-left', { socketId: socket.id });
+            }
           }
-        }
-      });
+
+          // Clean up player socket mapping
+          for (const [playerId, socketId] of this.playerSockets.entries()) {
+            if (socketId === socket.id) {
+              this.playerSockets.delete(playerId);
+              break;
+            }
+          }
+        });
+      } catch (error) {
+        this.logger.error('Error during connection:', error);
+        socket.emit('error', { message: 'Failed to authenticate' });
+        socket.disconnect();
+      }
     });
   }
 

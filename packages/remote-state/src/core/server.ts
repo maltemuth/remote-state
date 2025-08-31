@@ -74,9 +74,19 @@ export const createRemoteStateServer = async <StateType, ActionType, PlayerState
   // Socket.IO Manager
   let socketIOManager: SocketIOManager<StateType, ActionType, PlayerStateType> | null = null;
   if (plugin.serverConfiguration?.socketIO?.enabled !== false) {
+    // Create authenticatePlayer function that uses the database service
+    const authenticatePlayer = async (playerId: string, token: string, gameId: string) => {
+      const player = await databaseService.getPlayerByToken(token);
+      const game = await databaseService.getGame(gameId);
+      if (!player || !game || player.gameId !== game.id || player.id !== player.id) {
+        return null;
+      }
+      return { player, game };
+    };
+
     socketIOManager = new SocketIOManager<StateType, ActionType, PlayerStateType>(
       server,
-      databaseService,
+      authenticatePlayer,
       plugin,
       plugin.serverConfiguration?.socketIO
     );
