@@ -164,14 +164,14 @@ export class SocketIOManager<StateType, ActionType> {
   /**
    * Broadcast a custom event to all players in a specific game
    */
-  public broadcastToGame(gameId: string, event: string, data: any): void {
+  public broadcastToGame(gameId: string, event: string, data: unknown): void {
     this.io.to(gameId).emit(event, data);
   }
 
   /**
    * Send a message to a specific player
    */
-  public sendToPlayer(playerId: string, event: string, data: any): void {
+  public sendToPlayer(playerId: string, event: string, data: unknown): void {
     const socketId = this.playerSockets.get(playerId);
     if (socketId) {
       this.io.to(socketId).emit(event, data);

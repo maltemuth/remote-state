@@ -15,10 +15,10 @@ import { postPlayer } from './routes/postPlayer';
 import * as process from 'process';
 import { createDatabaseService } from '../database/service';
 
-export interface RemoteStateServer {
+export interface RemoteStateServer<StateType, ActionType> {
   app: Express;
   server: ReturnType<typeof createServer>;
-  socketIOManager?: SocketIOManager<any, any>;
+  socketIOManager?: SocketIOManager<StateType, ActionType>;
   startServer: () => Promise<void>;
   shutdown: (andExit?: boolean) => Promise<void>;
   port: number;
@@ -42,7 +42,7 @@ export interface RemoteStateServerConfiguration {
 export const createRemoteStateServer = async <StateType, ActionType>(
   plugin: GamePlugin<StateType, ActionType>,
   port: number = 3000
-): Promise<RemoteStateServer> => {
+): Promise<RemoteStateServer<StateType, ActionType>> => {
   // Set global log level from configuration
   if (plugin.serverConfiguration?.minimumLogLevel !== undefined) {
     setGlobalLogLevel(plugin.serverConfiguration.minimumLogLevel);

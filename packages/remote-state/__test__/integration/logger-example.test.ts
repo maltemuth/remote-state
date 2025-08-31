@@ -16,11 +16,11 @@ describe('Logger Example', () => {
     originalConsoleError = console.error;
     logOutput = [];
 
-    console.log = (...args: any[]) => {
+    console.log = (...args: never[]) => {
       logOutput.push(args.join(' '));
     };
 
-    console.error = (...args: any[]) => {
+    console.error = (...args: never[]) => {
       logOutput.push(args.join(' '));
     };
 
