@@ -9,10 +9,17 @@ import {
   CreatedAt,
   UpdatedAt,
   Default,
-  Index,
+  createIndexDecorator,
+  AutoIncrement,
 } from 'sequelize-typescript';
 import { Game } from './Game';
 import { v4 as uuidv4 } from 'uuid';
+
+const GameIdSequenceIndex = createIndexDecorator({
+  name: 'game-id-and-sequence',
+  type: 'UNIQUE',
+  concurrently: true,
+});
 
 @Table({
   tableName: 'gameStates',
@@ -29,12 +36,19 @@ export class GameState extends Model<GameState> {
   declare id: string;
 
   @ForeignKey(() => Game)
-  @Index
+  @GameIdSequenceIndex
   @Column({
     type: DataType.STRING,
     allowNull: false,
   })
   declare gameId: string;
+
+  @GameIdSequenceIndex
+  @AutoIncrement
+  @Column({
+    type: DataType.INTEGER,
+  })
+  declare sequence: number;
 
   @Column({
     type: DataType.JSON,

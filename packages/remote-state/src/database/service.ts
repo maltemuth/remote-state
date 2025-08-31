@@ -160,7 +160,7 @@ interface ActionData<S, A> {
  */
 const recordAction = async <S, A>(
   actionData: ActionData<S, A>,
-  { info }: Logger
+  { info, error }: Logger
 ): Promise<void> => {
   info(`Recording action: ${actionData.actionType} for game ${actionData.gameId}`);
 
@@ -170,7 +170,7 @@ const recordAction = async <S, A>(
     state: safeJsonStringify(actionData.gameState),
     actionType: actionData.actionType,
     actionData: safeJsonStringify(actionData.actionData),
-  });
+  }).catch(e => error(e));
 
   return;
 };
@@ -188,7 +188,7 @@ const getCurrentGameState = async <S>(
     where: {
       gameId: gameId,
     },
-    order: [['createdAt', 'DESC']],
+    order: [['sequence', 'DESC']],
   });
 
   if (!result) {
