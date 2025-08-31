@@ -15,10 +15,10 @@ import { postPlayer } from './routes/postPlayer';
 import * as process from 'process';
 import { createDatabaseService } from '../database/service';
 
-export interface RemoteStateServer<StateType, ActionType> {
+export interface RemoteStateServer<StateType, ActionType, PlayerStateType> {
   app: Express;
   server: ReturnType<typeof createServer>;
-  socketIOManager?: SocketIOManager<StateType, ActionType>;
+  socketIOManager?: SocketIOManager<StateType, ActionType, PlayerStateType>;
   startServer: () => Promise<void>;
   shutdown: (andExit?: boolean) => Promise<void>;
   port: number;
@@ -39,10 +39,10 @@ export interface RemoteStateServerConfiguration {
   };
 }
 
-export const createRemoteStateServer = async <StateType, ActionType>(
-  plugin: GamePlugin<StateType, ActionType>,
+export const createRemoteStateServer = async <StateType, ActionType, PlayerStateType>(
+  plugin: GamePlugin<StateType, ActionType, PlayerStateType>,
   port: number = 3000
-): Promise<RemoteStateServer<StateType, ActionType>> => {
+): Promise<RemoteStateServer<StateType, ActionType, PlayerStateType>> => {
   // Set global log level from configuration
   if (plugin.serverConfiguration?.minimumLogLevel !== undefined) {
     setGlobalLogLevel(plugin.serverConfiguration.minimumLogLevel);
@@ -61,7 +61,10 @@ export const createRemoteStateServer = async <StateType, ActionType>(
   ).catch(err => {
     throw new Error('Failed to initialize database:', err);
   });
-  const databaseService = createDatabaseService(database, plugin.serverConfiguration);
+  const databaseService = createDatabaseService<StateType, ActionType, PlayerStateType>(
+    database,
+    plugin.serverConfiguration
+  );
 
   const app = express();
 
@@ -69,9 +72,9 @@ export const createRemoteStateServer = async <StateType, ActionType>(
   const server = createServer(app);
 
   // Socket.IO Manager
-  let socketIOManager: SocketIOManager<StateType, ActionType> | null = null;
+  let socketIOManager: SocketIOManager<StateType, ActionType, PlayerStateType> | null = null;
   if (plugin.serverConfiguration?.socketIO?.enabled !== false) {
-    socketIOManager = new SocketIOManager<StateType, ActionType>(
+    socketIOManager = new SocketIOManager<StateType, ActionType, PlayerStateType>(
       server,
       databaseService,
       plugin,

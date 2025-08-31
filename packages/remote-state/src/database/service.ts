@@ -241,7 +241,7 @@ const getCurrentGameStateForPlayer = async <S>(
 
  * @returns A typed database service instance
  */
-export const createDatabaseService = <StateType, ActionType>(
+export const createDatabaseService = <StateType, ActionType, _PlayerStateType>(
   db: Sequelize,
   configuration?: RemoteStateServerConfiguration
 ) => {
@@ -263,9 +263,8 @@ export const createDatabaseService = <StateType, ActionType>(
     recordAction: (actionData: ActionData<StateType, ActionType>) =>
       recordAction(actionData, logger),
 
-    getCurrentGameState: <StateType>(gameId: string) =>
-      getCurrentGameState<StateType>(gameId, logger),
-    getCurrentGameStateForPlayer: <StateType>(gameId: string, playerId: string) =>
+    getCurrentGameState: (gameId: string) => getCurrentGameState<StateType>(gameId, logger),
+    getCurrentGameStateForPlayer: (gameId: string, playerId: string) =>
       getCurrentGameStateForPlayer<StateType>(gameId, playerId, logger),
 
     createGameWithOwnerAndInitialState: (
@@ -279,6 +278,6 @@ export const createDatabaseService = <StateType, ActionType>(
 /**
  * Service factory interface with typed Action and State generics
  */
-export type DatabaseService<ActionType, StateType> = ReturnType<
-  typeof createDatabaseService<ActionType, StateType>
+export type DatabaseService<StateType, ActionType, PlayerStateType> = ReturnType<
+  typeof createDatabaseService<StateType, ActionType, PlayerStateType>
 >;

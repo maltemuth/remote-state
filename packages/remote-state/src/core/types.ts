@@ -10,7 +10,7 @@ export interface SocketIOServerConfiguration {
 
 export type ActionValidationResult = true | string;
 
-export interface GamePlugin<StateType, ActionType> {
+export interface GamePlugin<StateType, ActionType, PlayerStateType> {
   getInitialState: () => Promise<StateType>;
   validateAction: (
     state: StateType,
@@ -18,7 +18,7 @@ export interface GamePlugin<StateType, ActionType> {
     playerId: string
   ) => Promise<ActionValidationResult>;
   executeAction: (state: StateType, action: ActionType, playerId: string) => Promise<StateType>;
-  filterStateForPlayer?: (state: StateType, playerId: string) => Promise<StateType>;
+  filterStateForPlayer?: (state: StateType, playerId: string) => Promise<PlayerStateType>;
   gameConfig?: {
     name: string;
     description?: string;

@@ -24,7 +24,7 @@ const mockDatabaseService = {
   recordAction: jest.fn(),
   getCurrentGameState: jest.fn(),
   createGameWithOwnerAndInitialState: jest.fn(),
-} as Partial<DatabaseService<unknown, unknown>>;
+} as Partial<DatabaseService<unknown, unknown, unknown>>;
 
 // Mock game plugin
 const mockGamePlugin = {
@@ -34,10 +34,10 @@ const mockGamePlugin = {
   serverConfiguration: {
     minimumLogLevel: LogLevel.warn,
   } as RemoteStateServerConfiguration,
-} as GamePlugin<unknown, unknown>;
+} as GamePlugin<unknown, unknown, unknown>;
 
 describe('SocketIOManager', () => {
-  let socketManager: SocketIOManager<unknown, unknown>;
+  let socketManager: SocketIOManager<unknown, unknown, unknown>;
   let mockSocketIO: Server;
 
   beforeEach(() => {
@@ -49,7 +49,7 @@ describe('SocketIOManager', () => {
 
     socketManager = new SocketIOManager(
       mockHTTPServer,
-      mockDatabaseService as unknown as DatabaseService<unknown, unknown>,
+      mockDatabaseService as unknown as DatabaseService<unknown, unknown, unknown>,
       mockGamePlugin
     );
   });

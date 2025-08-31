@@ -3,9 +3,9 @@ import { GamePlugin } from '../types';
 import { createLogger } from '../../utils/logger';
 import { DatabaseService } from '../../database/service';
 
-export const postGame = <StateType, ActionType>(
-  database: DatabaseService<StateType, ActionType>,
-  plugin: GamePlugin<StateType, ActionType>
+export const postGame = <StateType, ActionType, PlayerStateType>(
+  database: DatabaseService<StateType, ActionType, PlayerStateType>,
+  plugin: GamePlugin<StateType, ActionType, PlayerStateType>
 ) => {
   const { info, error } = createLogger({
     scope: 'postGame',

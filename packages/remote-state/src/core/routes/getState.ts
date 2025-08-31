@@ -4,9 +4,9 @@ import { createLogger } from '../../utils/logger';
 import { DatabaseService } from '../../database/service';
 
 // Current state retrieval endpoint
-export const getState = <StateType, ActionType>(
-  database: DatabaseService<StateType, ActionType>,
-  plugin: GamePlugin<StateType, ActionType>
+export const getState = <StateType, ActionType, PlayerStateType>(
+  database: DatabaseService<StateType, ActionType, PlayerStateType>,
+  plugin: GamePlugin<StateType, ActionType, PlayerStateType>
 ) => {
   const { info, error } = createLogger({
     scope: 'getState',
@@ -31,9 +31,14 @@ export const getState = <StateType, ActionType>(
 
       // Apply player filtering if playerId is provided and plugin supports it
       if (playerId && gameState && plugin.filterStateForPlayer) {
+        const filteredState = await plugin.filterStateForPlayer(
+          gameState.state as StateType,
+          playerId
+        );
         gameState = {
           ...gameState,
-          state: plugin.filterStateForPlayer(gameState.state as StateType, playerId),
+          // @ts-ignore - Type conversion for filtered state
+          state: filteredState,
         };
       }
 

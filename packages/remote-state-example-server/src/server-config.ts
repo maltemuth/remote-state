@@ -12,8 +12,14 @@ import { validateAction, executeAction } from "./games/tic-tac-toe/engine.js";
 export const createTicTacToeServer = (
   port: number = 3000,
   options: { persistDatabase?: boolean } = { persistDatabase: false }
-): Promise<RemoteStateServer<TicTacToeState, TicTacToeAction>> => {
-  return createRemoteStateServer<TicTacToeState, TicTacToeAction>(
+): Promise<
+  RemoteStateServer<TicTacToeState, TicTacToeAction, TicTacToeState>
+> => {
+  return createRemoteStateServer<
+    TicTacToeState,
+    TicTacToeAction,
+    TicTacToeState
+  >(
     {
       getInitialState: () => Promise.resolve(createInitialGameState()),
       validateAction: (state, action, playerId) => {
@@ -24,6 +30,12 @@ export const createTicTacToeServer = (
       executeAction: (state, action, playerId) => {
         return executeAction(state, action, playerId).then((result) => {
           return result.state;
+        });
+      },
+      filterStateForPlayer: (state, playerId) => {
+        // Import the filter function here to avoid circular dependencies
+        return import("./games/tic-tac-toe/engine.js").then((engine) => {
+          return engine.filterStateForPlayer(state, playerId);
         });
       },
       gameConfig: {

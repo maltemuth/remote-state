@@ -16,7 +16,7 @@ export interface GameStateUpdateEvent {
   stateId: string;
 }
 
-export class SocketIOManager<StateType, ActionType> {
+export class SocketIOManager<StateType, ActionType, PlayerStateType> {
   private io: SocketIOServer;
   private logger: Logger;
   public gameRooms: Map<string, Set<string>> = new Map();
@@ -24,8 +24,8 @@ export class SocketIOManager<StateType, ActionType> {
 
   constructor(
     httpServer: HTTPServer,
-    private database: DatabaseService<StateType, ActionType>,
-    private plugin: GamePlugin<StateType, ActionType>,
+    private database: DatabaseService<StateType, ActionType, PlayerStateType>,
+    private plugin: GamePlugin<StateType, ActionType, PlayerStateType>,
     config: SocketIOServerConfig = {}
   ) {
     this.logger = createLogger({
@@ -48,12 +48,12 @@ export class SocketIOManager<StateType, ActionType> {
       this.logger.info('Client connected:', { socketId: socket.id });
 
       // Handle joining a game room
-      socket.on('join-game', async (gameId: string, playerId: string) => {
+      socket.on('join-game', async (gameId: string, playerToken: string) => {
         try {
-          this.logger.info(`Player ${playerId} joining game ${gameId}`);
+          this.logger.info(`Player with token ${playerToken} joining game ${gameId}`);
 
           // Verify the player exists and belongs to the game
-          const player = await this.database.getPlayerByToken(playerId);
+          const player = await this.database.getPlayerByToken(playerToken);
           if (!player || player.gameId !== gameId) {
             socket.emit('error', { message: 'Invalid player or game' });
             return;
@@ -69,7 +69,7 @@ export class SocketIOManager<StateType, ActionType> {
           this.gameRooms.get(gameId).add(socket.id);
 
           // Track player socket mapping
-          this.playerSockets.set(playerId, socket.id);
+          this.playerSockets.set(player.id, socket.id);
 
           // Notify other players in the game
           socket.to(gameId).emit('player-joined', {
@@ -77,7 +77,7 @@ export class SocketIOManager<StateType, ActionType> {
             playerName: player.name,
           });
 
-          this.logger.info(`Player ${playerId} successfully joined game ${gameId}`);
+          this.logger.info(`Player ${player.id} successfully joined game ${gameId}`);
         } catch (error) {
           this.logger.error('Error joining game:', error);
           socket.emit('error', { message: 'Failed to join game' });

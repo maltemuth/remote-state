@@ -12,7 +12,7 @@ const { info: _info, error: _error } = createLogger({
 
 describe('Database Service Integration Tests', () => {
   let sequelize: Sequelize;
-  let service: DatabaseService<unknown, unknown>;
+  let service: DatabaseService<unknown, unknown, unknown>;
 
   beforeAll(async () => {
     // Create a new Sequelize instance for testing

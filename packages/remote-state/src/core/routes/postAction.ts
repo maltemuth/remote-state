@@ -6,10 +6,10 @@ import { DatabaseService } from '../../database/service';
 import { SocketIOManager } from '../socket';
 
 // Action submission endpoint
-export const postAction = <StateType, ActionType>(
-  database: DatabaseService<StateType, ActionType>,
-  gamePlugin: GamePlugin<StateType, ActionType>,
-  socketIOManager?: SocketIOManager<StateType, ActionType>
+export const postAction = <StateType, ActionType, PlayerStateType>(
+  database: DatabaseService<StateType, ActionType, PlayerStateType>,
+  gamePlugin: GamePlugin<StateType, ActionType, PlayerStateType>,
+  socketIOManager?: SocketIOManager<StateType, ActionType, PlayerStateType>
 ) => {
   const { info, error } = createLogger({
     scope: 'postAction',
@@ -60,7 +60,7 @@ export const postAction = <StateType, ActionType>(
 
       // Get current game state
       info(`Getting current game state for game: ${gameId}`);
-      const { state } = await database.getCurrentGameState<StateType>(gameId);
+      const { state } = await database.getCurrentGameState(gameId);
       info(`Current state:`, state);
       // Use game-specific validation through dedicated module
       const validationResult = await gamePlugin.validateAction(
@@ -100,7 +100,7 @@ export const postAction = <StateType, ActionType>(
       });
 
       // Get the current game state to get the state ID
-      const currentGameState = await database.getCurrentGameState<StateType>(gameId);
+      const currentGameState = await database.getCurrentGameState(gameId);
 
       // Broadcast game state update via Socket.IO if manager is available
       if (socketIOManager && currentGameState) {
