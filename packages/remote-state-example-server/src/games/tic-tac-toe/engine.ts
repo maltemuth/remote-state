@@ -12,7 +12,7 @@ import {
   Board,
   WinLine,
   createInitialGameState,
-} from "./types.js";
+} from "./types";
 
 /**
  * Check if a position is valid on the board
@@ -247,7 +247,7 @@ export const executeAction = async (
 
     case "restart":
       // Reset the game but keep players
-      newState = createInitialGameState("");
+      newState = createInitialGameState();
       newState.players = state.players;
       break;
 
@@ -367,6 +367,164 @@ export const removePlayer = (
   newState.winLine = null;
   newState.currentPlayer = "X";
   newState.updatedAt = new Date();
+
+  return newState;
+};
+
+/**
+ * Simple validation function for testing purposes
+ * Returns true | string to match ActionValidationResult type
+ */
+export const validateActionSimple = async (
+  state: TicTacToeState,
+  action: {
+    type: "move";
+    position: [number, number];
+    playerId: string;
+    timestamp: Date;
+  },
+  _playerId: string
+): Promise<true | string> => {
+  // Check if game is finished
+  if (state.winner !== null) {
+    return "Game is already finished";
+  }
+
+  // Simple validation for tic-tac-toe moves
+  if (action.type === "move") {
+    const [row, col] = action.position;
+
+    // Check if position is valid
+    if (row < 0 || row > 2 || col < 0 || col > 2) {
+      return "Position out of bounds";
+    }
+
+    // Check if position is empty
+    if (state.board[row][col] !== null) {
+      return "Position already occupied";
+    }
+  }
+
+  return true;
+};
+
+/**
+ * Simple execution function for testing purposes
+ */
+export const executeActionSimple = async (
+  state: TicTacToeState,
+  action: {
+    type: "move";
+    position: [number, number];
+    playerId: string;
+    timestamp: Date;
+  },
+  _playerId: string
+): Promise<TicTacToeState> => {
+  // Simple execution for tic-tac-toe moves
+  const newState = JSON.parse(JSON.stringify(state)); // Deep copy
+
+  if (action.type === "move") {
+    const [row, col] = action.position;
+    newState.board[row][col] = state.currentPlayer;
+    newState.lastMove = {
+      player: state.currentPlayer,
+      position: [row, col],
+      timestamp: action.timestamp,
+    };
+
+    // Check for win
+    const player = state.currentPlayer;
+    let winner = null;
+    let winLine = null;
+
+    // Check rows
+    for (let r = 0; r < 3; r++) {
+      if (
+        newState.board[r][0] === player &&
+        newState.board[r][1] === player &&
+        newState.board[r][2] === player
+      ) {
+        winner = player;
+        winLine = {
+          type: "row",
+          player,
+          positions: [
+            [r, 0],
+            [r, 1],
+            [r, 2],
+          ],
+        };
+        break;
+      }
+    }
+
+    // Check columns
+    if (!winner) {
+      for (let c = 0; c < 3; c++) {
+        if (
+          newState.board[0][c] === player &&
+          newState.board[1][c] === player &&
+          newState.board[2][c] === player
+        ) {
+          winner = player;
+          winLine = {
+            type: "column",
+            player,
+            positions: [
+              [0, c],
+              [1, c],
+              [2, c],
+            ],
+          };
+          break;
+        }
+      }
+    }
+
+    // Check diagonals
+    if (!winner) {
+      if (
+        newState.board[0][0] === player &&
+        newState.board[1][1] === player &&
+        newState.board[2][2] === player
+      ) {
+        winner = player;
+        winLine = {
+          type: "diagonal",
+          player,
+          positions: [
+            [0, 0],
+            [1, 1],
+            [2, 2],
+          ],
+        };
+      } else if (
+        newState.board[0][2] === player &&
+        newState.board[1][1] === player &&
+        newState.board[2][0] === player
+      ) {
+        winner = player;
+        winLine = {
+          type: "diagonal",
+          player,
+          positions: [
+            [0, 2],
+            [1, 1],
+            [2, 0],
+          ],
+        };
+      }
+    }
+
+    if (winner) {
+      newState.winner = winner;
+      newState.winLine = winLine;
+    } else {
+      // Switch players
+      newState.currentPlayer = state.currentPlayer === "X" ? "O" : "X";
+    }
+  }
 
   return newState;
 };
