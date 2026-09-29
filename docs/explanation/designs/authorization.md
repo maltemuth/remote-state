@@ -1,6 +1,6 @@
 # Authorization
 
-Status: Open
+Status: Decided in [0015](../decisions/0015-library-issues-opaque-tokens.md)–[0023](../decisions/0023-no-server-to-server-admit.md), [0026](../decisions/0026-join-hook-is-a-state-transition.md) and [0028](../decisions/0028-no-operational-endpoints.md); limiting tokens per player deferred
 
 ## Problem
 
@@ -139,6 +139,6 @@ Decided: rate limiting is the host's job ([0016](../decisions/0016-authenticatio
 
 ## Open questions
 
-- **Limiting tokens:** hosts will be able to limit how many tokens a player has ([0019](../decisions/0019-several-tokens-per-player.md)); how is left for later.
+- **Limiting tokens, deferred:** hosts will be able to limit how many tokens a player has ([0019](../decisions/0019-several-tokens-per-player.md)), for example to one device at a time. To decide: where the limit is set, which token drops out when it's reached, and what happens to sockets connected with it. Nothing depends on it, and adding it later changes neither tokens nor clients.
 
 Decided since the proposal was written: joining is a state transition run by the game ([0026](../decisions/0026-join-hook-is-a-state-transition.md)); games are created with `createGame` ([0021](../decisions/0021-games-created-with-creategame.md)), and `admit` is only called in-process ([0023](../decisions/0023-no-server-to-server-admit.md)). Spectators are admitted like anyone else; what they see is set through [Audiences](audiences.md). Who may remove a player is the game's decision, discussed in [Game lifecycle](game-lifecycle.md).
