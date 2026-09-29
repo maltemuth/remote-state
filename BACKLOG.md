@@ -15,6 +15,8 @@ The library should behave like a library: its host application stays in control 
 - [ ] **Remove `/admin/log-level`, or make it opt-in and authenticated.** Today it's installed unauthenticated unless `NODE_ENV=production`.
 - [ ] **Allow embedding.** The library creates its own Express app and HTTP server. Allow mounting it into an existing app or attaching it to an existing server.
 - [ ] **Report the actual port.** `server.port` returns the requested port, so with port `0` it doesn't show the port actually used.
+- [ ] **Store tokens hashed** ([0017](docs/explanation/decisions/0017-hashed-tokens-in-header-and-handshake.md)), with a migration that hashes existing tokens.
+- [ ] **Accept tokens only in the header and the handshake** ([0017](docs/explanation/decisions/0017-hashed-tokens-in-header-and-handshake.md)): drop the `token` field in action bodies.
 - [ ] **More than one game type per server.** Each server hosts exactly one game plugin. This is larger than the other items, and may need a design proposal.
 
 ## Before the first release

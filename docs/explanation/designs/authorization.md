@@ -64,6 +64,8 @@ Candidates for what an `admin` could do: start or restart the game, remove playe
 
 ### 5. How are credentials handled?
 
+Decided: tokens are stored hashed, and accepted only in the header and the handshake ([0017](../decisions/0017-hashed-tokens-in-header-and-handshake.md)). For now, they don't expire and can't be revoked ([0018](../decisions/0018-no-token-expiration-or-revocation.md)). Open: reissuing a lost token.
+
 Independent of question 1, some improvements apply to any token:
 
 - **Store tokens hashed.** Tokens are random and long, so a fast hash such as SHA-256 is enough. A database leak then no longer lets anyone act as a player.
