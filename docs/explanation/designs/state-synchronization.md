@@ -69,14 +69,13 @@ This is the flow the decisions so far lead to. Open questions are marked at the 
 3. **The plugin validates the action** on the read-only state. A rejected action ends the flow here, with nothing changed or stored.
 4. **The server computes each subscriber's previous view,** before the rules run, since they may change the loaded state in place.
 5. **The plugin determines the new state** with `executeAction`, by changing the state it received or returning a new one.
-6. **The server stores** the new full state, the action and the new `sequence`, in one transaction, and releases the lock. No patches are stored ([0011](../decisions/0011-patches-are-diffs-of-views.md)).
-7. **The server filters and sends, per player.** For each subscriber, it computes the new view with `filterStateForPlayer`, then sends:
-   - a whole state: the new view
-   - or patches: the difference between the previous and the new view ([0011](../decisions/0011-patches-are-diffs-of-views.md))
+6. **The server computes each registered player's new view and diff,** with `filterStateForPlayer` and a diff against the previous view ([0011](../decisions/0011-patches-are-diffs-of-views.md)), for every player, connected or not.
+7. **The server stores** the new full state, the action, the new `sequence` and every player's diff, in one transaction, and releases the lock ([0012](../decisions/0012-store-player-diffs.md)).
+8. **The server sends, per subscriber:** the new view as a whole state, or the diff as patches, in the subscriber's chosen format.
 
    Each is converted to the subscriber's chosen format ([0007](../decisions/0007-client-chosen-update-format.md)), and labeled with the `sequence` it applies to and the one it produces.
 
-Step 7 runs again later, on stored data, whenever a reconnecting client asks `GET …/updates` ([0009](../decisions/0009-separate-state-and-update-endpoints.md)): views are recomputed from the stored states before and after each missed step, and diffed.
+A reconnecting client that asks `GET …/updates` ([0009](../decisions/0009-separate-state-and-update-endpoints.md)) gets the stored diffs of the steps it missed. Nothing is recomputed.
 
 ### Internal and external patches
 
@@ -270,7 +269,7 @@ The questions are which of these exist, how the store's reducer applies them, an
 - When a client asks for a patch format the game doesn't offer, should the server reject the request, or fall back to whole states? [0008](../decisions/0008-format-query-parameter.md) currently has it rejected.
 - How does `GET …/updates` answer when `since` is older than the stored patches reach, or when the game offers no patches: an error that points to `GET …/state`, or the whole state in its place?
 - When are minimal patches worth more than standard output: should `microdiff` replace `rfc6902` for games with board-like arrays?
-- Should `GET …/updates` answer step by step, one diff per missed step, or in one jump, a single diff from the view at `since` to the current view, or offer both?
+- Should `GET …/updates` answer step by step, or also in one jump? With stored diffs ([0012](../decisions/0012-store-player-diffs.md)), a jump can be the concatenation of the step diffs, which is correct but not minimal, or a fresh diff between the view at `since` and the current one.
 - What do clients need for rendering: to know which data changed, or what happened in game terms? Is keeping unchanged parts as the same objects on the client enough, or must the server send the change?
 - How large are the states of the games this is meant for, and how often do they change? This decides whether sending changes is worth the complexity.
 - Do clients need intermediate states, for example to animate each move, or only the latest one?

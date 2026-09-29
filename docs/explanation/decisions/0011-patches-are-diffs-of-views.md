@@ -1,6 +1,6 @@
 # 0011. Patches are diffs of player views; only full states are stored
 
-Status: Accepted
+Status: Accepted; storage extended by [0012](0012-store-player-diffs.md), which also stores each player's diffs
 Date: 2026-09-29
 
 ## Context
