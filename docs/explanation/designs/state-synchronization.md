@@ -168,6 +168,8 @@ Tested on a chess move, rules written as changes to a draft (`draft.board[4][4] 
 
 While connected, a client receives everything over the socket. The GET endpoints ([0009](../decisions/0009-separate-state-and-update-endpoints.md)) are only needed to close a gap: after reconnecting, a client fetches the updates it missed, or the whole state if the gap is too large.
 
+The current direction is to treat a client's first connection like a reconnect: the client connects the socket, then fetches the whole state with `GET …/state`, and keeps whichever is newer by `sequence`. That gives one mechanism for every gap, and keeps the socket for live updates only. It may not suit every game, so it stays open for revision as more example games are built.
+
 - **A. Fetch the latest state,** as today. Simple, but intermediate states are lost; a client can't animate the moves it missed.
 - **B. Fetch everything since a cursor.** `GET …/updates?since=<sequence>&format=…` returns every update after that sequence ([0009](../decisions/0009-separate-state-and-update-endpoints.md)). A client whose gap is too large fetches `GET …/state` instead. This needs the recorded patches stored with each state.
 - **C. Send the cursor when connecting.** The client includes its cursor in the socket handshake, and the server sends the missed updates before live ones. This keeps catch-up and live updates in one ordered stream. Clients still send nothing over the socket after connecting.
@@ -196,7 +198,7 @@ The questions are which of these exist, how the store's reducer applies them, an
 
 ## Open questions
 
-- Is a client's first connection handled like a reconnect, with a GET for the whole state, or does the socket send the current state when a client connects?
+- Do some games need the socket to send the current state when a client connects, instead of the client fetching it? If so, should a game be able to choose?
 - When a client asks for a patch format the game doesn't offer, should the server reject the request, or fall back to whole states? [0008](../decisions/0008-format-query-parameter.md) currently has it rejected.
 - How does `GET …/updates` answer when `since` is older than the stored patches reach, or when the game offers no patches: an error that points to `GET …/state`, or the whole state in its place?
 - Is it acceptable to change `executeAction` into a reducer that changes an Immer draft?
