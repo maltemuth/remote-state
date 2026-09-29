@@ -1,6 +1,6 @@
 # 0014. Immer's patch format is the only external patch format
 
-Status: Accepted
+Status: Accepted for now; to be revisited when clients outside the client package need patches
 Date: 2026-09-29
 
 ## Context
