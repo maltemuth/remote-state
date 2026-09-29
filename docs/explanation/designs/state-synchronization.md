@@ -123,7 +123,7 @@ A cursor identifies how far a client is in a game's history.
 
 This question stays semi-open: what updates need to carry will become clearer as more example games are built. The current direction is data changes, the part of the state that changed, as JSON patches recorded by Immer. See [JSON diffs](#json-diffs) below.
 
-The format is partly decided ([0007](../decisions/0007-client-chosen-update-format.md)): each client chooses whole state, JSON Patch, or Immer patches, both for its socket subscription and for GET requests.
+The format is partly decided ([0007](../decisions/0007-client-chosen-update-format.md)): each client chooses whole state, JSON Patch, or Immer patches, both for its socket subscription and for GET requests, with a `format` query parameter ([0008](../decisions/0008-format-query-parameter.md)).
 
 Sending only what changed matters for two separate reasons:
 
@@ -194,7 +194,7 @@ The questions are which of these exist, how the store's reducer applies them, an
 
 ## Open questions
 
-- How does a client state its format choice: a handshake option for the socket and a query parameter for GET, or HTTP content negotiation? JSON Patch has a registered media type, `application/json-patch+json`; Immer's format doesn't.
+- When a client asks for a patch format the game doesn't offer, should the server reject the request, or fall back to whole states? [0008](../decisions/0008-format-query-parameter.md) currently has it rejected.
 - Is it acceptable to change `executeAction` into a reducer that changes an Immer draft?
 - For games with hidden information: full views only, or patch filtering by the game?
 - What do clients need for rendering: to know which data changed, or what happened in game terms? Is keeping unchanged parts as the same objects on the client enough, or must the server send the change?
