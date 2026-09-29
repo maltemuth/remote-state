@@ -121,6 +121,8 @@ A cursor identifies how far a client is in a game's history.
 
 ### 2. What does an update contain?
 
+This question stays semi-open: what updates need to carry will become clearer as more example games are built. The current direction is data changes, the part of a view that changed, as JSON diffs. See [JSON diffs](#json-diffs) below.
+
 Sending only what changed matters for two separate reasons:
 
 - **Size.** A message should grow with the change, not with the whole view.
@@ -138,6 +140,35 @@ A client could also get part of the rendering benefit without any protocol chang
 - **C. Mixed.** Changes when the client is known to be one step behind, a full view otherwise, and a full view every few updates as a checkpoint.
 - **D. Game events.** The game's rules produce events, for example "X placed at 1,1", and each event is filtered per player like the state. Clients update their copy with their own reducers, the way Redux works locally. It fits the Redux model best, and gives rendering the meaning of each change. But game authors must write event filtering as well as state filtering, and client and server rules must stay in agreement.
 - **E. Game events alongside data.** Each update carries the data (a full view or data changes) together with the game's events for rendering. The store stays correct from the data alone, and events are only used for presentation, so a client that ignores them still works. It sends more than B or D alone.
+
+### JSON diffs
+
+**Formats.** Three are in common use:
+
+- **JSON Patch (RFC 6902):** a list of operations (`add`, `remove`, `replace`, `move`, `copy`, `test`), each addressing a location by path, for example `/board/4/4`. Standard, and supported by many libraries in many languages, including Immer, which many Redux setups already use.
+- **JSON Merge Patch (RFC 7386):** a partial document merged into the target. Simple, but it can't change one element of an array; any change to an array resends the whole array, so a chess move would resend the board.
+- **jsondiffpatch's format:** compact, and detects moved array elements, but not a standard. Clients would depend on that one library to apply it.
+
+**The diff algorithm matters as much as the format.** A general-purpose diff treats arrays as lists, and looks for inserted and removed elements. Tested on a chess move with the `rfc6902` library, it described e2-e4 as "insert a row at index 4, remove row 7", because the empty rows all look alike. The patch was correct, but it didn't say which squares changed, and applying it shifted rows that hadn't changed. In game state, arrays are usually positions: board squares, seats, tracks. So the diff should compare arrays index by index, and only add or remove at the end.
+
+A positional diff producing JSON Patch, about 30 lines with no dependencies, turned the same move into exactly the changed parts:
+
+```json
+[
+  { "op": "replace", "path": "/board/4/4", "value": "wP" },
+  { "op": "replace", "path": "/board/6/4", "value": null },
+  { "op": "replace", "path": "/turn", "value": "black" },
+  { "op": "add", "path": "/moves/-", "value": "e4" }
+]
+```
+
+That's 193 bytes, against 377 for the full view. Applied on the client with Immer, only the two changed rows became new objects, so identity-based stores re-render only those.
+
+**What JSON diffs require from the rest of the design:**
+
+- **Diffs are per player,** computed between the player's previous and new views, never between two states (see [Every client has its own view](#every-client-has-its-own-view)). The server needs each player's previous view, either kept in memory or recomputed by filtering the previous state from the history.
+- **A diff is only valid on its exact base.** Each diff must say which `sequence` it applies to and which it produces. A client that isn't at the base needs a full view instead, which is option C.
+- **An empty diff** means the player's view didn't change. Whether it's still sent is the question of unchanged views, above.
 
 ### 3. How does a client catch up after missing updates?
 
@@ -169,6 +200,7 @@ The questions are which of these exist, how the store's reducer applies them, an
 
 ## Open questions
 
+- Is a positional diff enough for every example game, or do some games have arrays that behave like lists, where inserting in the middle is common?
 - What do clients need for rendering: to know which data changed, or what happened in game terms? Is keeping unchanged parts as the same objects on the client enough, or must the server send the change?
 - Should the library treat games without hidden information differently, for example by broadcasting one message and allowing client-side prediction? If so, does a game declare it, or does the library infer it from the missing `filterStateForPlayer`?
 - How large are the states of the games this is meant for, and how often do they change? This decides whether sending changes is worth the complexity.
