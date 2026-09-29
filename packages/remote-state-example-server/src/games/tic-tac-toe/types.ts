@@ -10,7 +10,7 @@ export type PlayerSymbol = "X" | "O" | null;
 export type Board = PlayerSymbol[][];
 
 // Game status
-export type GameStatus = "waiting" | "finished";
+export type GameStatus = "waiting" | "playing" | "finished";
 
 // Win conditions
 export type WinCondition = "row" | "column" | "diagonal" | "draw" | null;
@@ -23,12 +23,13 @@ export type WinLine = {
 // Game action types
 export type TicTacToeActionType = "move" | "restart" | "join" | "leave";
 
-// Game action data
+// Game action data. Clients send `type` and `position`; the server adds
+// `playerId` and `timestamp` before executing it.
 export interface TicTacToeAction {
   type: TicTacToeActionType;
-  playerId: string;
   position?: [number, number]; // For move actions
-  timestamp: Date;
+  playerId?: string;
+  timestamp?: Date;
 }
 
 // Game state

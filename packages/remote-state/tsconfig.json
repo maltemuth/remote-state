@@ -2,7 +2,12 @@
   "extends": "../../tsconfig.json",
   "compilerOptions": {
     "outDir": "./dist",
-    "skipLibCheck": true
+    "skipLibCheck": true,
+    // Lets the e2e tests type-check the example server against this source, not dist
+    "baseUrl": ".",
+    "paths": {
+      "@malte.muth/remote-state": ["src/index.ts"]
+    }
   },
 
   // Include only the source directory

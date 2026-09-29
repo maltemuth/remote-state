@@ -1,702 +1,134 @@
 import request from 'supertest';
-import { createRemoteStateServer } from '../../src/core/server';
-
-// Import Jest globals
-import { describe, beforeAll, afterAll, it, expect, jest } from '@jest/globals';
+import { describe, beforeAll, afterAll, it, expect } from '@jest/globals';
+import { createRemoteStateServer, RemoteStateServer } from '../../src/core/server';
 import { LogLevel } from '../../src';
-
-// Import Tic-Tac-Toe types and engine from the example server
-import { createInitialGameState } from '../../../remote-state-example-server/src/games/tic-tac-toe/types';
+import { ticTacToePlugin } from '../../../remote-state-example-server/src/games/tic-tac-toe/plugin';
 import {
-  validateActionSimple as validateAction,
-  executeActionSimple as executeAction,
-} from '../../../remote-state-example-server/src/games/tic-tac-toe/engine';
+  TicTacToeAction,
+  TicTacToeState,
+} from '../../../remote-state-example-server/src/games/tic-tac-toe/types';
 
-describe('Tic-Tac-Toe E2E Tests', () => {
-  // Set test timeout to 5 seconds to prevent hanging
-  jest.setTimeout(5000);
-  let server: Awaited<ReturnType<typeof createRemoteStateServer>>;
+describe('Tic-Tac-Toe E2E', () => {
+  let server: RemoteStateServer<TicTacToeState, TicTacToeAction, TicTacToeState>;
+
+  const act = (gameId: string, token: string, action: TicTacToeAction) =>
+    request(server.app).post(`/api/games/${gameId}/actions`).send({ action, token });
+
+  const move = (gameId: string, token: string, row: number, col: number) =>
+    act(gameId, token, { type: 'move', position: [row, col] });
+
+  const stateFor = async (gameId: string, token: string) =>
+    (
+      await request(server.app)
+        .get(`/api/games/${gameId}/state/current`)
+        .set('Authorization', `Bearer ${token}`)
+        .expect(200)
+    ).body.state as TicTacToeState;
+
+  /** Create a game, register a second player, and seat both (owner as X) */
+  const startGame = async () => {
+    const owner = await request(server.app)
+      .post('/api/games')
+      .send({ playerName: 'Xavier', gameName: 'E2E game' })
+      .expect(201);
+    const { gameId } = owner.body;
+    const joiner = await request(server.app)
+      .post(`/api/games/${gameId}/players`)
+      .send({ playerName: 'Olivia' })
+      .expect(201);
+
+    const x = { id: owner.body.playerId as string, token: owner.body.token as string };
+    const o = { id: joiner.body.playerId as string, token: joiner.body.token as string };
+    await act(gameId, x.token, { type: 'join' }).expect(201);
+    await act(gameId, o.token, { type: 'join' }).expect(201);
+    return { gameId: gameId as string, x, o };
+  };
 
   beforeAll(async () => {
-    // Create a test server instance using the game logic from the example server
-    const testServer = await createRemoteStateServer(
-      {
-        getInitialState: () => Promise.resolve(createInitialGameState()),
-        validateAction,
-        executeAction,
-
-        gameConfig: {
-          name: 'Tic-Tac-Toe',
-          description: 'Classic 3x3 tic-tac-toe game',
-        },
-        serverConfiguration: {
-          persistDatabase: false,
-          minimumLogLevel: LogLevel.error,
-        },
-      },
+    server = await createRemoteStateServer(
+      { ...ticTacToePlugin, serverConfiguration: { minimumLogLevel: LogLevel.error } },
       0
     );
-    server = testServer;
-
-    // Start the server
-    await server.startServer();
   });
 
   afterAll(async () => {
-    // Properly close the server
-    if (server) {
-      try {
-        // Simple approach - just close the server without calling process.exit
-        await server.shutdown(false);
-      } catch (error) {
-        // Log error but don't fail the test
-        // eslint-disable-next-line no-console, no-undef
-        console.error('Server shutdown error:', error);
-      }
-    }
+    await server.shutdown(false);
   });
 
-  it('should create a new game and register owner', async () => {
-    const response = await request(server.app)
+  it('waits for two seated players before accepting moves', async () => {
+    const owner = await request(server.app)
       .post('/api/games')
-      .send({
-        playerName: 'Player X',
-        gameName: 'Test Tic-Tac-Toe Game',
-      })
+      .send({ playerName: 'Xavier', gameName: 'E2E game' })
       .expect(201);
+    const { gameId, token } = owner.body;
 
-    expect(response.body.gameId).toBeDefined();
-    expect(response.body.token).toBeDefined();
-    expect(response.body.playerId).toBeDefined();
+    const joined = await act(gameId, token, { type: 'join' }).expect(201);
+    expect(joined.body.players.X).toBe(owner.body.playerId);
+    expect(joined.body.status).toBe('waiting');
+
+    const early = await move(gameId, token, 0, 0).expect(400);
+    expect(early.body.error).toBe('Waiting for a second player');
   });
 
-  it('should allow another player to join the game', async () => {
-    // First create a game
-    const ownerResponse = await request(server.app)
-      .post('/api/games')
-      .send({
-        playerName: 'Player X',
-        gameName: 'Test Tic-Tac-Toe Game',
-      })
-      .expect(201);
+  it('seats the second player as O and starts the game', async () => {
+    const { gameId, x, o } = await startGame();
+    const state = await stateFor(gameId, x.token);
+    expect(state.status).toBe('playing');
+    expect(state.players).toEqual({ X: x.id, O: 'opponent' });
+    expect((await stateFor(gameId, o.token)).players).toEqual({ X: 'opponent', O: o.id });
+  });
 
-    const gameId = ownerResponse.body.gameId;
-
-    // Then join the game
-    const joinResponse = await request(server.app)
+  it('rejects a third player', async () => {
+    const { gameId } = await startGame();
+    const third = await request(server.app)
       .post(`/api/games/${gameId}/players`)
-      .send({
-        playerName: 'Player O',
-      })
+      .send({ playerName: 'Third' })
       .expect(201);
-
-    expect(joinResponse.body.success).toBe(true);
-    expect(joinResponse.body.gameId).toBe(gameId);
-    expect(joinResponse.body.token).toBeDefined();
-    expect(joinResponse.body.playerId).toBeDefined();
+    const response = await act(gameId, third.body.token, { type: 'join' }).expect(400);
+    expect(response.body.error).toBe('Both seats are taken');
   });
 
-  it('should make the first move (X player)', async () => {
-    // Setup game
-    const ownerResponse = await request(server.app)
-      .post('/api/games')
-      .send({
-        playerName: 'Player X',
-        gameName: 'Test Tic-Tac-Toe Game',
-      })
-      .expect(201);
+  it('enforces turn order and empty cells', async () => {
+    const { gameId, x, o } = await startGame();
 
-    const gameId = ownerResponse.body.gameId;
-    const ownerToken = ownerResponse.body.token;
-
-    await request(server.app)
-      .post(`/api/games/${gameId}/players`)
-      .send({
-        playerName: 'Player O',
-      })
-      .expect(201);
-
-    // Make first move
-    const response = await request(server.app)
-      .post(`/api/games/${gameId}/actions`)
-      .send({
-        action: {
-          type: 'move',
-          playerId: ownerResponse.body.playerId,
-          position: [0, 0],
-          timestamp: new Date(),
-        },
-        token: ownerToken,
-      })
-      .expect(201);
-
-    // The API returns the state directly, not a wrapper object
-    expect(response.body).toBeDefined();
-    expect(response.body.board[0][0]).toBe('X');
-    expect(response.body.board[0][1]).toBeNull();
-    expect(response.body.board[0][2]).toBeNull();
-    expect(response.body.board[1][0]).toBeNull();
-    expect(response.body.board[1][1]).toBeNull();
-    expect(response.body.board[1][2]).toBeNull();
-    expect(response.body.board[2][0]).toBeNull();
-    expect(response.body.board[2][1]).toBeNull();
-    expect(response.body.board[2][2]).toBeNull();
-    expect(response.body.currentPlayer).toBe('O');
-    expect(response.body.winner).toBeNull();
-    expect(response.body.winLine).toBeNull();
+    expect((await move(gameId, o.token, 0, 0).expect(400)).body.error).toBe("It's X's turn");
+    await move(gameId, x.token, 0, 0).expect(201);
+    expect((await move(gameId, o.token, 0, 0).expect(400)).body.error).toBe(
+      'Position is already occupied'
+    );
+    expect((await move(gameId, o.token, 3, 0).expect(400)).body.error).toBe(
+      'Position must be [row, col] between 0-2'
+    );
   });
 
-  it('should make the second move (O player)', async () => {
-    // Setup game
-    const ownerResponse = await request(server.app)
-      .post('/api/games')
-      .send({
-        playerName: 'Player X',
-        gameName: 'Test Tic-Tac-Toe Game',
-      })
-      .expect(201);
+  it('plays to a win and then rejects further moves', async () => {
+    const { gameId, x, o } = await startGame();
 
-    const gameId = ownerResponse.body.gameId;
-    const ownerToken = ownerResponse.body.token;
+    await move(gameId, x.token, 0, 0).expect(201);
+    await move(gameId, o.token, 1, 0).expect(201);
+    await move(gameId, x.token, 0, 1).expect(201);
+    await move(gameId, o.token, 1, 1).expect(201);
+    const winning = await move(gameId, x.token, 0, 2).expect(201);
 
-    const joinerResponse = await request(server.app)
-      .post(`/api/games/${gameId}/players`)
-      .send({
-        playerName: 'Player O',
-      })
-      .expect(201);
+    expect(winning.body.winner).toBe('X');
+    expect(winning.body.status).toBe('finished');
+    expect(winning.body.winLine.type).toBe('row');
 
-    const joinerToken = joinerResponse.body.token;
+    const final = await stateFor(gameId, o.token);
+    expect(final.board[0]).toEqual(['X', 'X', 'X']);
+    expect(final.winner).toBe('X');
 
-    // Make first move
-    await request(server.app)
-      .post(`/api/games/${gameId}/actions`)
-      .send({
-        action: {
-          type: 'move',
-          playerId: ownerResponse.body.playerId,
-          position: [0, 0],
-          timestamp: new Date(),
-        },
-        token: ownerToken,
-      })
-      .expect(201);
-
-    // Make second move
-    const response = await request(server.app)
-      .post(`/api/games/${gameId}/actions`)
-      .send({
-        action: {
-          type: 'move',
-          playerId: joinerResponse.body.playerId,
-          position: [1, 1],
-          timestamp: new Date(),
-        },
-        token: joinerToken,
-      })
-      .expect(201);
-
-    // The API returns the state directly, not a wrapper object
-    expect(response.body).toBeDefined();
-    expect(response.body.board[0][0]).toBe('X');
-    expect(response.body.board[0][1]).toBeNull();
-    expect(response.body.board[0][2]).toBeNull();
-    expect(response.body.board[1][0]).toBeNull();
-    expect(response.body.board[1][1]).toBe('O');
-    expect(response.body.board[1][2]).toBeNull();
-    expect(response.body.board[2][0]).toBeNull();
-    expect(response.body.board[2][1]).toBeNull();
-    expect(response.body.board[2][2]).toBeNull();
-    expect(response.body.currentPlayer).toBe('X');
-    expect(response.body.winner).toBeNull();
-    expect(response.body.winLine).toBeNull();
+    const late = await move(gameId, o.token, 2, 2).expect(400);
+    expect(late.body.error).toBe('Game is already finished');
   });
 
-  it('should make the third move (X player)', async () => {
-    // Setup game
-    const ownerResponse = await request(server.app)
-      .post('/api/games')
-      .send({
-        playerName: 'Player X',
-        gameName: 'Test Tic-Tac-Toe Game',
-      })
-      .expect(201);
+  it('restarts with the same seats', async () => {
+    const { gameId, x, o } = await startGame();
+    await move(gameId, x.token, 1, 1).expect(201);
 
-    const gameId = ownerResponse.body.gameId;
-    const ownerToken = ownerResponse.body.token;
-
-    const joinerResponse = await request(server.app)
-      .post(`/api/games/${gameId}/players`)
-      .send({
-        playerName: 'Player O',
-      })
-      .expect(201);
-
-    const joinerToken = joinerResponse.body.token;
-
-    // Make moves
-    await request(server.app)
-      .post(`/api/games/${gameId}/actions`)
-      .send({
-        action: {
-          type: 'move',
-          playerId: ownerResponse.body.playerId,
-          position: [0, 0],
-          timestamp: new Date(),
-        },
-        token: ownerToken,
-      })
-      .expect(201);
-
-    await request(server.app)
-      .post(`/api/games/${gameId}/actions`)
-      .send({
-        action: {
-          type: 'move',
-          playerId: joinerResponse.body.playerId,
-          position: [1, 1],
-          timestamp: new Date(),
-        },
-        token: joinerToken,
-      })
-      .expect(201);
-
-    // Make third move
-    const response = await request(server.app)
-      .post(`/api/games/${gameId}/actions`)
-      .send({
-        action: {
-          type: 'move',
-          playerId: ownerResponse.body.playerId,
-          position: [0, 1],
-          timestamp: new Date(),
-        },
-        token: ownerToken,
-      })
-      .expect(201);
-
-    // The API returns the state directly, not a wrapper object
-    expect(response.body).toBeDefined();
-    expect(response.body.board[0][0]).toBe('X');
-    expect(response.body.board[0][1]).toBe('X');
-    expect(response.body.board[0][2]).toBeNull();
-    expect(response.body.board[1][0]).toBeNull();
-    expect(response.body.board[1][1]).toBe('O');
-    expect(response.body.board[1][2]).toBeNull();
-    expect(response.body.board[2][0]).toBeNull();
-    expect(response.body.board[2][1]).toBeNull();
-    expect(response.body.board[2][2]).toBeNull();
-    expect(response.body.currentPlayer).toBe('O');
-    expect(response.body.winner).toBeNull();
-    expect(response.body.winLine).toBeNull();
-  });
-
-  it('should make the fourth move (O player)', async () => {
-    // Setup game
-    const ownerResponse = await request(server.app)
-      .post('/api/games')
-      .send({
-        playerName: 'Player X',
-        gameName: 'Test Tic-Tac-Toe Game',
-      })
-      .expect(201);
-
-    const gameId = ownerResponse.body.gameId;
-    const ownerToken = ownerResponse.body.token;
-
-    const joinerResponse = await request(server.app)
-      .post(`/api/games/${gameId}/players`)
-      .send({
-        playerName: 'Player O',
-      })
-      .expect(201);
-
-    const joinerToken = joinerResponse.body.token;
-
-    // Make moves
-    await request(server.app)
-      .post(`/api/games/${gameId}/actions`)
-      .send({
-        action: {
-          type: 'move',
-          playerId: ownerResponse.body.playerId,
-          position: [0, 0],
-          timestamp: new Date(),
-        },
-        token: ownerToken,
-      })
-      .expect(201);
-
-    await request(server.app)
-      .post(`/api/games/${gameId}/actions`)
-      .send({
-        action: {
-          type: 'move',
-          playerId: joinerResponse.body.playerId,
-          position: [1, 1],
-          timestamp: new Date(),
-        },
-        token: joinerToken,
-      })
-      .expect(201);
-
-    await request(server.app)
-      .post(`/api/games/${gameId}/actions`)
-      .send({
-        action: {
-          type: 'move',
-          playerId: ownerResponse.body.playerId,
-          position: [0, 1],
-          timestamp: new Date(),
-        },
-        token: ownerToken,
-      })
-      .expect(201);
-
-    // Make fourth move
-    const response = await request(server.app)
-      .post(`/api/games/${gameId}/actions`)
-      .send({
-        action: {
-          type: 'move',
-          playerId: joinerResponse.body.playerId,
-          position: [1, 0],
-          timestamp: new Date(),
-        },
-        token: joinerToken,
-      })
-      .expect(201);
-
-    // The API returns the state directly, not a wrapper object
-    expect(response.body).toBeDefined();
-    expect(response.body.board[0][0]).toBe('X');
-    expect(response.body.board[0][1]).toBe('X');
-    expect(response.body.board[0][2]).toBeNull();
-    expect(response.body.board[1][0]).toBe('O');
-    expect(response.body.board[1][1]).toBe('O');
-    expect(response.body.board[1][2]).toBeNull();
-    expect(response.body.board[2][0]).toBeNull();
-    expect(response.body.board[2][1]).toBeNull();
-    expect(response.body.board[2][2]).toBeNull();
-    expect(response.body.currentPlayer).toBe('X');
-    expect(response.body.winner).toBeNull();
-    expect(response.body.winLine).toBeNull();
-  });
-
-  it('should make the fifth move (X player) and win the game', async () => {
-    // Setup game
-    const ownerResponse = await request(server.app)
-      .post('/api/games')
-      .send({
-        playerName: 'Player X',
-        gameName: 'Test Tic-Tac-Toe Game',
-      })
-      .expect(201);
-
-    const gameId = ownerResponse.body.gameId;
-    const ownerToken = ownerResponse.body.token;
-
-    const joinerResponse = await request(server.app)
-      .post(`/api/games/${gameId}/players`)
-      .send({
-        playerName: 'Player O',
-      })
-      .expect(201);
-
-    const joinerToken = joinerResponse.body.token;
-
-    // Make moves
-    await request(server.app)
-      .post(`/api/games/${gameId}/actions`)
-      .send({
-        action: {
-          type: 'move',
-          playerId: ownerResponse.body.playerId,
-          position: [0, 0],
-          timestamp: new Date(),
-        },
-        token: ownerToken,
-      })
-      .expect(201);
-
-    await request(server.app)
-      .post(`/api/games/${gameId}/actions`)
-      .send({
-        action: {
-          type: 'move',
-          playerId: joinerResponse.body.playerId,
-          position: [1, 1],
-          timestamp: new Date(),
-        },
-        token: joinerToken,
-      })
-      .expect(201);
-
-    await request(server.app)
-      .post(`/api/games/${gameId}/actions`)
-      .send({
-        action: {
-          type: 'move',
-          playerId: ownerResponse.body.playerId,
-          position: [0, 1],
-          timestamp: new Date(),
-        },
-        token: ownerToken,
-      })
-      .expect(201);
-
-    await request(server.app)
-      .post(`/api/games/${gameId}/actions`)
-      .send({
-        action: {
-          type: 'move',
-          playerId: joinerResponse.body.playerId,
-          position: [1, 0],
-          timestamp: new Date(),
-        },
-        token: joinerToken,
-      })
-      .expect(201);
-
-    // Make fifth move (winning move)
-    const response = await request(server.app)
-      .post(`/api/games/${gameId}/actions`)
-      .send({
-        action: {
-          type: 'move',
-          playerId: ownerResponse.body.playerId,
-          position: [0, 2],
-          timestamp: new Date(),
-        },
-        token: ownerToken,
-      })
-      .expect(201);
-
-    // The API returns the state directly, not a wrapper object
-    expect(response.body).toBeDefined();
-    expect(response.body.board[0][0]).toBe('X');
-    expect(response.body.board[0][1]).toBe('X');
-    expect(response.body.board[0][2]).toBe('X');
-    expect(response.body.board[1][0]).toBe('O');
-    expect(response.body.board[1][1]).toBe('O');
-    expect(response.body.board[1][2]).toBeNull();
-    expect(response.body.board[2][0]).toBeNull();
-    expect(response.body.board[2][1]).toBeNull();
-    expect(response.body.board[2][2]).toBeNull();
-    expect(response.body.currentPlayer).toBe('X'); // Game is over, but currentPlayer remains as the winner
-    expect(response.body.winner).toBe('X');
-    expect(response.body.winLine).toEqual({
-      type: 'row',
-      player: 'X',
-      positions: [
-        [0, 0],
-        [0, 1],
-        [0, 2],
-      ],
-    });
-  });
-
-  it('should retrieve the final game state', async () => {
-    // Setup game and play to completion
-    const ownerResponse = await request(server.app)
-      .post('/api/games')
-      .send({
-        playerName: 'Player X',
-        gameName: 'Test Tic-Tac-Toe Game',
-      })
-      .expect(201);
-
-    const gameId = ownerResponse.body.gameId;
-    const ownerToken = ownerResponse.body.token;
-
-    const joinerResponse = await request(server.app)
-      .post(`/api/games/${gameId}/players`)
-      .send({
-        playerName: 'Player O',
-      })
-      .expect(201);
-
-    const joinerToken = joinerResponse.body.token;
-
-    // Make moves to win the game
-    await request(server.app)
-      .post(`/api/games/${gameId}/actions`)
-      .send({
-        action: {
-          type: 'move',
-          playerId: ownerResponse.body.playerId,
-          position: [0, 0],
-          timestamp: new Date(),
-        },
-        token: ownerToken,
-      })
-      .expect(201);
-
-    await request(server.app)
-      .post(`/api/games/${gameId}/actions`)
-      .send({
-        action: {
-          type: 'move',
-          playerId: joinerResponse.body.playerId,
-          position: [1, 1],
-          timestamp: new Date(),
-        },
-        token: joinerToken,
-      })
-      .expect(201);
-
-    await request(server.app)
-      .post(`/api/games/${gameId}/actions`)
-      .send({
-        action: {
-          type: 'move',
-          playerId: ownerResponse.body.playerId,
-          position: [0, 1],
-          timestamp: new Date(),
-        },
-        token: ownerToken,
-      })
-      .expect(201);
-
-    await request(server.app)
-      .post(`/api/games/${gameId}/actions`)
-      .send({
-        action: {
-          type: 'move',
-          playerId: joinerResponse.body.playerId,
-          position: [1, 0],
-          timestamp: new Date(),
-        },
-        token: joinerToken,
-      })
-      .expect(201);
-
-    await request(server.app)
-      .post(`/api/games/${gameId}/actions`)
-      .send({
-        action: {
-          type: 'move',
-          playerId: ownerResponse.body.playerId,
-          position: [0, 2],
-          timestamp: new Date(),
-        },
-        token: ownerToken,
-      })
-      .expect(201);
-
-    // Retrieve final state
-    const response = await request(server.app)
-      .get(`/api/games/${gameId}/state/current`)
-      .set('Authorization', `Bearer ${ownerToken}`)
-      .expect(200);
-
-    expect(response.body.gameId).toBe(gameId);
-    expect(response.body.state.winner).toBe('X');
-    expect(response.body.state.board[0]).toEqual(['X', 'X', 'X']); // Winning row
-  });
-
-  it('should not allow additional moves after game is finished', async () => {
-    // Setup game and play to completion
-    const ownerResponse = await request(server.app)
-      .post('/api/games')
-      .send({
-        playerName: 'Player X',
-        gameName: 'Test Tic-Tac-Toe Game',
-      })
-      .expect(201);
-
-    const gameId = ownerResponse.body.gameId;
-    const ownerToken = ownerResponse.body.token;
-
-    const joinerResponse = await request(server.app)
-      .post(`/api/games/${gameId}/players`)
-      .send({
-        playerName: 'Player O',
-      })
-      .expect(201);
-
-    const joinerToken = joinerResponse.body.token;
-
-    // Make moves to win the game
-    await request(server.app)
-      .post(`/api/games/${gameId}/actions`)
-      .send({
-        action: {
-          type: 'move',
-          playerId: ownerResponse.body.playerId,
-          position: [0, 0],
-          timestamp: new Date(),
-        },
-        token: ownerToken,
-      })
-      .expect(201);
-
-    await request(server.app)
-      .post(`/api/games/${gameId}/actions`)
-      .send({
-        action: {
-          type: 'move',
-          playerId: joinerResponse.body.playerId,
-          position: [1, 1],
-          timestamp: new Date(),
-        },
-        token: joinerToken,
-      })
-      .expect(201);
-
-    await request(server.app)
-      .post(`/api/games/${gameId}/actions`)
-      .send({
-        action: {
-          type: 'move',
-          playerId: ownerResponse.body.playerId,
-          position: [0, 1],
-          timestamp: new Date(),
-        },
-        token: ownerToken,
-      })
-      .expect(201);
-
-    await request(server.app)
-      .post(`/api/games/${gameId}/actions`)
-      .send({
-        action: {
-          type: 'move',
-          playerId: joinerResponse.body.playerId,
-          position: [1, 0],
-          timestamp: new Date(),
-        },
-        token: joinerToken,
-      })
-      .expect(201);
-
-    await request(server.app)
-      .post(`/api/games/${gameId}/actions`)
-      .send({
-        action: {
-          type: 'move',
-          playerId: ownerResponse.body.playerId,
-          position: [0, 2],
-          timestamp: new Date(),
-        },
-        token: ownerToken,
-      })
-      .expect(201);
-
-    // Try to make another move after game is finished
-    const response = await request(server.app)
-      .post(`/api/games/${gameId}/actions`)
-      .send({
-        action: {
-          type: 'move',
-          playerId: joinerResponse.body.playerId,
-          position: [2, 2],
-          timestamp: new Date(),
-        },
-        token: joinerToken,
-      })
-      .expect(400);
-
-    expect(response.body.error).toBe('Game is already finished');
+    const restarted = await act(gameId, o.token, { type: 'restart' }).expect(201);
+    expect(restarted.body.board.flat().every((cell: string | null) => cell === null)).toBe(true);
+    expect(restarted.body.status).toBe('playing');
+    expect(restarted.body.currentPlayer).toBe('X');
   });
 });
