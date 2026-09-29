@@ -26,6 +26,8 @@ This is a library that runs inside someone else's server ([Goals](../goals.md)).
 
 ## Questions to decide
 
+Authentication is the library's job, and authorization the implementer's ([0016](../decisions/0016-authentication-in-library-authorization-by-implementer.md)). Questions 2, 3, 4 and 6 are therefore no longer about the library's policy, but about where implementers can decide, and what the library tells them.
+
 ### 1. Where does identity come from?
 
 Decided: **A**, the library issues its own opaque tokens ([0015](../decisions/0015-library-issues-opaque-tokens.md)).
@@ -36,10 +38,14 @@ Decided: **A**, the library issues its own opaque tokens ([0015](../decisions/00
 
 ### 2. Who may create a game?
 
+Decided: the implementer ([0016](../decisions/0016-authentication-in-library-authorization-by-implementer.md)). Open: the extension point, for example a hook like the one in B.
+
 - **A. Anyone,** as today.
 - **B. Whoever the host allows,** through a hook, for example `canCreateGame(user, options)`.
 
 ### 3. Who may join a game?
+
+Decided: the implementer, the game or the host ([0016](../decisions/0016-authentication-in-library-authorization-by-implementer.md)). Open: the extension point, and whether the library offers invitation tokens (D) as a tool implementers can use.
 
 - **A. Anyone who knows the game's ID,** as today. The ID works like an unguessable invitation link.
 - **B. The game decides,** through a hook asked on registration, for example to enforce a player limit. This overlaps with [Player information](player-information.md) and [Game lifecycle](game-lifecycle.md).
@@ -47,6 +53,8 @@ Decided: **A**, the library issues its own opaque tokens ([0015](../decisions/00
 - **D. Separate invitation tokens,** issued by the game's admin and required to join.
 
 ### 4. What do roles mean?
+
+Decided: **B**, the game defines them ([0016](../decisions/0016-authentication-in-library-authorization-by-implementer.md)). Open: whether the library keeps a `role` field for games to use, or leaves it to the game's state.
 
 Candidates for what an `admin` could do: start or restart the game, remove players, change options, close or delete the game. Candidates for further roles: `spectator`, who sees but can't act; `moderator`.
 
@@ -63,6 +71,8 @@ Independent of question 1, some improvements apply to any token:
 - **Expiry, revocation and reissue.** For example: let a player replace a lost token, let an admin revoke a player's token, and expire tokens of finished games.
 
 ### 6. What protects the service itself?
+
+Decided: rate limiting is the host's job ([0016](../decisions/0016-authentication-in-library-authorization-by-implementer.md)). Open: the library's own operational endpoints.
 
 - **Operational endpoints,** such as `/admin/log-level`: remove them, or authenticate them through the host. Also listed in the [backlog](../../../BACKLOG.md).
 - **Rate limiting,** at least for creating games and registering players, which today can be called without limit by anyone.
