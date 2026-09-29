@@ -78,7 +78,8 @@ What it gives:
 Where it falls short:
 
 - **Ordering needs one fix.** The acting client receives its new state twice, in the HTTP response and over the socket, and they can arrive in either order. The HTTP response doesn't include the state's `sequence`, so a late response could overwrite a newer state from the socket. Adding `sequence` to the response, and ignoring anything older than the current state, is enough.
-- **Bandwidth** grows with state size multiplied by the number of players and actions.
+- **Size out of proportion to the change.** Each message is the whole view, however little changed. For a large view where one value changed, nearly all of every message is repeated data. The total grows with view size multiplied by the number of players and actions.
+- **The change itself is lost.** The client receives a result, not what happened. To animate the piece that moved, or to re-render only what changed, it has to compare the old and new views itself. Stores that detect changes by object identity see every part of a freshly received view as new, so everything re-renders.
 - **Missed steps are lost.** A client that reconnects jumps to the latest state, and can't show what happened in between.
 - **Every action waits for a round trip** before the player sees its effect.
 
@@ -106,7 +107,7 @@ What it costs:
 - **Connecting has an ordering race.** Updates can arrive over the socket while the GET for the current state is still in flight. To lose nothing, the client connects the socket first, then fetches the state, and applies whichever is newest by `sequence`, dropping anything older than what it already shows.
 - **Matching an action to its result** uses the `sequence` from the acknowledgement. The client waits until an update with that `sequence` arrives, for example to clear a "sending" indicator.
 
-Bandwidth, lost intermediate steps and the round trip per action are the same as in option 0.
+Message size, the lost change itself, lost intermediate steps, and the round trip per action are the same as in option 0.
 
 ## Questions to decide
 
@@ -120,10 +121,23 @@ A cursor identifies how far a client is in a game's history.
 
 ### 2. What does an update contain?
 
+Sending only what changed matters for two separate reasons:
+
+- **Size.** A message should grow with the change, not with the whole view.
+- **Rendering.** Clients use the change itself: to animate a move, to highlight what's new, or to re-render only the affected parts. Most Redux-style stores decide what to re-render by object identity, so what matters is which parts of the store actually get replaced.
+
+Changes can be described at two levels, which serve rendering differently:
+
+- **Data changes** say which values changed: "the cell at 0,2 is now X". They're generic, so the library can compute them without knowing the game, but they don't say what happened. A chess move shows up as two squares changing, not as a move.
+- **Game events** say what happened: "X played 0,2", or "the knight moved from g1 to f3". They carry the meaning an animation needs, but only the game can produce them.
+
+A client could also get part of the rendering benefit without any protocol change. Its middleware can compare each new full view with the current one, and keep the unchanged parts as the same objects (structural sharing). That keeps re-rendering minimal and lets the client work out data changes itself, but it doesn't reduce message size, and it can't recover game events.
+
 - **A. The full player view every time,** as today. Simple, and each update stands alone, so a lost update does no harm. Bandwidth grows with state size, which suits small board-game states.
 - **B. Changes to the player view,** for example as JSON Patch operations (RFC 6902), computed between the player's previous and new views. Updates are small, but only valid on top of exactly the previous state; a client that missed one needs a full snapshot. The server must compute a separate change set per player, from the filtered views.
 - **C. Mixed.** Changes when the client is known to be one step behind, a full view otherwise, and a full view every few updates as a checkpoint.
-- **D. Game events.** The game's rules produce events, for example "X placed at 1,1", and each event is filtered per player like the state. Clients update their copy with their own reducers, the way Redux works locally. It fits the Redux model best, but game authors must write event filtering as well as state filtering, and client and server rules must stay in agreement.
+- **D. Game events.** The game's rules produce events, for example "X placed at 1,1", and each event is filtered per player like the state. Clients update their copy with their own reducers, the way Redux works locally. It fits the Redux model best, and gives rendering the meaning of each change. But game authors must write event filtering as well as state filtering, and client and server rules must stay in agreement.
+- **E. Game events alongside data.** Each update carries the data (a full view or data changes) together with the game's events for rendering. The store stays correct from the data alone, and events are only used for presentation, so a client that ignores them still works. It sends more than B or D alone.
 
 ### 3. How does a client catch up after missing updates?
 
@@ -155,6 +169,7 @@ The questions are which of these exist, how the store's reducer applies them, an
 
 ## Open questions
 
+- What do clients need for rendering: to know which data changed, or what happened in game terms? Is keeping unchanged parts as the same objects on the client enough, or must the server send the change?
 - Should the library treat games without hidden information differently, for example by broadcasting one message and allowing client-side prediction? If so, does a game declare it, or does the library infer it from the missing `filterStateForPlayer`?
 - How large are the states of the games this is meant for, and how often do they change? This decides whether sending changes is worth the complexity.
 - Do clients need intermediate states, for example to animate each move, or only the latest one?
