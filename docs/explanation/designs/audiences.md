@@ -1,6 +1,6 @@
 # Audiences
 
-Status: Open
+Status: Open; mostly decided in [0024](../decisions/0024-views-per-audience.md)
 
 ## Problem
 
@@ -35,28 +35,22 @@ It also separates two things the library has so far treated as one: taking part 
 
 ## Questions to decide
 
-### 1. How does the game describe audiences?
+Decided in [0024](../decisions/0024-views-per-audience.md):
 
-- **A. Two functions:** one gives a participant's audience from the state, for example `audienceOf(state, participantId) → string`; one filters the state for an audience, for example `viewFor(state, audience)`. The library also needs to know every audience for which to store diffs, which it could collect from all participants.
-- **B. One function returning all views at once,** for example `views(state) → { [audience]: view }`, plus the membership function. The game controls the full set of audiences, including ones with no participant yet.
-
-### 2. Does a participant belong to exactly one audience?
-
-One audience per participant keeps a view a single state, as clients expect. A coach who sees their team _and_ the public table would then need an audience of their own, whose view combines both.
-
-### 3. What happens when a participant changes audience?
-
-For example, a player who is knocked out and keeps watching as a spectator. Their socket moves to the new audience's updates. Their `since` sequence refers to the old audience's views, so catching up needs a whole state first ([0009](../decisions/0009-separate-state-and-update-endpoints.md)). When membership is checked matters too: on every action, or only when the game says so.
-
-### 4. How are audiences stored?
-
-Diffs are stored by audience instead of by player, which supersedes part of [0012](../decisions/0012-store-player-diffs.md). A participant's history is then the history of the audiences they belonged to. Open: whether the library also records who was in which audience when, which [0012](../decisions/0012-store-player-diffs.md) gave for free as "what each player was sent".
+1. **How membership is known:** each player's audience is stored on the player, rather than computed from the state.
+2. **Membership:** exactly one audience per player.
+3. **Changing audience:** the player starts from a whole state.
+4. **Storage:** diffs are stored per audience, and membership is recorded after each action.
 
 ### 5. Default audiences
 
-A game that describes no audiences could get one audience per participant, which is today's behavior, or a single `everyone`, which fits games without hidden information and is cheapest.
+What does a game that describes no audiences get?
+
+- **One audience per player,** today's behavior. Safe for a game with a view filter that forgets to declare audiences, but repeats the work for games without one.
+- **A single `everyone`.** Cheapest, and exact for a game without a view filter, where every view is the whole state anyway.
+- **Depending on the game:** `everyone` when there's no view filter, one per player when there is.
 
 ## Open questions
 
-- What the game's join hook ([Authorization](authorization.md)) returns for a new participant, and whether that's where their audience is first set.
+- How the game sets a player's audience when they join, and changes it later, for example through the join hook ([Authorization](authorization.md)) and the result of actions.
 - Whether audience names are ever shown to clients, or stay internal.

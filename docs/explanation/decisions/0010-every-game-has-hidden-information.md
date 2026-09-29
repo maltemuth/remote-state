@@ -1,6 +1,6 @@
 # 0010. Every game is treated as a game with hidden information
 
-Status: Accepted; the patch mechanism it calls for is settled by [0011](0011-patches-are-diffs-of-views.md)
+Status: Accepted; the patch mechanism it calls for is settled by [0011](0011-patches-are-diffs-of-views.md); views are filtered per audience rather than per player by [0024](0024-views-per-audience.md)
 Date: 2026-09-29
 
 ## Context
