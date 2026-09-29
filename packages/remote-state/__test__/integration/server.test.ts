@@ -1,5 +1,8 @@
 import request from 'supertest';
 import { Express } from 'express';
+import { mkdtempSync, rmSync } from 'fs';
+import { tmpdir } from 'os';
+import { join } from 'path';
 import { describe, beforeAll, afterAll, it, expect } from '@jest/globals';
 import { createRemoteStateServer, RemoteStateServer } from '../../src/core/server';
 import {
@@ -122,6 +125,20 @@ describe('Remote State HTTP API', () => {
     });
   });
 
+  describe('routing', () => {
+    it('responds 404 for unknown API routes', async () => {
+      const response = await request(server.app).get('/api/unknown').expect(404);
+      expect(response.body.error).toBe('Endpoint not found');
+    });
+
+    it('lets the host app add routes outside /api after creation', async () => {
+      server.app.get('/hello', (_req, res) => {
+        res.send('hi');
+      });
+      await request(server.app).get('/hello').expect(200, 'hi');
+    });
+  });
+
   describe('POST game', () => {
     it('responds with 500 when the initial state cannot be created', async () => {
       const failing = await createRemoteStateServer(
@@ -158,6 +175,28 @@ describe('Remote State server without a state filter', () => {
 });
 
 describe('Remote State server startup', () => {
+  it('keeps accepting actions after restarting on a persisted database', async () => {
+    const directory = mkdtempSync(join(tmpdir(), 'remote-state-'));
+    const configuration = { persistDatabase: true, databaseFilename: join(directory, 'games.db') };
+    try {
+      const first = await createRemoteStateServer(counterGame({}, configuration), 0);
+      const { gameId, owner } = await createGame(first);
+      await increment(first, gameId, owner.token).expect(201);
+      await first.shutdown(false);
+
+      const second = await createRemoteStateServer(counterGame({}, configuration), 0);
+      try {
+        await increment(second, gameId, owner.token).expect(201);
+        const other = await createGame(second);
+        await increment(second, other.gameId, other.owner.token).expect(201);
+      } finally {
+        await second.shutdown(false);
+      }
+    } finally {
+      rmSync(directory, { recursive: true, force: true });
+    }
+  });
+
   it('keeps the underlying database error as the cause', async () => {
     const failure = createRemoteStateServer(
       counterGame(

@@ -44,7 +44,9 @@ export const syncDatabase = async (sequelize: Sequelize): Promise<void> => {
     scope: 'syncDatabase',
   });
   try {
-    await sequelize.sync({ alter: true }); // Use alter to update existing tables
+    // Creates missing tables only. `alter: true` is unsafe on SQLite: Sequelize rebuilds the
+    // table and turns the composite (gameId, sequence) index into per-column UNIQUE constraints.
+    await sequelize.sync();
     info('Database schema synchronized successfully');
   } catch (err) {
     error('Error synchronizing database schema:', err);

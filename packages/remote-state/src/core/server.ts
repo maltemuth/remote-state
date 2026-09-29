@@ -116,8 +116,8 @@ export const createRemoteStateServer = async <StateType, ActionType, PlayerState
     res.status(500).json({ error: 'Internal Server Error' });
   });
 
-  // 404 handler
-  app.use((req: Request, res: Response) => {
+  // 404 for unknown API routes; other paths stay free for the host app (e.g. static files)
+  app.use('/api', (_req: Request, res: Response) => {
     res.status(404).json({ error: 'Endpoint not found' });
   });
 
