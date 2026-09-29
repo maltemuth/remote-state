@@ -14,7 +14,7 @@ Allow about 20 minutes.
 
 ## Before you start
 
-You need Node.js 20 or newer, `curl`, and a clone of this repository with dependencies installed:
+You need Node.js 24 or newer, `curl`, and a clone of this repository with dependencies installed:
 
 ```sh
 npm install

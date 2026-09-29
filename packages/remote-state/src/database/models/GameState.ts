@@ -11,7 +11,7 @@ import {
   Default,
 } from 'sequelize-typescript';
 import { Game } from './Game';
-import { v4 as uuidv4 } from 'uuid';
+import { randomUUID } from 'crypto';
 
 /**
  * One row per state of a game: the initial state has sequence 0, and every accepted
@@ -24,7 +24,7 @@ import { v4 as uuidv4 } from 'uuid';
 })
 export class GameState extends Model<GameState> {
   @PrimaryKey
-  @Default(uuidv4)
+  @Default(randomUUID)
   @Column({
     type: DataType.STRING,
     allowNull: false,

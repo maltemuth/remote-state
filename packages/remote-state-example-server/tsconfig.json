@@ -1,8 +1,11 @@
 {
   "compilerOptions": {
-    "target": "ES2020",
-    "module": "es2022",
-    "lib": ["ES2020"],
+    // Node 24 supports ES2024
+    "target": "es2024",
+    "lib": ["es2024"],
+    "types": ["node"],
+    "module": "nodenext",
+    "moduleResolution": "nodenext",
     "outDir": "./dist",
     "rootDir": "./src",
     "strict": true,
@@ -14,17 +17,8 @@
     "sourceMap": true,
     "resolveJsonModule": true,
     "removeComments": true,
-    "noImplicitAny": true,
-    "strictNullChecks": true,
-    "strictFunctionTypes": true,
-    "noImplicitThis": true,
     "noImplicitReturns": true,
-    "noFallthroughCasesInSwitch": true,
-    "moduleResolution": "node",
-    "baseUrl": "./",
-    "paths": {
-      "@/*": ["src/*"]
-    }
+    "noFallthroughCasesInSwitch": true
   },
   "include": ["src/**/*"],
   "exclude": ["node_modules", "dist"]

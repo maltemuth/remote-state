@@ -2,7 +2,6 @@ import { createLogger } from '../utils/logger';
 import { GameState } from './models/GameState';
 import { Game } from './models/Game';
 import { Player } from './models/Player';
-import { AddPlayerDataSchema, GameDataSchema } from './validation';
 import { Sequelize } from 'sequelize';
 import { Transaction } from 'sequelize';
 import * as crypto from 'crypto';
@@ -23,14 +22,11 @@ const createGameWithOwnerAndInitialState = async <StateType>(
   game: Game;
   admin: Player;
 }> => {
-  // Validate input
-  const validatedData = GameDataSchema.parse(gameData);
-
   return await database.transaction(async (transaction: Transaction) => {
-    debug(`Creating new game: ${validatedData.name}`);
+    debug(`Creating new game: ${gameData.name}`);
     const game = await Game.create(
       {
-        name: validatedData.name,
+        name: gameData.name,
       },
       { transaction }
     );
@@ -80,19 +76,13 @@ const addPlayerToGame = async (
   game: Pick<Game, 'id'>,
   player: Pick<Player, 'name' | 'role'>
 ): Promise<Player> => {
-  // Validate input
-  const validatedData = AddPlayerDataSchema.parse({
-    id: game.id,
+  debug(`Adding player ${player.name} to game ${game.id}`);
+
+  // Name and role are checked by the Player model's validators
+  const newPlayer = await Player.create({
+    gameId: game.id,
     name: player.name,
     role: player.role,
-  });
-
-  debug(`Adding player ${validatedData.name} to game ${validatedData.id}`);
-
-  const newPlayer = await Player.create({
-    gameId: validatedData.id,
-    name: validatedData.name,
-    role: validatedData.role,
     token: generateToken(64),
     tokenType: 'secure',
   });

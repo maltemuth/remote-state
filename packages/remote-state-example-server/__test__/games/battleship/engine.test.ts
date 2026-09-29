@@ -7,7 +7,7 @@ import {
   Player,
   ShipType,
   ShipOrientation,
-} from "../../../src/games/battleship/types";
+} from "../../../src/games/battleship/types.js";
 import {
   isValidPosition,
   isPositionEmpty,
@@ -23,7 +23,7 @@ import {
   filterStateForPlayer,
   removePlayer,
   seatOf,
-} from "../../../src/games/battleship/engine";
+} from "../../../src/games/battleship/engine.js";
 
 // Import Jest globals
 import { describe, beforeEach, test, expect } from "@jest/globals";

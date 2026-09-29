@@ -243,6 +243,15 @@ describe('Database Service Integration Tests', () => {
       expect(game).toBeDefined();
     });
 
+    test('should reject an empty game or owner name', async () => {
+      await expect(
+        service.createGameWithOwnerAndInitialState({ name: '' }, { name: 'Owner' }, {})
+      ).rejects.toThrow();
+      await expect(
+        service.createGameWithOwnerAndInitialState({ name: 'Game' }, { name: '' }, {})
+      ).rejects.toThrow();
+    });
+
     test('should handle invalid player data', async () => {
       const gameData = {
         id: 'test-game-17',

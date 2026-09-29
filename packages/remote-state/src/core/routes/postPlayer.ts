@@ -12,7 +12,7 @@ export const postPlayer = <StateType, ActionType, PlayerStateType>(
   const { info, error } = createLogger({
     scope: 'postPlayer',
   });
-  return async (req: Request, res: Response) => {
+  return async (req: Request<{ gameId: string }>, res: Response) => {
     try {
       const { gameId } = req.params;
       const { playerName } = req.body;

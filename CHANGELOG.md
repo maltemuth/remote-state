@@ -7,6 +7,22 @@ All notable changes to this project are documented here. The format follows [Kee
 ### Breaking
 
 - Battleship example: players claim a seat with a `join` action, and ships can only be placed during setup, one of each type. There are now two ship types, a destroyer (3) and a battleship (4). `validateActionSimple` and `executeActionSimple` were removed.
+- Node.js 24 or newer is required (`engines`), and `.nvmrc` pins v24.21.0.
+- The example server's `dev` script was removed; it never worked under ESM. Use `npm run start:example`.
+
+### Changed
+
+- Dependencies updated to their latest compatible versions:
+  - express 5.2.1, socket.io 4.8.4, sequelize 6.37.8, sqlite3 6.0.1
+  - TypeScript 6.0 (7 isn't supported by ts-jest or typescript-eslint yet)
+  - ESLint 10, Jest 30.5, Prettier 3.9
+- Removed dependencies:
+  - `uuid`, replaced by `crypto.randomUUID()`
+  - `zod`, replaced by Sequelize model validators
+  - `ts-node` and `@types/jest`, which were unused
+- The lint and format toolchain is declared once, at the root.
+- The e2e tests moved to the example package and use the library through its package entry point.
+- Tests are type-checked by a separate `typecheck` step, which `npm test` runs first; ts-jest only transpiles.
 
 ### Added
 
@@ -15,6 +31,8 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ### Fixed
 
+- An empty owner name was accepted when creating a game.
+- Security advisories: `npm audit` goes from 35 findings (2 critical, 21 high) to 3 moderate. All 3 are one chain, Sequelize 6's bundled `uuid` 8, and the affected functions aren't called here.
 - Battleship example: ships could never be hit, because firing at any cell that wasn't `empty`, including a cell with a ship, was rejected as already targeted.
 - Battleship example: players without a seat were treated as `player2` when placing ships, and saw `player1`'s ships.
 - Battleship example: `restart` was rejected once a game was finished.

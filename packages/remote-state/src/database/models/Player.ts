@@ -10,7 +10,7 @@ import {
   Index,
 } from 'sequelize-typescript';
 import { Game } from './Game';
-import { v4 as uuidv4 } from 'uuid';
+import { randomUUID } from 'crypto';
 
 @Table({
   tableName: 'players',
@@ -18,7 +18,7 @@ import { v4 as uuidv4 } from 'uuid';
 })
 export class Player extends Model<Player> {
   @PrimaryKey
-  @Default(uuidv4)
+  @Default(randomUUID)
   @Column({
     type: DataType.STRING,
     allowNull: false,
@@ -37,6 +37,7 @@ export class Player extends Model<Player> {
   @Column({
     type: DataType.STRING,
     allowNull: false,
+    validate: { notEmpty: true },
   })
   declare name: string;
 
@@ -44,6 +45,7 @@ export class Player extends Model<Player> {
     type: DataType.STRING,
     allowNull: false,
     defaultValue: 'player',
+    validate: { isIn: [['player', 'admin']] },
   })
   declare role: string;
 

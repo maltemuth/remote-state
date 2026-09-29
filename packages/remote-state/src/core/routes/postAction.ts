@@ -16,7 +16,7 @@ export const postAction = <StateType, ActionType, PlayerStateType>(
   const { debug, error } = createLogger({
     scope: 'postAction',
   });
-  return async (req: Request, res: Response) => {
+  return async (req: Request<{ gameId: string }>, res: Response) => {
     try {
       const { gameId } = req.params;
       const { action } = req.body;

@@ -22,9 +22,10 @@ await server.startServer();
 
 ## Quick start
 
-Requires Node.js 20 or newer.
+Requires Node.js 24 or newer. With [nvm](https://github.com/nvm-sh/nvm), `nvm use` selects it from `.nvmrc`.
 
 ```sh
+nvm use
 npm install
 npm run start:example   # builds, then serves tic-tac-toe on http://localhost:3000
 npm test                # all tests: library, e2e and example game engines

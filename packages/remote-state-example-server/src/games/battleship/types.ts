@@ -27,11 +27,7 @@ export type GameStatus = "setup" | "playing" | "finished";
 
 // Game action types
 export type BattleshipActionType =
-  | "place_ship"
-  | "fire_shot"
-  | "restart"
-  | "join"
-  | "leave";
+  "place_ship" | "fire_shot" | "restart" | "join" | "leave";
 
 // Game action data. Clients send `type` and the action's fields; the server
 // adds `playerId` and `timestamp` before executing it.

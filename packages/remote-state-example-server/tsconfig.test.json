@@ -1,0 +1,10 @@
+{
+  // Type-checks the tests, which ts-jest only transpiles. The library is checked
+  // through its built declarations, as a consumer would see it.
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "rootDir": "."
+  },
+  "include": ["src/**/*", "__test__/**/*"]
+}

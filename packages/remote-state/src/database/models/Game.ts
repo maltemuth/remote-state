@@ -1,6 +1,6 @@
 import { Table, Column, Model, DataType, PrimaryKey, HasMany, Default } from 'sequelize-typescript';
 import { Player } from './Player';
-import { v4 as uuidv4 } from 'uuid';
+import { randomUUID } from 'crypto';
 
 @Table({
   tableName: 'games',
@@ -8,7 +8,7 @@ import { v4 as uuidv4 } from 'uuid';
 })
 export class Game extends Model<Game> {
   @PrimaryKey
-  @Default(uuidv4)
+  @Default(randomUUID)
   @Column({
     type: DataType.STRING,
     allowNull: false,
@@ -19,6 +19,7 @@ export class Game extends Model<Game> {
   @Column({
     type: DataType.STRING,
     allowNull: false,
+    validate: { notEmpty: true },
   })
   declare name: string;
 

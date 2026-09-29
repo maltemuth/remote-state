@@ -12,7 +12,7 @@ export const getState = <StateType, ActionType, PlayerStateType>(
   const { info, error } = createLogger({
     scope: 'getState',
   });
-  return async (req: Request, res: Response) => {
+  return async (req: Request<{ gameId: string }>, res: Response) => {
     try {
       const { gameId } = req.params;
 
