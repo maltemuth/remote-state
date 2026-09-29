@@ -1,7 +1,6 @@
 import { Request, Response } from 'express';
 import { GamePlugin, stateForPlayer } from '../types';
 import { createLogger } from '../../utils/logger';
-import { Player } from '../../database/models';
 import { DatabaseService } from '../../database/service';
 import { SocketManager } from '../socket';
 import { GameLock } from '../gameLock';
@@ -50,7 +49,7 @@ export const postAction = <StateType, ActionType, PlayerStateType>(
           return { rejected: validationResult } as const;
         }
 
-        await Player.update({ lastActivityAt: new Date() }, { where: { id: player.id } });
+        await database.touchPlayer(player.id);
 
         const actionWithPlayer = {
           ...action,

@@ -78,6 +78,32 @@ describe('Logger', () => {
       expect(logOutput.length).toBe(4);
     });
 
+    it('should follow global log level changes made after the logger was created', () => {
+      const logger = createLogger({ scope: 'test' });
+      setGlobalLogLevel(LogLevel.error);
+
+      logger.info('Info message');
+      logger.error('Error message');
+
+      expect(logOutput).toHaveLength(1);
+      expect(logOutput[0]).toContain('Error message');
+    });
+
+    it('should treat an undefined logLevel option as the global level', () => {
+      setGlobalLogLevel(LogLevel.error);
+      const logger = createLogger({ scope: 'test', logLevel: undefined });
+
+      logger.debug('Debug message');
+
+      expect(logOutput).toHaveLength(0);
+    });
+
+    it('should serialize errors passed as meta', () => {
+      createLogger({ scope: 'test' }).error('Failed', { error: new Error('boom') });
+
+      expect(logOutput[0]).toContain('"message":"boom"');
+    });
+
     it('should get current global log level', () => {
       setGlobalLogLevel(LogLevel.warn);
       expect(getGlobalLogLevel()).toBe(LogLevel.warn);

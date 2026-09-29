@@ -11,7 +11,6 @@ export const postPlayer = <StateType, ActionType, PlayerStateType>(
 ) => {
   const { info, error } = createLogger({
     scope: 'postPlayer',
-    logLevel: plugin.serverConfiguration?.minimumLogLevel,
   });
   return async (req: Request, res: Response) => {
     try {

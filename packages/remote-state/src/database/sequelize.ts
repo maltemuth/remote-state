@@ -5,18 +5,15 @@ import { createLogger } from '../utils/logger';
 import { Game } from './models/Game';
 import { Player } from './models/Player';
 import { GameState } from './models/GameState';
-import { RemoteStateServerConfiguration } from '../core/types';
 
 /**
  * Create a Sequelize instance
  */
 export const createSequelizeInstance = async (
-  databasePath: string = 'games.db',
-  configuration?: RemoteStateServerConfiguration
+  databasePath: string = 'games.db'
 ): Promise<Sequelize> => {
   const { info, error } = createLogger({
     scope: 'createSequelizeInstance',
-    logLevel: configuration?.minimumLogLevel,
   });
 
   info(`Creating Sequelize instance with database path: ${databasePath}`);
@@ -24,7 +21,7 @@ export const createSequelizeInstance = async (
   const sequelizeInstance = new Sequelize({
     dialect: 'sqlite',
     storage: databasePath,
-    logging: false, // Enable logging to see SQL queries
+    logging: false,
     models: [Game, Player, GameState], // Register models directly
   });
 
@@ -42,13 +39,9 @@ export const createSequelizeInstance = async (
 /**
  * Sync all models with the database
  */
-export const syncDatabase = async (
-  sequelize: Sequelize,
-  configuration?: RemoteStateServerConfiguration
-): Promise<void> => {
+export const syncDatabase = async (sequelize: Sequelize): Promise<void> => {
   const { info, error } = createLogger({
     scope: 'syncDatabase',
-    logLevel: configuration?.minimumLogLevel,
   });
   try {
     await sequelize.sync({ alter: true }); // Use alter to update existing tables

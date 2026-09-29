@@ -1,5 +1,4 @@
 import { createLogger } from '../utils/logger';
-import { safeJsonParse, safeJsonStringify } from '../utils/json';
 import { GameState } from './models/GameState';
 import { Game } from './models/Game';
 import { Player } from './models/Player';
@@ -52,9 +51,9 @@ const createGameWithOwnerAndInitialState = async <StateType>(
         gameId: game.id,
         sequence: 0,
         playerId: admin.id,
-        actionData: safeJsonStringify({}),
+        actionData: JSON.stringify({}),
         actionType: 'initial',
-        state: safeJsonStringify(initialState),
+        state: JSON.stringify(initialState),
       },
       { transaction }
     );
@@ -133,6 +132,13 @@ const getPlayerByToken = async (token: string): Promise<Player | null> => {
 };
 
 /**
+ * Record that a player was just active
+ */
+const touchPlayer = async (playerId: string): Promise<void> => {
+  await Player.update({ lastActivityAt: new Date() }, { where: { id: playerId } });
+};
+
+/**
  * Resolve a token to a player of the given game, or null if it does not belong to it
  */
 const authenticatePlayer = async (token: string, gameId: string): Promise<Player | null> => {
@@ -172,9 +178,9 @@ const recordAction = async <S, A>(
         gameId: actionData.gameId,
         sequence: (latest ?? -1) + 1,
         playerId: actionData.playerId,
-        state: safeJsonStringify(actionData.gameState),
+        state: JSON.stringify(actionData.gameState),
         actionType: actionData.actionType,
-        actionData: safeJsonStringify(actionData.actionData),
+        actionData: JSON.stringify(actionData.actionData),
       },
       { transaction }
     );
@@ -211,7 +217,7 @@ const getCurrentGameState = async <S>(gameId: string): Promise<CurrentGameState<
     gameId: result.gameId,
     stateId: result.id,
     sequence: result.sequence,
-    state: safeJsonParse<S>(result.state),
+    state: JSON.parse(result.state) as S,
     timestamp: result.createdAt,
   };
 };
@@ -225,6 +231,7 @@ export const createDatabaseService = <StateType, ActionType>(db: Sequelize) => {
     addPlayerToGame,
     getPlayerByToken,
     authenticatePlayer,
+    touchPlayer,
 
     recordAction: (actionData: ActionData<StateType, ActionType>) =>
       recordAction<StateType, ActionType>(db, actionData),

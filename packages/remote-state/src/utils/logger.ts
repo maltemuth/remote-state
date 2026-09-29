@@ -47,33 +47,39 @@ export interface Logger {
   error: LoggerFunction;
 }
 
-interface StrictLoggerOptions {
+interface LoggerOptions {
   scope?: string;
-  logLevel: LogLevel;
+  logLevel?: LogLevel;
 }
 
-type LoggerOptions = Partial<StrictLoggerOptions>;
-
-const NOOP = () => {};
+// Errors have no enumerable properties, so JSON.stringify would render them as {}
+const serializeErrors = (_key: string, value: unknown) =>
+  value instanceof Error ? { name: value.name, message: value.message, stack: value.stack } : value;
 
 const formatLogEntry = (entry: LogEntry) => {
   const scopeName = entry.scope || '';
   const levelName = LogLevel[entry.level].padEnd(5);
   const timestamp = `[${new Date(entry.timestamp).toISOString()}]`;
-  const metaStr = entry.meta ? `| ${JSON.stringify(entry.meta)}` : '';
+  const metaStr =
+    entry.meta !== undefined ? `| ${JSON.stringify(entry.meta, serializeErrors)}` : '';
   return [timestamp, levelName, scopeName, entry.message, metaStr].join(' ');
 };
 
-const createLoggerFunction = (options: StrictLoggerOptions): LoggerFunction => {
-  const level = options.logLevel;
+const createLevelLogger = (level: LogLevel, options?: LoggerOptions): LoggerFunction => {
   return (message: string, meta?: unknown) => {
+    // Resolved per call, so loggers created at import time follow later setGlobalLogLevel calls
+    const minimumLevel = options?.logLevel ?? globalLogLevel;
+    if (level < minimumLevel) {
+      return;
+    }
+
     const entry: LogEntry = {
       timestamp: new Date().toISOString(),
       level,
       message,
       meta,
     };
-    if (options.scope !== undefined) {
+    if (options?.scope !== undefined) {
       entry.scope = options.scope;
     }
 
@@ -87,25 +93,15 @@ const createLoggerFunction = (options: StrictLoggerOptions): LoggerFunction => {
   };
 };
 
-const createLevelLogger = (level: LogLevel, options: StrictLoggerOptions): LoggerFunction => {
-  if (options.logLevel > level) {
-    return NOOP;
-  }
-  return createLoggerFunction({ ...options, logLevel: level });
-};
-
-export const createLogger = (options?: LoggerOptions): Logger => {
-  const optionsWithDefaults: StrictLoggerOptions = {
-    logLevel: options?.logLevel ?? globalLogLevel,
-    ...options,
-  };
-  return {
-    debug: createLevelLogger(LogLevel.debug, optionsWithDefaults),
-    info: createLevelLogger(LogLevel.info, optionsWithDefaults),
-    warn: createLevelLogger(LogLevel.warn, optionsWithDefaults),
-    error: createLevelLogger(LogLevel.error, optionsWithDefaults),
-  };
-};
+/**
+ * Create a logger. Without an explicit `logLevel`, it follows the global log level.
+ */
+export const createLogger = (options?: LoggerOptions): Logger => ({
+  debug: createLevelLogger(LogLevel.debug, options),
+  info: createLevelLogger(LogLevel.info, options),
+  warn: createLevelLogger(LogLevel.warn, options),
+  error: createLevelLogger(LogLevel.error, options),
+});
 
 // Create a default logger instance
 const { debug, info, warn, error } = createLogger();

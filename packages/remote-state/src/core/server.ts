@@ -43,10 +43,7 @@ export const createRemoteStateServer = async <StateType, ActionType, PlayerState
   const databasePath = plugin.serverConfiguration?.persistDatabase
     ? plugin.serverConfiguration?.databaseFilename || 'games.db'
     : ':memory:';
-  const database = await initializeDatabase(
-    { databasePath, sync: true },
-    plugin.serverConfiguration
-  ).catch(err => {
+  const database = await initializeDatabase({ databasePath, sync: true }).catch(err => {
     throw new Error('Failed to initialize database', { cause: err });
   });
   const databaseService = createDatabaseService<StateType, ActionType>(database);
