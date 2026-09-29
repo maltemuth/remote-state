@@ -1,6 +1,6 @@
 # Remote State documentation
 
-The documentation is organized by what you're trying to do, following [Diátaxis](https://diataxis.fr/).
+All documentation for this project, including designs and decisions, is organized by what the reader is trying to do, following [Diátaxis](https://diataxis.fr/).
 
 ## Tutorials: learn by building
 
@@ -25,3 +25,22 @@ The documentation is organized by what you're trying to do, following [Diátaxis
 
 - [Architecture](explanation/architecture.md): the life of an action, state history, identity, hidden information
 - [Known limitations](explanation/limitations.md)
+- [Decisions](explanation/decisions/README.md): what was decided, and why
+- [Designs](explanation/designs/README.md): proposals under discussion
+
+## Writing documentation
+
+Before writing, decide which of the four types the page is, and keep it to that type. A page that mixes types serves no reader well. For example, a decision record shouldn't contain setup steps; link to a how-to guide instead.
+
+| The reader wants to… | Type | Folder |
+|---|---|---|
+| learn by doing, guided step by step | Tutorial | `tutorials/` |
+| complete a specific task they already understand | How-to guide | `how-to/` |
+| look up exact behavior: APIs, events, options, schema | Reference | `reference/` |
+| understand how something works or why it is that way | Explanation | `explanation/` |
+
+Designs and decisions are explanation: they discuss context, alternatives and trade-offs.
+
+- **Design proposals** go in [`explanation/designs/`](explanation/designs/README.md). A proposal describes a problem and the options for solving it, while it's still open.
+- **Decision records** go in [`explanation/decisions/`](explanation/decisions/README.md). A decision record states what was decided, why, and what was rejected. Write one whenever a design discussion settles something, and link it from the proposal.
+- **When a decision changes behavior,** update the affected reference and how-to pages in the same change. Decision records explain *why*; the other types describe *what is*.

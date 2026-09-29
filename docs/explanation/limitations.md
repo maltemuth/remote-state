@@ -1,6 +1,6 @@
 # Known limitations
 
-These are current properties of the library, not bugs in your game. Each one is a design decision that is still open.
+These are current properties of the library, not bugs in your game. Each one is a design decision that is still open. Settled decisions are recorded in [Decisions](decisions/README.md), and proposals for open ones go in [Designs](designs/README.md).
 
 ## Scaling
 

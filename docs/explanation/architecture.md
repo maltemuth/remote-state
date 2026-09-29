@@ -33,7 +33,7 @@ Actions need a reply: accepted with the new state, or rejected with a reason. A 
 
 Updates need to reach players who didn't act. That needs a push channel, which is what Socket.IO is for.
 
-Keeping them separate means the socket carries only server-to-client traffic. Clients never send anything over it, so authentication happens once, in the handshake, and there's no second write path to secure.
+This was decided in [0001](decisions/0001-http-actions-socket-updates.md). Keeping them separate means the socket carries only server-to-client traffic. Clients never send anything over it, so authentication happens once, in the handshake, and there's no second write path to secure.
 
 ## The life of an action
 
@@ -88,4 +88,4 @@ Two consequences:
 
 ## Single process
 
-The per-game lock, the Socket.IO rooms and the SQLite database all live in one process. That keeps the moving parts few, and it means one server instance per deployment. [Limitations](limitations.md) lists what would need to change to go beyond that.
+The per-game lock, the Socket.IO rooms and the SQLite database all live in one process. That keeps the moving parts few, and it means one server instance per deployment, as decided in [0006](decisions/0006-single-process.md). [Limitations](limitations.md) lists what would need to change to go beyond that.
