@@ -24,6 +24,51 @@ This is a library that runs inside someone else's server ([Goals](../goals.md)).
 - **Every channel needs the same answer.** HTTP actions, HTTP reads and the socket must authenticate the same way and agree on who is who.
 - **Hidden information depends on it.** Each player's view is filtered for that player ([0010](../decisions/0010-every-game-has-hidden-information.md)), so being able to act as another player means seeing their hidden information.
 
+## Proposal: admitting players
+
+The host decides who may play; the library issues and checks tokens ([0016](../decisions/0016-authentication-in-library-authorization-by-implementer.md)). Between the two, the host *admits* a person to a game, and the library turns that into a token, handed over through a single-use code.
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant B as Browser
+    participant H as Host app
+    participant L as remote-state
+    participant G as Game plugin
+
+    B->>H: Wants to play game 42 (host session)
+    H->>H: Checks its own login and rules
+    H->>L: admit({ gameId, identity: { id, name } })
+    L-->>H: code (single use, expires within a minute)
+    H-->>B: Redirect to game client ?code=…
+    B->>L: POST /api/tokens { code }
+    L->>L: Checks and consumes the code
+    alt No player with this identity in the game
+        L->>G: May this player join? (game rules)
+        G-->>L: Yes
+        L->>L: Creates the player
+    end
+    L->>L: Creates a token, stores its hash
+    L-->>B: { gameId, playerId, token }
+    B->>L: Socket handshake { gameId, token }, then actions with Authorization: Bearer
+```
+
+1. **The host admits.** After its own login and checks, the host calls `admit` on the server object, in the same process ([0006](../decisions/0006-single-process.md)). It passes the game and an identity: an ID of its own choosing, which the library stores but never interprets, and details for the game such as a display name.
+2. **The library returns a code.** The library generates it, so it controls its randomness, single use and expiry. The code expires within a minute, since it's redeemed right away.
+3. **The browser carries the code.** A redirect between two apps can only carry data in the URL, so the code ends up in browser history and access logs. That's harmless once it's used or expired. The token itself never appears in a URL.
+4. **The game client redeems the code** with a POST, with the code in the body rather than the path, and gets a token.
+5. **The library finds or creates the player.** A player is identified by the game and the host's identity ID. The first time, the game's rules decide whether they may join, for example against a player limit. Afterwards, the same identity gets the same player back.
+6. **Every redemption creates a new token** ([0019](../decisions/0019-several-tokens-per-player.md)). A second device, another browser or a lost token are all handled by admitting the person again.
+
+What this settles:
+
+- **Creating and joining games** (questions 2 and 3): the host's decisions happen in its own code, before `admit`, with its own login. The library needs no `canCreateGame` hook, and never has to understand the host's authentication. The game's rules on joining are a game hook.
+- **Reissuing tokens** (question 5): admitting the same identity again.
+- **Recognizing a person again:** within a game, through the identity ID. Across games, the host already knows its users.
+- **Host details for the game:** passed with the identity.
+
+Standalone use, as in the tutorial, keeps today's public endpoints for creating and joining games, which issue tokens directly. A host that controls access turns them off.
+
 ## Questions to decide
 
 Authentication is the library's job, and authorization the implementer's ([0016](../decisions/0016-authentication-in-library-authorization-by-implementer.md)). Questions 2, 3, 4 and 6 are therefore no longer about the library's policy, but about where implementers can decide, and what the library tells them.
@@ -38,14 +83,14 @@ Decided: **A**, the library issues its own opaque tokens ([0015](../decisions/00
 
 ### 2. Who may create a game?
 
-Decided: the implementer ([0016](../decisions/0016-authentication-in-library-authorization-by-implementer.md)). Open: the extension point, for example a hook like the one in B.
+Decided: the implementer ([0016](../decisions/0016-authentication-in-library-authorization-by-implementer.md)). Proposed: the host decides before admitting ([Admitting players](#proposal-admitting-players)), so no hook is needed.
 
 - **A. Anyone,** as today.
 - **B. Whoever the host allows,** through a hook, for example `canCreateGame(user, options)`.
 
 ### 3. Who may join a game?
 
-Decided: the implementer, the game or the host ([0016](../decisions/0016-authentication-in-library-authorization-by-implementer.md)). Open: the extension point, and whether the library offers invitation tokens (D) as a tool implementers can use.
+Decided: the implementer, the game or the host ([0016](../decisions/0016-authentication-in-library-authorization-by-implementer.md)). Proposed: the host decides before admitting, and the game through a hook when a player is first created ([Admitting players](#proposal-admitting-players)). Invitations are the host's to build on top.
 
 - **A. Anyone who knows the game's ID,** as today. The ID works like an unguessable invitation link.
 - **B. The game decides,** through a hook asked on registration, for example to enforce a player limit. This overlaps with [Player information](player-information.md) and [Game lifecycle](game-lifecycle.md).
@@ -64,7 +109,7 @@ Candidates for what an `admin` could do: start or restart the game, remove playe
 
 ### 5. How are credentials handled?
 
-Decided: tokens are stored hashed, and accepted only in the header and the handshake ([0017](../decisions/0017-hashed-tokens-in-header-and-handshake.md)). For now, they don't expire and can't be revoked ([0018](../decisions/0018-no-token-expiration-or-revocation.md)). Open: reissuing a lost token.
+Decided: tokens are stored hashed, and accepted only in the header and the handshake ([0017](../decisions/0017-hashed-tokens-in-header-and-handshake.md)). For now, they don't expire and can't be revoked ([0018](../decisions/0018-no-token-expiration-or-revocation.md)). A player can have several tokens ([0019](../decisions/0019-several-tokens-per-player.md)). Proposed: reissuing by admitting again ([Admitting players](#proposal-admitting-players)).
 
 Independent of question 1, some improvements apply to any token:
 
@@ -82,5 +127,8 @@ Decided: rate limiting is the host's job ([0016](../decisions/0016-authenticatio
 
 ## Open questions
 
-- Should one person be able to take part in the same game twice, for example on two devices as the same player?
-- Must game logic ever see who a player is outside the game, for example a user name or rating from the host?
+- Can the host limit how many tokens a player has, for example to one ([0019](../decisions/0019-several-tokens-per-player.md))?
+- How a game is created when a host controls access: a separate `createGame` call followed by `admit`, or `admit` creating the game when it's given none. Today, creating a game also creates its first player, with the `admin` role.
+- What the game's join hook receives: the current state, the identity's details, the game's options.
+- How public endpoints are turned on and off, and which is the default.
+- Whether the library needs a server-to-server endpoint for `admit`, for hosts that don't run in the same process. Not while it runs as a single process ([0006](../decisions/0006-single-process.md)).

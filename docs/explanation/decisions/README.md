@@ -24,6 +24,7 @@ Records aren't edited after the fact, except to update their status. A decision 
 | [0016](0016-authentication-in-library-authorization-by-implementer.md) | The library authenticates; implementers authorize | Accepted |
 | [0017](0017-hashed-tokens-in-header-and-handshake.md) | Tokens are stored hashed, and accepted only in the header and the handshake | Accepted |
 | [0018](0018-no-token-expiration-or-revocation.md) | Tokens don't expire and can't be revoked | Accepted for now |
+| [0019](0019-several-tokens-per-player.md) | A player can have several tokens | Accepted |
 
 ## Writing a record
 
