@@ -7,7 +7,7 @@ Status: Open
 The second of the project's [goals](../goals.md) is that clients keep game state in their own state library, through a middleware. That middleware needs a clearly defined way to keep its copy of the state in step with the server. Today there's only an informal one:
 
 - **After an action,** the acting player gets their new view of the state in the HTTP response.
-- **After any action,** every connected socket of the game receives `game-state-update` with the player's full view of the new state and its `sequence`. The acting player's sockets receive it too, so they get the same state twice.
+- **After any action,** every connected socket of the game receives `game-state-update` with the player's full view of the new state and its `sequence`. The acting player's sockets receive it too, so they get the same view twice.
 - **After reconnecting,** a client can only fetch the latest state. Updates it missed are gone, including the intermediate states between its last one and now.
 - **Cursors aren't implemented.** `GET /api/games/:gameId/state/:cursor` ignores `:cursor` and always returns the latest state. The original project plan described per-player cursors, catch-up between cursors, and sending only changed parts of the state.
 
@@ -19,9 +19,22 @@ The second of the project's [goals](../goals.md) is that clients keep game state
 - **Transport.** Actions go over HTTP, and updates over Socket.IO ([0001](../decisions/0001-http-actions-socket-updates.md)).
 - **Delivery isn't exactly once.** A client can receive an update twice (the HTTP response and the socket), late, or not at all (while disconnected).
 
+## Every client has its own view
+
+No client receives the game's state. Each receives a *view*: the state as `filterStateForPlayer` produces it for that player. Some parts may be hidden from everyone, like the deck in a card game. Some are hidden differently per player: each sees their own hand, but not the others'. So in every option below, "the state" a client holds means its own view.
+
+This has consequences for every option:
+
+- **One update is many messages.** After each action, the server filters the new state once per recipient, and sends each their own payload. A single message can't be broadcast to the whole game. The server does this today, filtering separately for every connected socket.
+- **The server can't reuse work across recipients.** Each view must be filtered and serialized on its own.
+- **A client can't compute its own next state.** Its view lacks what's hidden, so it can't run the game's rules on it. This rules out using the game's own rules for prediction (question 5B), and means any change set must be computed between two views, never between two states (question 2B).
+- **A view can stay the same while the game moves on.** If another player makes a hidden move, a player's view may not change at all. Or it changes only slightly: in the [tutorial](../../tutorials/build-your-first-game.md)'s rock-paper-scissors, Bob only learns *that* Alice has chosen. Today every player receives an update on every action, identical or not. Skipping unchanged views would save messages, but then a client sees gaps in `sequence` and can't tell a skipped update from a missed one, which matters for catch-up (question 3).
+- **Views can depend on more than the player.** Players who haven't taken a seat, or spectators, need a view too. What they may see is part of [Player information](player-information.md).
+- **Rejections can leak.** The reason `validateAction` gives for rejecting an action goes to the acting client without being filtered.
+
 ## Option 0: the naive approach
 
-The client dispatches an action, and the server sends back the whole new state. Every other player receives their whole new view as well. Nothing else: no changes, no history, no prediction.
+The client dispatches an action, and the server sends back their whole new view. Every other player receives their own whole new view as well. Nothing else: no changes, no history, no prediction.
 
 It's essentially what the server does today, so it's the baseline the other options have to improve on. In terms of the questions below, it's:
 
@@ -52,14 +65,14 @@ If the target games have small states and don't need to show missed steps, optio
 Like option 0, but each kind of traffic has exactly one path:
 
 - **Actions go over HTTP.** The response only says whether the action was accepted: an acknowledgement with the new `sequence`, or the rejection reason. It carries no state.
-- **New states go over the socket, to everyone.** The acting player receives the result of their own action the same way as every other player.
+- **New views go over the socket, to everyone.** Each player receives their own view of the new state. The acting player receives the result of their own action the same way as every other player.
 - **The current state is fetched over HTTP,** with `GET …/state/current`, when a client starts or reconnects.
 
 In terms of the questions below, it's option 0 with 6B instead of 6A.
 
 What it gives, compared to option 0:
 
-- **No duplicate delivery.** Each state reaches each client once, so the race between the HTTP response and the socket disappears.
+- **No duplicate delivery.** Each view reaches each client once, so the race between the HTTP response and the socket disappears.
 - **One code path for applying state.** The middleware handles the acting player's update exactly like everyone else's.
 - **A clear division.** HTTP means "do something" and "tell me where we are", and the socket means "something happened".
 
