@@ -4,6 +4,8 @@ Status: Deferred until [Player information](player-information.md), [Game lifecy
 
 ## Problem
 
+The second of the project's [goals](../goals.md) is that clients use game state in their own state library, such as Redux or an alternative, through a custom middleware. None of that exists yet.
+
 Every client has to implement the same work itself:
 
 - registering and keeping the token
@@ -25,6 +27,9 @@ The client's interface follows from decisions that are still open:
 
 ## Questions to answer when it's taken up
 
-- Should there be a framework-independent core, with thin adapters for Redux, React or others?
+- Which state libraries must be supported first, and does each have a middleware concept the package can hook into?
+- What does the middleware dispatch into the store when an update arrives: a full replacement of the game state, or changes to apply?
+- Should the client apply an action optimistically before the server confirms it, and roll it back if the server rejects it?
+- Should there be a framework-independent core, with thin adapters for Redux and its alternatives?
 - How does a client share the game's TypeScript types (state, actions, player view) with the server?
 - How does the client resynchronize after missed updates: by `sequence`, by cursor, or by refetching?

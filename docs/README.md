@@ -24,6 +24,7 @@ All documentation for this project, including designs and decisions, is organize
 
 ## Explanation: understand the design
 
+- [Goals](explanation/goals.md): what the library is for
 - [Architecture](explanation/architecture.md): the life of an action, state history, identity, hidden information
 - [Known limitations](explanation/limitations.md)
 - [Decisions](explanation/decisions/README.md): what was decided, and why

@@ -1,6 +1,6 @@
 # Remote State
 
-A TypeScript library for server-authoritative multiplayer games. You write the rules of the game: validate an action, apply it, and decide what each player may see. Remote State provides:
+A TypeScript library for server-authoritative multiplayer games. Clients dispatch actions, and a server runs the game rules and sends back state updates. The goal is for clients to use that state in their own state library, such as Redux or an alternative, through a middleware; see [Goals](docs/explanation/goals.md). You write the rules of the game: validate an action, apply it, and decide what each player may see. Remote State provides:
 
 - an HTTP API for creating games, registering players and submitting actions
 - per-player tokens
