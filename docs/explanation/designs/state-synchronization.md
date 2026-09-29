@@ -41,18 +41,17 @@ A game can mix these: a card game has a hidden deck and private hands, and revea
 
 ### Games without hidden information
 
-For an open-information game, all views are the same, and equal the state. The constraints below mostly disappear:
+Every game is treated as a game with hidden information ([0010](../decisions/0010-every-game-has-hidden-information.md)). A game without hidden information is the special case where every player receives the same information, or all of it. There's no separate mode for it.
 
-- **One message for everyone.** The server can serialize the state once, and broadcast it to the whole game.
-- **Clients can run the game's rules.** A client holding the full state can apply its own action immediately, and correct itself if the server disagrees (question 5B).
-- **Change sets are computed once,** between two states, and are the same for every client (question 2B).
+Where views happen to coincide, some things become possible as internal details, not as a mode:
+
+- **One message for everyone.** When all views are equal, the server can serialize one and broadcast it.
+- **Clients can run the game's rules** when their view equals the full state. A client can then apply its own action immediately, and correct itself if the server disagrees (question 5B).
 - **Every action changes every view,** so there are no unchanged views and no gaps in `sequence`.
 
-So the library could treat such games differently: a game without `filterStateForPlayer`, or one that declares it has no hidden information, would get broadcasting and client-side prediction. Games with hidden information would get per-player views. Whether the library should make that distinction, and how a game declares it, is an open question.
+### When views differ
 
-### Games with hidden information
-
-These consequences apply to every game with a filter that makes views differ:
+These consequences apply whenever views differ between players:
 
 - **One update is many messages.** After each action, the server filters the new state once per recipient, and sends each their own payload. A single message can't be broadcast to the whole game. The server does this today, filtering separately for every connected socket.
 - **The server can't reuse work across recipients.** Each view must be filtered and serialized on its own.
@@ -174,7 +173,7 @@ Immer records patches on the full state, because that's what the game's rules ch
 **A. Whole states only.** Games with hidden information offer only whole-state updates, each player's whole view. Patches are offered only for games without hidden information.
 
 - Safe without any extra work by the game.
-- These games lose the benefits of patches: small messages, and knowing what changed.
+- Ruled out as a lasting design by [0010](../decisions/0010-every-game-has-hidden-information.md): since every game is treated as having hidden information, no game would get patches. It can only serve as a temporary state, before patches exist.
 
 **B. A patch filter written by the game.** Next to `filterStateForPlayer`, the game provides a second function that drops or rewrites the patches a player mustn't see.
 
@@ -240,9 +239,8 @@ The questions are which of these exist, how the store's reducer applies them, an
 - When a client asks for a patch format the game doesn't offer, should the server reject the request, or fall back to whole states? [0008](../decisions/0008-format-query-parameter.md) currently has it rejected.
 - How does `GET …/updates` answer when `since` is older than the stored patches reach, or when the game offers no patches: an error that points to `GET …/state`, or the whole state in its place?
 - Is it acceptable to change `executeAction` into a reducer that changes an Immer draft?
-- For games with hidden information: whole states only, a patch filter written by the game, visibility declared by the game, or patches recorded on each player's view? See [Patches for games with hidden information](#patches-for-games-with-hidden-information).
+- Which mechanism produces patches for each player's view: a patch filter written by the game, visibility declared by the game, or patches recorded on each player's view? See [Patches for games with hidden information](#patches-for-games-with-hidden-information).
 - What do clients need for rendering: to know which data changed, or what happened in game terms? Is keeping unchanged parts as the same objects on the client enough, or must the server send the change?
-- Should the library treat games without hidden information differently, for example by broadcasting one message and allowing client-side prediction? If so, does a game declare it, or does the library infer it from the missing `filterStateForPlayer`?
 - How large are the states of the games this is meant for, and how often do they change? This decides whether sending changes is worth the complexity.
 - Do clients need intermediate states, for example to animate each move, or only the latest one?
 - Should a player joining late see the game's earlier history?

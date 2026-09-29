@@ -1,6 +1,6 @@
 # 0007. Clients choose the format of state updates
 
-Status: Accepted; how GET offers the choice is refined by [0009](0009-separate-state-and-update-endpoints.md)
+Status: Accepted; how GET offers the choice is refined by [0009](0009-separate-state-and-update-endpoints.md), and the patch formats for games with hidden information by [0010](0010-every-game-has-hidden-information.md)
 Date: 2026-09-29
 
 ## Context
