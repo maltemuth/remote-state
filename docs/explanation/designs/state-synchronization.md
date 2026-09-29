@@ -23,7 +23,31 @@ The second of the project's [goals](../goals.md) is that clients keep game state
 
 No client receives the game's state. Each receives a *view*: the state as `filterStateForPlayer` produces it for that player. Some parts may be hidden from everyone, like the deck in a card game. Some are hidden differently per player: each sees their own hand, but not the others'. So in every option below, "the state" a client holds means its own view.
 
-This has consequences for every option:
+How much a game hides varies a lot:
+
+| Kind of game | Example | Views |
+|---|---|---|
+| **Open information** | Chess, tic-tac-toe | Every player's view equals the full state |
+| **Hidden from everyone** | A shuffled deck | Every player's view is the same, but less than the state |
+| **Hidden per player** | Hands of cards, battleship fleets | Every player's view is different |
+| **Revealed later** | Rock-paper-scissors choices | Views differ until a reveal, then become the same |
+
+A game can mix these: a card game has a hidden deck and private hands, and reveals cards as they're played. A mostly open game may still hide a detail. This repository's tic-tac-toe example, for instance, shows each player the other's ID only as `"opponent"`.
+
+### Games without hidden information
+
+For an open-information game, all views are the same, and equal the state. The constraints below mostly disappear:
+
+- **One message for everyone.** The server can serialize the state once, and broadcast it to the whole game.
+- **Clients can run the game's rules.** A client holding the full state can apply its own action immediately, and correct itself if the server disagrees (question 5B).
+- **Change sets are computed once,** between two states, and are the same for every client (question 2B).
+- **Every action changes every view,** so there are no unchanged views and no gaps in `sequence`.
+
+So the library could treat such games differently: a game without `filterStateForPlayer`, or one that declares it has no hidden information, would get broadcasting and client-side prediction. Games with hidden information would get per-player views. Whether the library should make that distinction, and how a game declares it, is an open question.
+
+### Games with hidden information
+
+These consequences apply to every game with a filter that makes views differ:
 
 - **One update is many messages.** After each action, the server filters the new state once per recipient, and sends each their own payload. A single message can't be broadcast to the whole game. The server does this today, filtering separately for every connected socket.
 - **The server can't reuse work across recipients.** Each view must be filtered and serialized on its own.
@@ -131,6 +155,7 @@ The questions are which of these exist, how the store's reducer applies them, an
 
 ## Open questions
 
+- Should the library treat games without hidden information differently, for example by broadcasting one message and allowing client-side prediction? If so, does a game declare it, or does the library infer it from the missing `filterStateForPlayer`?
 - How large are the states of the games this is meant for, and how often do they change? This decides whether sending changes is worth the complexity.
 - Do clients need intermediate states, for example to animate each move, or only the latest one?
 - Should a player joining late see the game's earlier history?
