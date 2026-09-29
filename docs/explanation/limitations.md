@@ -6,7 +6,8 @@ These are current properties of the library, not bugs in your game. Each one is 
 
 - **One process only.** The per-game lock is in memory, and Socket.IO uses its default in-memory adapter. Two instances sharing a database could interleave actions (the unique `sequence` index turns that into 500 errors rather than corrupt state), and each instance would only broadcast to its own sockets.
 - **SQLite only.** MikroORM also supports Postgres, but the migrations are written in SQLite's SQL. Postgres would need its own migrations and driver configuration.
-- **Full snapshot per action.** Storage grows with (state size × number of actions), and nothing prunes old states.
+- **Full snapshot per action.** Storage grows with (state size × number of actions), and nothing prunes old states. This gets much worse for state that grows over time, such as a move history, a hand log, a discard pile or a chat: each snapshot repeats everything before it, so total storage grows with the square of the number of actions. Every action also gets slower as the state grows, since loading, running the rules, filtering views, diffing and writing all work on the whole state. Diffs stay small. Deliberately left alone for now; the likely fix is a snapshot every N actions, with the stored full-state diffs ([0013](decisions/0013-store-full-state-diffs.md)) in between.
+- **One state per game.** Everything in a game, including anything like a chat, shares one state, one lock and one `sequence`, so all actions of a game wait for each other. Separate states per game were considered and set aside for now.
 
 ## Protocol
 
