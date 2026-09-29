@@ -121,7 +121,7 @@ A cursor identifies how far a client is in a game's history.
 
 ### 2. What does an update contain?
 
-This question stays semi-open: what updates need to carry will become clearer as more example games are built. The current direction is data changes, the part of a view that changed, as JSON diffs. See [JSON diffs](#json-diffs) below.
+This question stays semi-open: what updates need to carry will become clearer as more example games are built. The current direction is data changes, the part of the state that changed, as JSON patches recorded by Immer. See [JSON diffs](#json-diffs) below.
 
 Sending only what changed matters for two separate reasons:
 
@@ -143,32 +143,27 @@ A client could also get part of the rendering benefit without any protocol chang
 
 ### JSON diffs
 
-**Formats.** Three are in common use:
+The current direction is to use [Immer](https://immerjs.github.io/immer/)'s patches, rather than writing or adding a diffing algorithm.
 
-- **JSON Patch (RFC 6902):** a list of operations (`add`, `remove`, `replace`, `move`, `copy`, `test`), each addressing a location by path, for example `/board/4/4`. Standard, and supported by many libraries in many languages, including Immer, which many Redux setups already use.
-- **JSON Merge Patch (RFC 7386):** a partial document merged into the target. Simple, but it can't change one element of an array; any change to an array resends the whole array, so a chess move would resend the board.
-- **jsondiffpatch's format:** compact, and detects moved array elements, but not a standard. Clients would depend on that one library to apply it.
+**How Immer produces them.** Immer doesn't compare two states. It records changes while they're made: `produceWithPatches` hands the code a draft of the state, and every change made to the draft is recorded as a patch. That's the same mechanism Redux Toolkit uses for its reducers.
 
-**The diff algorithm matters as much as the format.** A general-purpose diff treats arrays as lists, and looks for inserted and removed elements. Tested on a chess move with the `rfc6902` library, it described e2-e4 as "insert a row at index 4, remove row 7", because the empty rows all look alike. The patch was correct, but it didn't say which squares changed, and applying it shifted rows that hadn't changed. In game state, arrays are usually positions: board squares, seats, tracks. So the diff should compare arrays index by index, and only add or remove at the end.
+Tested on a chess move, rules written as changes to a draft (`draft.board[4][4] = "wP"`, and so on) produced exactly the parts that changed: the two squares, the turn, and the appended move. Applied on the client with Immer's `applyPatches`, only the two changed board rows became new objects, so identity-based stores re-render only those.
 
-A positional diff producing JSON Patch, about 30 lines with no dependencies, turned the same move into exactly the changed parts:
+**Immer stays on the server.** What crosses the network is plain JSON data; clients don't need Immer. The only trace of it is the patch format: Immer's patches use the JSON Patch (RFC 6902) operations, but give each path as an array (`["board", 4, 4]`) rather than a string (`/board/4/4`). Two choices:
 
-```json
-[
-  { "op": "replace", "path": "/board/4/4", "value": "wP" },
-  { "op": "replace", "path": "/board/6/4", "value": null },
-  { "op": "replace", "path": "/turn", "value": "black" },
-  { "op": "add", "path": "/moves/-", "value": "e4" }
-]
-```
+- **Send standard JSON Patch.** The server converts each path to its string form before sending, which is a format translation, not diffing. Clients can then apply patches with any JSON Patch library, including Immer.
+- **Send Immer's format as is.** Clients that use Immer apply it directly; others must convert the paths themselves.
 
-That's 193 bytes, against 377 for the full view. Applied on the client with Immer, only the two changed rows became new objects, so identity-based stores re-render only those.
+**Why not a general-purpose diff.** A diff library compares two finished states and has to guess what happened. Tested with the `rfc6902` library on the same chess move, it described e2-e4 as "insert a row at index 4, remove row 7", because the empty rows all look alike. The result was correct, but it didn't show which squares changed, and applying it replaced rows that hadn't changed. Recording changes as they're made has no such ambiguity.
 
-**What JSON diffs require from the rest of the design:**
+**What Immer's patches require from the rest of the design:**
 
-- **Diffs are per player,** computed between the player's previous and new views, never between two states (see [Every client has its own view](#every-client-has-its-own-view)). The server needs each player's previous view, either kept in memory or recomputed by filtering the previous state from the history.
-- **A diff is only valid on its exact base.** Each diff must say which `sequence` it applies to and which it produces. A client that isn't at the base needs a full view instead, which is option C.
-- **An empty diff** means the player's view didn't change. Whether it's still sent is the question of unchanged views, above.
+- **The game's rules must change a draft.** Immer only records what's done to its draft. If `executeAction` returns a new object, as the plugin interface expects today, the only recorded patch is "replace the whole state", which gains nothing. So `executeAction` would have to be written as a reducer that changes a draft, in Redux Toolkit style. That's a breaking change to the [GamePlugin](../../reference/game-plugin.md) interface.
+- **Patches describe the full state, so they can leak hidden information.** In a card game, the patch for Alice drawing a card is `add ["hands", "alice", 2] = "Q♦"`. Sent to Bob, it reveals the card. Immer can't produce patches for a filtered view, because the view isn't what the rules change. For games with hidden information, the options are:
+  - **Full views only.** Patches are sent only for games without hidden information (see [Games without hidden information](#games-without-hidden-information)). Other games keep receiving full views, as in option 0 or 0a.
+  - **Patch filtering by the game.** Next to `filterStateForPlayer`, the game provides a filter for patches that drops or rewrites the ones a player mustn't see. Game authors then maintain two filters that must agree, and a mistake in the second one leaks information.
+- **A patch is only valid on its exact base.** Each update must say which `sequence` it applies to. A client that isn't at that base needs a full view instead, which is option C.
+- **An empty patch list** means the state didn't change.
 
 ### 3. How does a client catch up after missing updates?
 
@@ -200,7 +195,8 @@ The questions are which of these exist, how the store's reducer applies them, an
 
 ## Open questions
 
-- Is a positional diff enough for every example game, or do some games have arrays that behave like lists, where inserting in the middle is common?
+- Is it acceptable to change `executeAction` into a reducer that changes an Immer draft?
+- For games with hidden information: full views only, or patch filtering by the game?
 - What do clients need for rendering: to know which data changed, or what happened in game terms? Is keeping unchanged parts as the same objects on the client enough, or must the server send the change?
 - Should the library treat games without hidden information differently, for example by broadcasting one message and allowing client-side prediction? If so, does a game declare it, or does the library infer it from the missing `filterStateForPlayer`?
 - How large are the states of the games this is meant for, and how often do they change? This decides whether sending changes is worth the complexity.
