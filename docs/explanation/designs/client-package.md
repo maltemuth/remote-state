@@ -1,6 +1,6 @@
 # Client package
 
-Status: Deferred until [Player information](player-information.md), [Game lifecycle](game-lifecycle.md) and the synchronization protocol are decided
+Status: Deferred until [State synchronization](state-synchronization.md), [Player information](player-information.md) and [Game lifecycle](game-lifecycle.md) are decided
 
 ## Problem
 
@@ -23,7 +23,7 @@ The original project plan included a client package, `@malte.muth/remote-state-c
 The client's interface follows from decisions that are still open:
 
 - **The events it exposes** depend on [Game lifecycle](game-lifecycle.md) and [Player information](player-information.md).
-- **Its synchronization protocol** depends on whether clients keep receiving full states, or move to cursors and deltas. That was part of the original plan; the `:cursor` parameter of `GET …/state/:cursor` is still ignored today (see [Known limitations](../limitations.md)).
+- **Its synchronization protocol** is the subject of [State synchronization](state-synchronization.md).
 
 ## Questions to answer when it's taken up
 

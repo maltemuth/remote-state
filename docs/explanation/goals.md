@@ -19,6 +19,6 @@ The client side doesn't exist yet. Today every client talks to the HTTP API and 
 ## What follows from these goals
 
 - **Actions are shared by client and server.** An action has to make sense both as something the client's store dispatches and as input to the server's rules. That argues for the conventional Redux action shape, a `type` plus data.
-- **How updates arrive shapes the client.** How the server sends new state, whether as full snapshots or as changes, decides what the middleware dispatches into the store. See the `:cursor` entry in [Known limitations](limitations.md).
+- **How updates arrive shapes the client.** How the server sends new state, whether as full snapshots or as changes, decides what the middleware dispatches into the store. See [State synchronization](designs/state-synchronization.md).
 - **No single client framework.** The middleware must fit several state libraries, which argues for a framework-independent core with small adapters.
 - **Types should be shared.** A game's state, action and player-view types are the contract between its server and its clients.
