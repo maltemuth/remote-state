@@ -1,6 +1,6 @@
 # 0012. Store each player's diffs alongside the full states
 
-Status: Accepted
+Status: Accepted; diffs are stored in Immer's format per [0014](0014-immer-patches-only-external-format.md)
 Date: 2026-09-29
 
 ## Context

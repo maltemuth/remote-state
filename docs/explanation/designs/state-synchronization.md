@@ -148,7 +148,7 @@ A cursor identifies how far a client is in a game's history.
 
 This question stays semi-open: what updates need to carry will become clearer as more example games are built. The current direction is data changes, the part of the state that changed, as JSON patches recorded by Immer. See [JSON diffs](#json-diffs) below.
 
-The format is partly decided ([0007](../decisions/0007-client-chosen-update-format.md)): each client chooses whole state, JSON Patch, or Immer patches. On the socket, it says so with a `format` handshake parameter ([0008](../decisions/0008-format-query-parameter.md)). Over GET, it uses one endpoint for the whole state and another for updates since a given `sequence`, which takes the patch format as a parameter ([0009](../decisions/0009-separate-state-and-update-endpoints.md)).
+The format is partly decided ([0007](../decisions/0007-client-chosen-update-format.md)): each client chooses whole state or Immer patches ([0014](../decisions/0014-immer-patches-only-external-format.md)). On the socket, it says so with a `format` handshake parameter ([0008](../decisions/0008-format-query-parameter.md)). Over GET, it uses one endpoint for the whole state and another for updates since a given `sequence` ([0009](../decisions/0009-separate-state-and-update-endpoints.md)).
 
 Sending only what changed matters for two separate reasons:
 
@@ -181,7 +181,7 @@ Decided in [0011](../decisions/0011-patches-are-diffs-of-views.md): patches are 
 
 Minimal patches are a goal, but not a first concern, so `rfc6902` was chosen for producing standard JSON Patch directly.
 
-**Formats on the wire.** Clients choose JSON Patch or Immer's format ([0007](../decisions/0007-client-chosen-update-format.md)). Immer's patches use the same operations, but give each path as an array (`["board", 4, 4]`) rather than a string (`/board/4/4`). The server converts paths for clients that choose it. Clients don't need Immer unless they choose its format.
+**Format on the wire.** Patches are sent in Immer's format only ([0014](../decisions/0014-immer-patches-only-external-format.md)). It uses the same operations as JSON Patch, but gives each path as an array (`["board", 4, 4]`) rather than a string (`/board/4/4`). The server converts `rfc6902`'s output once, when storing the diffs. Clients don't need Immer: the patches are plain JSON.
 
 **What view diffs require:**
 
@@ -238,7 +238,7 @@ While connected, a client receives everything over the socket. The GET endpoints
 The current direction is to treat a client's first connection like a reconnect: the client connects the socket, then fetches the whole state with `GET …/state`, and keeps whichever is newer by `sequence`. That gives one mechanism for every gap, and keeps the socket for live updates only. It may not suit every game, so it stays open for revision as more example games are built.
 
 - **A. Fetch the latest state,** as today. Simple, but intermediate states are lost; a client can't animate the moves it missed.
-- **B. Fetch everything since a cursor.** `GET …/updates?since=<sequence>&format=…` returns every update after that sequence ([0009](../decisions/0009-separate-state-and-update-endpoints.md)). A client whose gap is too large fetches `GET …/state` instead. This needs the recorded patches stored with each state.
+- **B. Fetch everything since a cursor.** `GET …/updates?since=<sequence>` returns every update after that sequence ([0009](../decisions/0009-separate-state-and-update-endpoints.md)). A client whose gap is too large fetches `GET …/state` instead. This needs the recorded patches stored with each state.
 - **C. Send the cursor when connecting.** The client includes its cursor in the socket handshake, and the server sends the missed updates before live ones. This keeps catch-up and live updates in one ordered stream. Clients still send nothing over the socket after connecting.
 
 ### 4. What reaches the client's store?
@@ -246,7 +246,7 @@ The current direction is to treat a client's first connection like a reconnect: 
 The middleware turns server messages into actions for the store. For example:
 
 - `state-replaced` with a sequence and a full view
-- `state-changed` with a sequence and patches, in JSON Patch or Immer format
+- `state-changed` with a sequence and patches, in Immer's format
 - `action-rejected` with the action and the server's reason
 - `connection-changed`
 

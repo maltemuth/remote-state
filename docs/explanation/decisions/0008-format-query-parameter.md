@@ -1,6 +1,6 @@
 # 0008. The update format is chosen with a `format` query parameter
 
-Status: Accepted for the socket; superseded for GET by [0009](0009-separate-state-and-update-endpoints.md)
+Status: Accepted for the socket; superseded for GET by [0009](0009-separate-state-and-update-endpoints.md); its values are reduced to `state` and `immer` by [0014](0014-immer-patches-only-external-format.md)
 Date: 2026-09-29
 
 ## Context

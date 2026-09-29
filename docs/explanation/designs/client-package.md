@@ -29,12 +29,12 @@ The client's interface follows from decisions that are still open:
 
 Some requirements already follow from decisions made elsewhere.
 
-**Applying patches.** Clients may receive patches in JSON Patch or Immer's format ([0007](../decisions/0007-client-chosen-update-format.md)). The client package must apply them in a way that works for Redux-style stores, which detect changes by object identity: every changed part must become a new object, and every unchanged part must stay the same object. Tested:
+**Applying patches.** Clients may receive patches instead of whole states ([0007](../decisions/0007-client-chosen-update-format.md)). The client package must apply them in a way that works for Redux-style stores, which detect changes by object identity: every changed part must become a new object, and every unchanged part must stay the same object. Tested:
 
 - **`rfc6902`'s `applyPatch`** changes the target in place. The root and every changed object stay the same objects, so an identity-based store sees no change and doesn't re-render. On frozen state, which Redux Toolkit uses in development, it throws.
 - **Immer's `applyPatches`** returns a new state with structural sharing: the root and the changed parts are new, the unchanged parts keep their identity, the original stays untouched, and frozen state works.
 
-So the client package applies patches with Immer. For JSON Patch, it first converts each path from its string form (`/board/4/4`) to an array (`["board", 4, 4]`). The server uses `rfc6902` only to compute diffs ([0011](../decisions/0011-patches-are-diffs-of-views.md)). Immer is a dependency of the client package, not part of the protocol: clients that don't use the package can apply JSON Patch with any library.
+So the client package applies patches with Immer. Since Immer's format is the only external patch format ([0014](../decisions/0014-immer-patches-only-external-format.md)), it applies them directly, with no conversion. The server uses `rfc6902` only to compute diffs ([0011](../decisions/0011-patches-are-diffs-of-views.md)). Immer is a dependency of the client package, not something clients must use: the patches are plain JSON.
 
 ## Questions to answer when it's taken up
 

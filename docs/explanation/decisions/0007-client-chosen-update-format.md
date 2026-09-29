@@ -1,6 +1,6 @@
 # 0007. Clients choose the format of state updates
 
-Status: Accepted; how GET offers the choice is refined by [0009](0009-separate-state-and-update-endpoints.md), and the patch formats for games with hidden information by [0010](0010-every-game-has-hidden-information.md). How patches are produced is superseded by [0011](0011-patches-are-diffs-of-views.md): they're diffs of views, not recorded by Immer, and aren't stored.
+Status: Accepted; how GET offers the choice is refined by [0009](0009-separate-state-and-update-endpoints.md), and the patch formats for games with hidden information by [0010](0010-every-game-has-hidden-information.md). How patches are produced is superseded by [0011](0011-patches-are-diffs-of-views.md): they're diffs of views, not recorded by Immer, and aren't stored. The set of formats is reduced to whole state and Immer patches by [0014](0014-immer-patches-only-external-format.md).
 Date: 2026-09-29
 
 ## Context
