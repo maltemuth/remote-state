@@ -12,6 +12,7 @@ Records aren't edited after the fact, except to update their status. A decision 
 | [0004](0004-esm-with-jest.md) | ESM throughout, tested with Jest | Accepted |
 | [0005](0005-mikro-orm.md) | MikroORM with standard decorators for the data layer | Accepted |
 | [0006](0006-single-process.md) | Run as a single process for now | Accepted |
+| [0007](0007-client-chosen-update-format.md) | Clients choose the format of state updates | Accepted |
 
 ## Writing a record
 

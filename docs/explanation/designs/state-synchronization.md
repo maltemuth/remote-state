@@ -123,6 +123,8 @@ A cursor identifies how far a client is in a game's history.
 
 This question stays semi-open: what updates need to carry will become clearer as more example games are built. The current direction is data changes, the part of the state that changed, as JSON patches recorded by Immer. See [JSON diffs](#json-diffs) below.
 
+The format is partly decided ([0007](../decisions/0007-client-chosen-update-format.md)): each client chooses whole state, JSON Patch, or Immer patches, both for its socket subscription and for GET requests.
+
 Sending only what changed matters for two separate reasons:
 
 - **Size.** A message should grow with the change, not with the whole view.
@@ -149,10 +151,7 @@ The current direction is to use [Immer](https://immerjs.github.io/immer/)'s patc
 
 Tested on a chess move, rules written as changes to a draft (`draft.board[4][4] = "wP"`, and so on) produced exactly the parts that changed: the two squares, the turn, and the appended move. Applied on the client with Immer's `applyPatches`, only the two changed board rows became new objects, so identity-based stores re-render only those.
 
-**Immer stays on the server.** What crosses the network is plain JSON data; clients don't need Immer. The only trace of it is the patch format: Immer's patches use the JSON Patch (RFC 6902) operations, but give each path as an array (`["board", 4, 4]`) rather than a string (`/board/4/4`). Two choices:
-
-- **Send standard JSON Patch.** The server converts each path to its string form before sending, which is a format translation, not diffing. Clients can then apply patches with any JSON Patch library, including Immer.
-- **Send Immer's format as is.** Clients that use Immer apply it directly; others must convert the paths themselves.
+**Immer stays on the server.** What crosses the network is plain JSON data; clients don't need Immer. Immer's patches use the JSON Patch (RFC 6902) operations, but give each path as an array (`["board", 4, 4]`) rather than a string (`/board/4/4`). Clients choose which of the two they receive ([0007](../decisions/0007-client-chosen-update-format.md)). For JSON Patch, the server converts each path to its string form, which is a format translation, not diffing.
 
 **Why not a general-purpose diff.** A diff library compares two finished states and has to guess what happened. Tested with the `rfc6902` library on the same chess move, it described e2-e4 as "insert a row at index 4, remove row 7", because the empty rows all look alike. The result was correct, but it didn't show which squares changed, and applying it replaced rows that hadn't changed. Recording changes as they're made has no such ambiguity.
 
@@ -168,7 +167,7 @@ Tested on a chess move, rules written as changes to a draft (`draft.board[4][4] 
 ### 3. How does a client catch up after missing updates?
 
 - **A. Fetch the latest state,** as today. Simple, but intermediate states are lost; a client can't animate the moves it missed.
-- **B. Fetch everything since a cursor.** `GET …/state/:cursor` returns every update after the cursor, as full views or changes, or a single full view if the gap is too large.
+- **B. Fetch everything since a cursor.** `GET …/state/:cursor` returns every update after the cursor, in the client's chosen format ([0007](../decisions/0007-client-chosen-update-format.md)), or a single full view if the gap is too large. For patch formats, this needs the recorded patches stored with each state.
 - **C. Send the cursor when connecting.** The client includes its cursor in the socket handshake, and the server sends the missed updates before live ones. This keeps catch-up and live updates in one ordered stream. Clients still send nothing over the socket after connecting.
 
 ### 4. What reaches the client's store?
@@ -176,7 +175,7 @@ Tested on a chess move, rules written as changes to a draft (`draft.board[4][4] 
 The middleware turns server messages into actions for the store. For example:
 
 - `state-replaced` with a sequence and a full view
-- `state-changed` with a sequence and a change set
+- `state-changed` with a sequence and patches, in JSON Patch or Immer format
 - `action-rejected` with the action and the server's reason
 - `connection-changed`
 
@@ -195,6 +194,7 @@ The questions are which of these exist, how the store's reducer applies them, an
 
 ## Open questions
 
+- How does a client state its format choice: a handshake option for the socket and a query parameter for GET, or HTTP content negotiation? JSON Patch has a registered media type, `application/json-patch+json`; Immer's format doesn't.
 - Is it acceptable to change `executeAction` into a reducer that changes an Immer draft?
 - For games with hidden information: full views only, or patch filtering by the game?
 - What do clients need for rendering: to know which data changed, or what happened in game terms? Is keeping unchanged parts as the same objects on the client enough, or must the server send the change?
