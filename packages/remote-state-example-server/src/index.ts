@@ -5,3 +5,4 @@
 
 export { createTicTacToeServer } from "./server-config.js";
 export { ticTacToePlugin } from "./games/tic-tac-toe/plugin.js";
+export { battleshipPlugin } from "./games/battleship/plugin.js";

@@ -17,7 +17,7 @@ await server.startServer();
 | Path | Contents |
 |---|---|
 | [packages/remote-state](packages/remote-state) | The library |
-| [packages/remote-state-example-server](packages/remote-state-example-server) | Tic-tac-toe with a browser client, plus battleship game logic |
+| [packages/remote-state-example-server](packages/remote-state-example-server) | Tic-tac-toe with a browser client, and a battleship game plugin |
 | [docs](docs/README.md) | Documentation |
 
 ## Quick start
@@ -27,7 +27,7 @@ Requires Node.js 20 or newer.
 ```sh
 npm install
 npm run start:example   # builds, then serves tic-tac-toe on http://localhost:3000
-npm test                # library unit, integration and e2e tests
+npm test                # all tests: library, e2e and example game engines
 ```
 
 Then work through the [tutorial](docs/tutorials/build-your-first-game.md).

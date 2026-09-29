@@ -4,6 +4,23 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ## Unreleased
 
+### Breaking
+
+- Battleship example: players claim a seat with a `join` action, and ships can only be placed during setup, one of each type. There are now two ship types, a destroyer (3) and a battleship (4). `validateActionSimple` and `executeActionSimple` were removed.
+
+### Added
+
+- Battleship example: a shared `battleshipPlugin`.
+- The example server has its own test suite, and `npm test` at the root runs every workspace.
+
+### Fixed
+
+- Battleship example: ships could never be hit, because firing at any cell that wasn't `empty`, including a cell with a ship, was rejected as already targeted.
+- Battleship example: players without a seat were treated as `player2` when placing ships, and saw `player1`'s ships.
+- Battleship example: `restart` was rejected once a game was finished.
+- Battleship example: `executeAction`, `addPlayer` and `removePlayer` modified the state passed to them.
+- Battleship example: the built engine failed to load under ESM because of an import without the `.js` extension.
+
 ## 0.1.0 - 2026-09-29
 
 ### Breaking

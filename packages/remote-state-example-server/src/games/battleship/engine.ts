@@ -13,9 +13,10 @@ import {
   ShipPosition,
   ShipOrientation,
   ShipType,
+  CellState,
   createInitialGameState,
   SHIP_CONFIGS,
-} from "./types";
+} from "./types.js";
 
 /**
  * Check if a position is valid on the board
@@ -30,7 +31,7 @@ export const isValidPosition = (row: number, col: number): boolean => {
 export const isPositionEmpty = (
   board: Board,
   row: number,
-  col: number
+  col: number,
 ): boolean => {
   if (!isValidPosition(row, col)) return false;
   return board[row][col] === "empty";
@@ -44,7 +45,7 @@ export const allShipsPlaced = (ships: ShipPosition[]): boolean => {
   const placedShips = ships.map((ship) => ship.type);
 
   return requiredShips.every((shipType) =>
-    placedShips.includes(shipType as ShipType)
+    placedShips.includes(shipType as ShipType),
   );
 };
 
@@ -55,7 +56,7 @@ export const isValidShipPlacement = (
   board: Board,
   shipType: ShipType,
   position: [number, number],
-  orientation: ShipOrientation
+  orientation: ShipOrientation,
 ): boolean => {
   const shipSize = SHIP_CONFIGS[shipType].size;
   const [startRow, startCol] = position;
@@ -84,7 +85,7 @@ export const placeShip = (
   ships: ShipPosition[],
   shipType: ShipType,
   position: [number, number],
-  orientation: ShipOrientation
+  orientation: ShipOrientation,
 ): { board: Board; ships: ShipPosition[] } => {
   const newBoard = board.map((row) => [...row]);
   const newShips = [...ships];
@@ -131,7 +132,7 @@ export const isShipSunk = (ship: ShipPosition): boolean => {
 export const fireShot = (
   board: Board,
   ships: ShipPosition[],
-  position: [number, number]
+  position: [number, number],
 ): { board: Board; ships: ShipPosition[]; result: "hit" | "miss" | "sunk" } => {
   const [row, col] = position;
   const newBoard = board.map((row) => [...row]);
@@ -178,150 +179,164 @@ export const isGameOver = (state: BattleshipState): boolean => {
   return player1AllSunk || player2AllSunk;
 };
 
+const invalid = (message: string, code: string): GameValidationResult => ({
+  valid: false,
+  message,
+  error: message,
+  code,
+});
+
+const valid: GameValidationResult = { valid: true, message: "Action is valid" };
+
+const opponentOf = (seat: Player): Player =>
+  seat === "player1" ? "player2" : "player1";
+
+/**
+ * The seat a player occupies, or null if they have not joined
+ */
+export const seatOf = (
+  state: BattleshipState,
+  playerId: string,
+): Player | null =>
+  state.players.player1 === playerId
+    ? "player1"
+    : state.players.player2 === playerId
+      ? "player2"
+      : null;
+
+const isPosition = (position: unknown): position is [number, number] =>
+  Array.isArray(position) &&
+  position.length === 2 &&
+  isValidPosition(position[0], position[1]);
+
+const alreadyTargeted: CellState[] = ["hit", "miss", "sunk"];
+
 /**
  * Validate a game action
  */
 export const validateAction = async (
   state: BattleshipState,
   action: BattleshipAction,
-  playerId: string
+  playerId: string,
 ): Promise<GameValidationResult> => {
-  // Check if game is over
-  if (state.status === "finished") {
-    return {
-      valid: false,
-      message: "Game is already finished",
-      error: "Game is already finished",
-      code: "GAME_FINISHED",
-    };
-  }
+  const seat = seatOf(state, playerId);
 
-  // For ship placement actions
-  if (action.type === "place_ship") {
-    if (!action.shipType || !action.position || !action.orientation) {
-      return {
-        valid: false,
-        message: "Ship placement requires ship type, position, and orientation",
-        error: "Missing required parameters",
-        code: "MISSING_PARAMETERS",
-      };
-    }
-
-    const [row, col] = action.position;
-
-    // Check if it's the correct player's turn during setup
-    if (state.status === "setup") {
-      const currentPlayerShips =
-        state.ships[playerId === state.players.player1 ? "player1" : "player2"];
-      if (allShipsPlaced(currentPlayerShips)) {
-        return {
-          valid: false,
-          message: "All ships already placed",
-          error: "All ships already placed",
-          code: "ALL_SHIPS_PLACED",
-        };
+  switch (action.type) {
+    case "join":
+      if (seat) {
+        return invalid(`Already playing as ${seat}`, "ALREADY_JOINED");
       }
+      if (state.players.player1 && state.players.player2) {
+        return invalid("Both seats are taken", "GAME_FULL");
+      }
+      return valid;
+
+    case "leave":
+      return seat ? valid : invalid("Not playing in this game", "NOT_JOINED");
+
+    case "restart":
+      return seat
+        ? valid
+        : invalid("Only seated players can restart", "NOT_JOINED");
+
+    case "place_ship": {
+      if (state.status === "finished") {
+        return invalid("Game is already finished", "GAME_FINISHED");
+      }
+      if (!seat) {
+        return invalid("Join the game first", "NOT_JOINED");
+      }
+      if (state.status !== "setup") {
+        return invalid("Ships can only be placed during setup", "NOT_IN_SETUP");
+      }
+      const { shipType, position, orientation } = action;
+      if (!shipType || !position || !orientation) {
+        return invalid(
+          "Ship placement requires ship type, position, and orientation",
+          "MISSING_PARAMETERS",
+        );
+      }
+      if (!(shipType in SHIP_CONFIGS)) {
+        return invalid(`Unknown ship type ${shipType}`, "UNKNOWN_SHIP_TYPE");
+      }
+      if (orientation !== "horizontal" && orientation !== "vertical") {
+        return invalid(
+          "Orientation must be horizontal or vertical",
+          "INVALID_ORIENTATION",
+        );
+      }
+      if (!isPosition(position)) {
+        return invalid(
+          "Position must be [row, col] between 0-4",
+          "INVALID_POSITION",
+        );
+      }
+      if (state.ships[seat].some((ship) => ship.type === shipType)) {
+        return invalid(
+          `${SHIP_CONFIGS[shipType].name} already placed`,
+          "SHIP_ALREADY_PLACED",
+        );
+      }
+      if (
+        !isValidShipPlacement(
+          state.boards[seat],
+          shipType,
+          position,
+          orientation,
+        )
+      ) {
+        return invalid("Invalid ship placement", "INVALID_SHIP_PLACEMENT");
+      }
+      return valid;
     }
 
-    // Check if position is valid
-    if (!isValidPosition(row, col)) {
-      return {
-        valid: false,
-        message: "Invalid position",
-        error: "Position must be between 0-4",
-        code: "INVALID_POSITION",
-      };
+    case "fire_shot": {
+      if (state.status === "finished") {
+        return invalid("Game is already finished", "GAME_FINISHED");
+      }
+      if (!action.position) {
+        return invalid(
+          "Position is required for fire shot actions",
+          "POSITION_REQUIRED",
+        );
+      }
+      if (state.status !== "playing") {
+        return invalid("Game is not in playing state", "GAME_NOT_STARTED");
+      }
+      if (seat !== state.currentPlayer) {
+        return invalid(`It's not ${playerId}'s turn`, "WRONG_PLAYER_TURN");
+      }
+      if (!isPosition(action.position)) {
+        return invalid(
+          "Position must be [row, col] between 0-4",
+          "INVALID_POSITION",
+        );
+      }
+      const [row, col] = action.position;
+      if (alreadyTargeted.includes(state.boards[opponentOf(seat)][row][col])) {
+        return invalid(
+          "Position already fired at",
+          "POSITION_ALREADY_TARGETED",
+        );
+      }
+      return valid;
     }
 
-    // Check if ship placement is valid
-    const playerKey =
-      playerId === state.players.player1 ? "player1" : "player2";
-    if (
-      !isValidShipPlacement(
-        state.boards[playerKey],
-        action.shipType,
-        action.position,
-        action.orientation
-      )
-    ) {
-      return {
-        valid: false,
-        message: "Invalid ship placement",
-        error: "Ship placement is invalid",
-        code: "INVALID_SHIP_PLACEMENT",
-      };
-    }
+    default:
+      return invalid(
+        `Unknown action type ${String(action.type)}`,
+        "UNKNOWN_ACTION",
+      );
   }
-
-  // For fire shot actions
-  if (action.type === "fire_shot") {
-    if (!action.position) {
-      return {
-        valid: false,
-        message: "Position is required for fire shot actions",
-        error: "Position is required",
-        code: "POSITION_REQUIRED",
-      };
-    }
-
-    const [row, col] = action.position;
-
-    // Check if it's the correct player's turn
-    if (playerId !== state.players[state.currentPlayer]) {
-      return {
-        valid: false,
-        message: `It's not ${playerId}'s turn`,
-        error: "Wrong player turn",
-        code: "WRONG_PLAYER_TURN",
-      };
-    }
-
-    // Check if game is in playing state
-    if (state.status !== "playing") {
-      return {
-        valid: false,
-        message: "Game is not in playing state",
-        error: "Game not started",
-        code: "GAME_NOT_STARTED",
-      };
-    }
-
-    // Check if position is valid
-    if (!isValidPosition(row, col)) {
-      return {
-        valid: false,
-        message: "Invalid position",
-        error: "Position must be between 0-4",
-        code: "INVALID_POSITION",
-      };
-    }
-
-    // Check if position has already been fired at
-    const opponentKey =
-      state.currentPlayer === "player1" ? "player2" : "player1";
-    if (state.boards[opponentKey][row][col] !== "empty") {
-      return {
-        valid: false,
-        message: "Position already fired at",
-        error: "Position already targeted",
-        code: "POSITION_ALREADY_TARGETED",
-      };
-    }
-  }
-
-  return {
-    valid: true,
-    message: "Action is valid",
-  };
 };
 
 /**
- * Execute a game action
+ * Execute a validated game action, returning a new state
  */
 export const executeAction = async (
   state: BattleshipState,
   action: BattleshipAction,
-  playerId: string
+  playerId: string,
 ): Promise<GameMoveResult> => {
   const validationResult = await validateAction(state, action, playerId);
 
@@ -334,518 +349,157 @@ export const executeAction = async (
     };
   }
 
-  let newState = { ...state };
-  let winner: Player | null = null;
-  let gameOver = false;
+  let newState: BattleshipState = JSON.parse(JSON.stringify(state));
+  const seat = seatOf(state, playerId);
+  const timestamp = action.timestamp ?? new Date();
 
-  // Handle different action types
   switch (action.type) {
-    case "place_ship":
-      if (action.shipType && action.position && action.orientation) {
-        const playerKey =
-          playerId === state.players.player1 ? "player1" : "player2";
-        const { board, ships } = placeShip(
-          newState.boards[playerKey],
-          newState.ships[playerKey],
-          action.shipType,
-          action.position,
-          action.orientation
-        );
-
-        newState.boards[playerKey] = board;
-        newState.ships[playerKey] = ships;
-        newState.lastMove = {
-          player: playerKey as Player,
-          action: "place_ship",
-          position: action.position,
-          result: null,
-          timestamp: action.timestamp,
-        };
-        newState.updatedAt = action.timestamp;
-
-        // Check if both players have placed all ships
-        if (
-          allShipsPlaced(newState.ships.player1) &&
-          allShipsPlaced(newState.ships.player2)
-        ) {
-          newState.status = "playing";
-        }
-      }
-      break;
-
-    case "fire_shot":
-      if (action.position) {
-        const opponentKey =
-          newState.currentPlayer === "player1" ? "player2" : "player1";
-        const { board, ships, result } = fireShot(
-          newState.boards[opponentKey],
-          newState.ships[opponentKey],
-          action.position
-        );
-
-        newState.boards[opponentKey] = board;
-        newState.ships[opponentKey] = ships;
-        newState.lastMove = {
-          player: newState.currentPlayer,
-          action: "fire_shot",
-          position: action.position,
-          result,
-          timestamp: action.timestamp,
-        };
-        newState.updatedAt = action.timestamp;
-
-        // Check for game over
-        if (isGameOver(newState)) {
-          newState.status = "finished";
-          gameOver = true;
-          // Determine winner
-          const player1AllSunk = newState.ships.player1.every(
-            (ship) => ship.sunk
-          );
-          winner = player1AllSunk ? "player2" : "player1";
-          newState.winner = winner;
-        } else {
-          // Switch players
-          newState.currentPlayer =
-            newState.currentPlayer === "player1" ? "player2" : "player1";
-        }
-      }
-      break;
-
-    case "restart":
-      // Reset the game but keep players
-      newState = createInitialGameState("");
-      newState.players = state.players;
-      break;
-
     case "join":
-      // Handle player joining (already handled in service layer)
+      newState = addPlayer(
+        newState,
+        playerId,
+        state.players.player1 ? "player2" : "player1",
+      );
       break;
 
     case "leave":
-      // Handle player leaving (already handled in service layer)
+      newState = removePlayer(newState, playerId);
       break;
+
+    case "restart":
+      newState = { ...createInitialGameState(""), players: newState.players };
+      break;
+
+    case "place_ship": {
+      const player = seat as Player;
+      const { board, ships } = placeShip(
+        newState.boards[player],
+        newState.ships[player],
+        action.shipType as ShipType,
+        action.position as [number, number],
+        action.orientation as ShipOrientation,
+      );
+      newState.boards[player] = board;
+      newState.ships[player] = ships;
+      newState.lastMove = {
+        player,
+        action: "place_ship",
+        position: action.position as [number, number],
+        result: null,
+        timestamp,
+      };
+      newState.updatedAt = timestamp;
+
+      if (
+        newState.players.player1 &&
+        newState.players.player2 &&
+        allShipsPlaced(newState.ships.player1) &&
+        allShipsPlaced(newState.ships.player2)
+      ) {
+        newState.status = "playing";
+        newState.currentPlayer = "player1";
+      }
+      break;
+    }
+
+    case "fire_shot": {
+      const shooter = newState.currentPlayer;
+      const target = opponentOf(shooter);
+      const { board, ships, result } = fireShot(
+        newState.boards[target],
+        newState.ships[target],
+        action.position as [number, number],
+      );
+      newState.boards[target] = board;
+      newState.ships[target] = ships;
+      newState.lastMove = {
+        player: shooter,
+        action: "fire_shot",
+        position: action.position as [number, number],
+        result,
+        timestamp,
+      };
+      newState.updatedAt = timestamp;
+
+      if (ships.length > 0 && ships.every((ship) => ship.sunk)) {
+        newState.status = "finished";
+        newState.winner = shooter;
+      } else {
+        newState.currentPlayer = target;
+      }
+      break;
+    }
   }
 
   return {
     success: true,
     state: newState,
-    gameOver,
-    winner,
+    gameOver: newState.status === "finished",
+    winner: newState.winner,
   };
 };
 
 /**
- * Add a player to the game
+ * Seat a player
  */
 export const addPlayer = (
   state: BattleshipState,
   playerId: string,
-  player: Player
-): BattleshipState => {
-  const newState = { ...state };
-  newState.players[player] = playerId;
-  newState.updatedAt = new Date();
+  player: Player,
+): BattleshipState => ({
+  ...state,
+  players: { ...state.players, [player]: playerId },
+  updatedAt: new Date(),
+});
 
-  return newState;
-};
+const hideShips = (board: Board): Board =>
+  board.map((row) => row.map((cell) => (cell === "ship" ? "empty" : cell)));
 
 /**
- * Filter game state for a specific player
- * This ensures players only see information they should have access to
+ * Filter game state for a specific player: they see their own board and ships,
+ * only shots and sunk ships on the opponent's board, and the opponent's player
+ * ID as "opponent". Players without a seat see no ships at all.
  */
 export const filterStateForPlayer = (
   state: BattleshipState,
-  playerId: string
+  playerId: string,
 ): BattleshipState => {
-  // Create a deep copy of the state to avoid mutating the original
-  const filteredState: BattleshipState = JSON.parse(JSON.stringify(state));
+  const seat = seatOf(state, playerId);
+  const visible = (player: Player) => player === seat;
+  const maskId = (id: string | null) =>
+    id === null || id === playerId ? id : "opponent";
 
-  // Determine which player this is
-  let currentPlayer: Player = "player1";
-  if (playerId === filteredState.players.player2) {
-    currentPlayer = "player2";
-  }
-
-  // Hide opponent's ships and show only hit/miss information
-  const opponentKey = currentPlayer === "player1" ? "player2" : "player1";
-
-  // Create opponent board with only hit/miss information (ships are hidden)
-  const opponentBoard = filteredState.boards[opponentKey].map((row) =>
-    row.map((cell) => {
-      if (cell === "ship") {
-        return "empty"; // Hide opponent's ships
-      }
-      return cell; // Show hit/miss/sunk information
-    })
-  );
-
-  // Update boards - player sees their own ships and opponent's hit/miss information
-  filteredState.boards = {
-    player1:
-      currentPlayer === "player1"
-        ? filteredState.boards.player1
-        : opponentBoard,
-    player2:
-      currentPlayer === "player2"
-        ? filteredState.boards.player2
-        : opponentBoard,
+  return {
+    ...state,
+    boards: {
+      player1: visible("player1")
+        ? state.boards.player1
+        : hideShips(state.boards.player1),
+      player2: visible("player2")
+        ? state.boards.player2
+        : hideShips(state.boards.player2),
+    },
+    ships: {
+      player1: visible("player1") ? state.ships.player1 : [],
+      player2: visible("player2") ? state.ships.player2 : [],
+    },
+    players: {
+      player1: maskId(state.players.player1),
+      player2: maskId(state.players.player2),
+    },
   };
-
-  // Hide opponent's ship details
-  filteredState.ships = {
-    player1: currentPlayer === "player1" ? filteredState.ships.player1 : [],
-    player2: currentPlayer === "player2" ? filteredState.ships.player2 : [],
-  };
-
-  return filteredState;
 };
 
 /**
- * Remove a player from the game
+ * Remove a player from the game, resetting it to setup
  */
 export const removePlayer = (
   state: BattleshipState,
-  playerId: string
-): BattleshipState => {
-  const newState = { ...state };
-
-  // Remove player from their position
-  if (newState.players.player1 === playerId) {
-    newState.players.player1 = null;
-  } else if (newState.players.player2 === playerId) {
-    newState.players.player2 = null;
-  }
-
-  // Reset game if a player leaves
-  newState.winner = null;
-  newState.currentPlayer = "player1";
-  newState.status = "setup";
-  newState.updatedAt = new Date();
-
-  return newState;
-};
-
-/**
- * Simple validation function for testing purposes
- * Returns true | string to match ActionValidationResult type
- */
-export const validateActionSimple = async (
-  state: BattleshipState,
-  action: {
-    type: "place_ship" | "fire_shot";
-    shipType?: ShipType;
-    position?: [number, number];
-    orientation?: ShipOrientation;
-    playerId: string;
-    timestamp: Date;
+  playerId: string,
+): BattleshipState => ({
+  ...createInitialGameState(""),
+  players: {
+    player1: state.players.player1 === playerId ? null : state.players.player1,
+    player2: state.players.player2 === playerId ? null : state.players.player2,
   },
-  _playerId: string
-): Promise<true | string> => {
-  // Check if game is finished
-  if (state.status === "finished") {
-    return "Game is already finished";
-  }
-
-  // Simple validation for battleship actions
-  if (action.type === "place_ship") {
-    if (!action.shipType || !action.position || !action.orientation) {
-      return "Ship placement requires ship type, position, and orientation";
-    }
-
-    const [row, col] = action.position;
-    if (row < 0 || row > 4 || col < 0 || col > 4) {
-      return "Position out of bounds";
-    }
-
-    // Check if ship fits on the board
-    const shipSize =
-      action.shipType === "destroyer"
-        ? 2
-        : action.shipType === "submarine"
-          ? 3
-          : action.shipType === "cruiser"
-            ? 3
-            : 4;
-
-    if (action.orientation === "horizontal") {
-      if (col + shipSize > 5) {
-        return "Ship does not fit horizontally at this position";
-      }
-    } else {
-      if (row + shipSize > 5) {
-        return "Ship does not fit vertically at this position";
-      }
-    }
-
-    // Check if position is already occupied
-    // Determine player key based on player IDs in state
-    let playerKey: "player1" | "player2" = "player1";
-    if (state.players.player2 === _playerId) {
-      playerKey = "player2";
-    }
-    // If player1 is null (initial state), we can't determine playerKey based on IDs
-    // In this case, we'll assume that if player2 doesn't match, it's player1
-    // This is a simplification for the test environment
-    else if (
-      state.players.player1 !== null &&
-      state.players.player1 !== _playerId
-    ) {
-      playerKey = "player2";
-    }
-
-    // Check if any part of the ship overlaps with existing ships
-    if (action.orientation === "horizontal") {
-      for (let i = 0; i < shipSize; i++) {
-        if (state.boards[playerKey][row][col + i] !== "empty") {
-          return "Position already occupied";
-        }
-      }
-    } else {
-      for (let i = 0; i < shipSize; i++) {
-        if (state.boards[playerKey][row + i][col] !== "empty") {
-          return "Position already occupied";
-        }
-      }
-    }
-  }
-
-  if (action.type === "fire_shot") {
-    if (!action.position) {
-      return "Position is required for fire shot actions";
-    }
-
-    const [row, col] = action.position;
-    if (row < 0 || row > 4 || col < 0 || col > 4) {
-      return "Position out of bounds";
-    }
-
-    // Check if game is in playing state
-    if (state.status !== "playing") {
-      return "Game is not in playing state";
-    }
-
-    // Check if it's the correct player's turn
-    if (_playerId !== state.players[state.currentPlayer]) {
-      return `It's not your turn`;
-    }
-
-    // Check if position has already been fired at
-    const opponentKey =
-      state.currentPlayer === "player1" ? "player2" : "player1";
-    if (state.boards[opponentKey][row][col] !== "empty") {
-      return "Position already fired at";
-    }
-  }
-
-  return true;
-};
-
-/**
- * Simple execution function for testing purposes
- */
-export const executeActionSimple = async (
-  state: BattleshipState,
-  action: {
-    type: "place_ship" | "fire_shot";
-    shipType?: ShipType;
-    position?: [number, number];
-    orientation?: ShipOrientation;
-    playerId: string;
-    timestamp: Date;
-  },
-  _playerId: string
-): Promise<BattleshipState> => {
-  // Simple execution for battleship actions
-  const newState = JSON.parse(JSON.stringify(state)); // Deep copy
-
-  if (action.type === "place_ship") {
-    if (action.shipType && action.position && action.orientation) {
-      // Determine player key based on player IDs in state
-      let playerKey: "player1" | "player2" = "player1";
-      if (state.players.player2 === _playerId) {
-        playerKey = "player2";
-      }
-      // If player1 is null (initial state), assume the first player is player1
-      // If player1 is not null and doesn't match playerId, assume it's player2
-      else if (
-        state.players.player1 !== null &&
-        state.players.player1 !== _playerId
-      ) {
-        playerKey = "player2";
-      }
-
-      // Place ship on board (simplified - just mark positions as occupied)
-      const [row, col] = action.position;
-      const shipSize =
-        action.shipType === "destroyer"
-          ? 2
-          : action.shipType === "submarine"
-            ? 3
-            : action.shipType === "cruiser"
-              ? 3
-              : 4;
-
-      // Ensure the board arrays are initialized
-      if (!newState.boards) {
-        newState.boards = {
-          player1: [
-            ["empty", "empty", "empty", "empty", "empty"],
-            ["empty", "empty", "empty", "empty", "empty"],
-            ["empty", "empty", "empty", "empty", "empty"],
-            ["empty", "empty", "empty", "empty", "empty"],
-            ["empty", "empty", "empty", "empty", "empty"],
-          ],
-          player2: [
-            ["empty", "empty", "empty", "empty", "empty"],
-            ["empty", "empty", "empty", "empty", "empty"],
-            ["empty", "empty", "empty", "empty", "empty"],
-            ["empty", "empty", "empty", "empty", "empty"],
-            ["empty", "empty", "empty", "empty", "empty"],
-          ],
-        };
-      }
-
-      if (!newState.boards[playerKey]) {
-        newState.boards[playerKey] = [
-          ["empty", "empty", "empty", "empty", "empty"],
-          ["empty", "empty", "empty", "empty", "empty"],
-          ["empty", "empty", "empty", "empty", "empty"],
-          ["empty", "empty", "empty", "empty", "empty"],
-          ["empty", "empty", "empty", "empty", "empty"],
-        ];
-      }
-
-      if (action.orientation === "horizontal") {
-        for (let i = 0; i < shipSize; i++) {
-          // Ensure the row exists before trying to access it
-          if (!newState.boards[playerKey][row]) {
-            newState.boards[playerKey][row] = [
-              "empty",
-              "empty",
-              "empty",
-              "empty",
-              "empty",
-            ];
-          }
-          newState.boards[playerKey][row][col + i] = "ship";
-        }
-      } else {
-        for (let i = 0; i < shipSize; i++) {
-          // Ensure the row exists before trying to access it
-          if (!newState.boards[playerKey][row + i]) {
-            newState.boards[playerKey][row + i] = [
-              "empty",
-              "empty",
-              "empty",
-              "empty",
-              "empty",
-            ];
-          }
-          newState.boards[playerKey][row + i][col] = "ship";
-        }
-      }
-
-      // Add ship to ships array
-      if (!newState.ships) {
-        newState.ships = {
-          player1: [],
-          player2: [],
-        };
-      }
-
-      if (!newState.ships[playerKey]) {
-        newState.ships[playerKey] = [];
-      }
-
-      newState.ships[playerKey].push({
-        type: action.shipType,
-        positions: [],
-        orientation: action.orientation,
-        hits: 0,
-        sunk: false,
-      });
-
-      newState.lastMove = {
-        player: playerKey as Player,
-        action: "place_ship",
-        position: action.position,
-        result: null,
-        timestamp: action.timestamp,
-      };
-      newState.updatedAt = action.timestamp;
-
-      // Check if both players have placed ships (simplified check)
-      const player1Ships = newState.ships.player1
-        ? newState.ships.player1.length
-        : 0;
-      const player2Ships = newState.ships.player2
-        ? newState.ships.player2.length
-        : 0;
-      if (player1Ships >= 2 && player2Ships >= 2) {
-        newState.status = "playing";
-      }
-    }
-  }
-
-  if (action.type === "fire_shot") {
-    if (action.position) {
-      const opponentKey =
-        newState.currentPlayer === "player1" ? "player2" : "player1";
-      const [row, col] = action.position;
-      let result: "hit" | "miss" | "sunk" = "miss";
-
-      // Ensure the opponent board is initialized
-      if (!newState.boards[opponentKey]) {
-        newState.boards[opponentKey] = [
-          ["empty", "empty", "empty", "empty", "empty"],
-          ["empty", "empty", "empty", "empty", "empty"],
-          ["empty", "empty", "empty", "empty", "empty"],
-          ["empty", "empty", "empty", "empty", "empty"],
-          ["empty", "empty", "empty", "empty", "empty"],
-        ];
-      }
-
-      if (newState.boards[opponentKey][row][col] === "ship") {
-        newState.boards[opponentKey][row][col] = "hit";
-        result = "hit";
-
-        // Check for win condition (simplified)
-        let allShipsSunk = true;
-        for (let r = 0; r < 5; r++) {
-          for (let c = 0; c < 5; c++) {
-            if (newState.boards[opponentKey][r][c] === "ship") {
-              allShipsSunk = false;
-              break;
-            }
-          }
-          if (!allShipsSunk) break;
-        }
-
-        if (allShipsSunk) {
-          newState.status = "finished";
-          newState.winner = newState.currentPlayer;
-        }
-      } else {
-        newState.boards[opponentKey][row][col] = "miss";
-      }
-
-      newState.lastMove = {
-        player: newState.currentPlayer,
-        action: "fire_shot",
-        position: action.position,
-        result,
-        timestamp: action.timestamp,
-      };
-      newState.updatedAt = action.timestamp;
-
-      // Switch players if game is not over
-      if (newState.status !== "finished") {
-        newState.currentPlayer =
-          newState.currentPlayer === "player1" ? "player2" : "player1";
-      }
-    }
-  }
-
-  return newState;
-};
+});

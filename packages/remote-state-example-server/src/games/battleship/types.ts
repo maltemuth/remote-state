@@ -6,7 +6,7 @@
 export type Player = "player1" | "player2";
 
 // Ship types
-export type ShipType = "destroyer" | "submarine" | "cruiser" | "battleship";
+export type ShipType = "destroyer" | "battleship";
 export type ShipOrientation = "horizontal" | "vertical";
 
 // Board representation (5x5 grid)
@@ -33,14 +33,15 @@ export type BattleshipActionType =
   | "join"
   | "leave";
 
-// Game action data
+// Game action data. Clients send `type` and the action's fields; the server
+// adds `playerId` and `timestamp` before executing it.
 export interface BattleshipAction {
   type: BattleshipActionType;
-  playerId: string;
   shipType?: ShipType; // For place_ship actions
   position?: [number, number]; // For place_ship and fire_shot actions
   orientation?: ShipOrientation; // For place_ship actions
-  timestamp: Date;
+  playerId?: string;
+  timestamp?: Date;
 }
 
 // Game state
@@ -89,10 +90,8 @@ export interface GameMoveResult {
 
 // Ship configurations
 export const SHIP_CONFIGS: Record<ShipType, { size: number; name: string }> = {
-  destroyer: { size: 2, name: "Destroyer" },
-  submarine: { size: 3, name: "Submarine" },
-  cruiser: { size: 3, name: "Cruiser" },
-  battleship: { size: 4, name: "Battleship" },
+  destroyer: { size: 3, name: "Destroyer" }, // 1x3 ship
+  battleship: { size: 4, name: "Battleship" }, // 1x4 ship
 };
 
 // Initial game state

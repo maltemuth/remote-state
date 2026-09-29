@@ -12,7 +12,7 @@
   ],
   "scripts": {
     "build": "npm run build --workspaces",
-    "test": "npm test --workspace packages/remote-state",
+    "test": "npm test --workspaces",
     "lint": "npm run lint --workspaces",
     "start:example": "npm run build && npm start --workspace packages/remote-state-example-server"
   },

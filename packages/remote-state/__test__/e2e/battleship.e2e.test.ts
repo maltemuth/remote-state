@@ -1,600 +1,193 @@
 import request from 'supertest';
-import { createRemoteStateServer } from '../../src/core/server';
-
-// Import Jest globals
-import { describe, beforeAll, afterAll, it, expect, jest } from '@jest/globals';
-
-// Import Battleship types and engine from the example server
-import { createInitialGameState } from '../../../remote-state-example-server/src/games/battleship/types';
-import {
-  validateActionSimple as validateAction,
-  executeActionSimple as executeAction,
-} from '../../../remote-state-example-server/src/games/battleship/engine';
+import { describe, beforeAll, afterAll, it, expect } from '@jest/globals';
+import { createRemoteStateServer, RemoteStateServer } from '../../src/core/server';
 import { LogLevel } from '../../src';
+import { battleshipPlugin } from '../../../remote-state-example-server/src/games/battleship/plugin';
+import {
+  BattleshipAction,
+  BattleshipState,
+} from '../../../remote-state-example-server/src/games/battleship/types';
 
-describe('Battleship E2E Tests', () => {
-  // Set test timeout to 5 seconds to prevent hanging
-  jest.setTimeout(5000);
-  let server: Awaited<ReturnType<typeof createRemoteStateServer>>;
+describe('Battleship E2E', () => {
+  let server: RemoteStateServer<BattleshipState, BattleshipAction, BattleshipState>;
+
+  const act = (gameId: string, token: string, action: BattleshipAction) =>
+    request(server.app).post(`/api/games/${gameId}/actions`).send({ action, token });
+
+  const fire = (gameId: string, token: string, row: number, col: number) =>
+    act(gameId, token, { type: 'fire_shot', position: [row, col] });
+
+  const stateFor = async (gameId: string, token: string) =>
+    (
+      await request(server.app)
+        .get(`/api/games/${gameId}/state/current`)
+        .set('Authorization', `Bearer ${token}`)
+        .expect(200)
+    ).body.state as BattleshipState;
+
+  /** Destroyer on row 0 (cols 0-2), battleship on row 1 (cols 0-3) */
+  const placeFleet = async (gameId: string, token: string) => {
+    await act(gameId, token, {
+      type: 'place_ship',
+      shipType: 'destroyer',
+      position: [0, 0],
+      orientation: 'horizontal',
+    }).expect(201);
+    return act(gameId, token, {
+      type: 'place_ship',
+      shipType: 'battleship',
+      position: [1, 0],
+      orientation: 'horizontal',
+    }).expect(201);
+  };
+
+  /** Create a game, register a second player, and seat both (owner as player1) */
+  const seatedGame = async () => {
+    const owner = await request(server.app)
+      .post('/api/games')
+      .send({ playerName: 'Alice', gameName: 'E2E battleship' })
+      .expect(201);
+    const { gameId } = owner.body;
+    const joiner = await request(server.app)
+      .post(`/api/games/${gameId}/players`)
+      .send({ playerName: 'Bob' })
+      .expect(201);
+
+    const p1 = { id: owner.body.playerId as string, token: owner.body.token as string };
+    const p2 = { id: joiner.body.playerId as string, token: joiner.body.token as string };
+    await act(gameId, p1.token, { type: 'join' }).expect(201);
+    await act(gameId, p2.token, { type: 'join' }).expect(201);
+    return { gameId: gameId as string, p1, p2 };
+  };
+
+  const startedGame = async () => {
+    const game = await seatedGame();
+    await placeFleet(game.gameId, game.p1.token);
+    await placeFleet(game.gameId, game.p2.token);
+    return game;
+  };
 
   beforeAll(async () => {
-    // Create a test server instance using the game logic from the example server
-    const testServer = await createRemoteStateServer(
-      {
-        getInitialState: () => Promise.resolve(createInitialGameState('')),
-        validateAction: async (state: any, action: any, playerId: string) => {
-          // Fix player ID mapping for test environment
-          const fixedState = {
-            ...state,
-            players: {
-              player1: state.players.player1 || 'player1',
-              player2: state.players.player2 || 'player2',
-            },
-          };
-          return validateAction(fixedState, action, playerId);
-        },
-        executeAction: async (state: any, action: any, playerId: string) => {
-          // Fix player ID mapping for test environment
-          const fixedState = {
-            ...state,
-            players: {
-              player1: state.players.player1 || 'player1',
-              player2: state.players.player2 || 'player2',
-            },
-          };
-          return executeAction(fixedState, action, playerId);
-        },
-        filterStateForPlayer: async (state: any, playerId: string): Promise<any> => {
-          // Create a deep copy of the state to avoid mutating the original
-          const filteredState: any = JSON.parse(JSON.stringify(state));
-
-          // Determine which player this is
-          let currentPlayer: any = 'player1';
-          if (playerId === filteredState.players.player2) {
-            currentPlayer = 'player2';
-          }
-
-          // Hide opponent's ships and show only hit/miss information
-          const opponentKey = currentPlayer === 'player1' ? 'player2' : 'player1';
-
-          // Create opponent board with only hit/miss information (ships are hidden)
-          const opponentBoard = filteredState.boards[opponentKey].map(row =>
-            row.map(cell => {
-              if (cell === 'ship') {
-                return 'empty'; // Hide opponent's ships
-              }
-              return cell; // Show hit/miss/sunk information
-            })
-          );
-
-          // Update boards - player sees their own ships and opponent's hit/miss information
-          filteredState.boards = {
-            player1: currentPlayer === 'player1' ? filteredState.boards.player1 : opponentBoard,
-            player2: currentPlayer === 'player2' ? filteredState.boards.player2 : opponentBoard,
-          };
-
-          // Hide opponent's ship details
-          filteredState.ships = {
-            player1: currentPlayer === 'player1' ? filteredState.ships.player1 : [],
-            player2: currentPlayer === 'player2' ? filteredState.ships.player2 : [],
-          };
-
-          return filteredState;
-        },
-        gameConfig: {
-          name: 'Simplified Battleship',
-          description: '5x5 grid battleship game with incomplete information',
-        },
-        serverConfiguration: {
-          persistDatabase: false,
-          minimumLogLevel: LogLevel.error,
-        },
-      },
+    server = await createRemoteStateServer(
+      { ...battleshipPlugin, serverConfiguration: { minimumLogLevel: LogLevel.error } },
       0
     );
-    server = testServer;
-
-    // Start the server
-    await server.startServer();
   });
 
   afterAll(async () => {
-    // Properly close the server
-    if (server) {
-      try {
-        // Simple approach - just close the server without calling process.exit
-        await server.shutdown(false);
-      } catch (error) {
-        // Log error but don't fail the test
-        // eslint-disable-next-line no-console, no-undef
-        console.error('Server shutdown error:', error);
+    await server.shutdown(false);
+  });
+
+  it('stays in setup until both fleets are placed', async () => {
+    const { gameId, p1, p2 } = await seatedGame();
+
+    const afterP1 = await placeFleet(gameId, p1.token);
+    expect(afterP1.body.status).toBe('setup');
+    expect((await fire(gameId, p1.token, 0, 0).expect(400)).body.error).toBe(
+      'Game is not in playing state'
+    );
+
+    const afterP2 = await placeFleet(gameId, p2.token);
+    expect(afterP2.body.status).toBe('playing');
+    expect(afterP2.body.currentPlayer).toBe('player1');
+  });
+
+  it('rejects overlapping and out-of-bounds ships', async () => {
+    const { gameId, p1 } = await seatedGame();
+    await act(gameId, p1.token, {
+      type: 'place_ship',
+      shipType: 'destroyer',
+      position: [0, 0],
+      orientation: 'horizontal',
+    }).expect(201);
+
+    const overlapping = await act(gameId, p1.token, {
+      type: 'place_ship',
+      shipType: 'battleship',
+      position: [0, 1],
+      orientation: 'vertical',
+    }).expect(400);
+    expect(overlapping.body.error).toBe('Invalid ship placement');
+
+    const tooLong = await act(gameId, p1.token, {
+      type: 'place_ship',
+      shipType: 'battleship',
+      position: [4, 2],
+      orientation: 'horizontal',
+    }).expect(400);
+    expect(tooLong.body.error).toBe('Invalid ship placement');
+  });
+
+  it("hides the opponent's ships but shows shots", async () => {
+    const { gameId, p1, p2 } = await startedGame();
+
+    const shot = await fire(gameId, p1.token, 0, 0).expect(201);
+    expect(shot.body.lastMove.result).toBe('hit');
+    expect(shot.body.currentPlayer).toBe('player2');
+
+    const p1View = await stateFor(gameId, p1.token);
+    expect(p1View.boards.player2[0][0]).toBe('hit');
+    expect(p1View.boards.player2.flat()).not.toContain('ship');
+    expect(p1View.ships.player2).toEqual([]);
+    expect(p1View.players).toEqual({ player1: p1.id, player2: 'opponent' });
+
+    const p2View = await stateFor(gameId, p2.token);
+    expect(p2View.boards.player2[0][0]).toBe('hit');
+    expect(p2View.boards.player2[0][1]).toBe('ship');
+    expect(p2View.ships.player2).toHaveLength(2);
+  });
+
+  it('enforces turns and rejects repeat shots', async () => {
+    const { gameId, p1, p2 } = await startedGame();
+
+    expect((await fire(gameId, p2.token, 0, 0).expect(400)).body.error).toBe(
+      `It's not ${p2.id}'s turn`
+    );
+    await fire(gameId, p1.token, 0, 0).expect(201);
+    await fire(gameId, p2.token, 4, 4).expect(201);
+    expect((await fire(gameId, p1.token, 0, 0).expect(400)).body.error).toBe(
+      'Position already fired at'
+    );
+  });
+
+  it('plays to a win and rejects moves afterwards', async () => {
+    const { gameId, p1, p2 } = await startedGame();
+    const p1Targets: [number, number][] = [
+      [0, 0],
+      [0, 1],
+      [0, 2],
+      [1, 0],
+      [1, 1],
+      [1, 2],
+      [1, 3],
+    ];
+    const p2Misses: [number, number][] = [
+      [4, 0],
+      [4, 1],
+      [4, 2],
+      [4, 3],
+      [4, 4],
+      [3, 0],
+    ];
+
+    let last;
+    for (const [index, [row, col]] of p1Targets.entries()) {
+      last = await fire(gameId, p1.token, row, col).expect(201);
+      if (index < p2Misses.length) {
+        await fire(gameId, p2.token, ...p2Misses[index]).expect(201);
       }
     }
-  });
 
-  it('should create a new game and register owner', async () => {
-    const response = await request(server.app)
-      .post('/api/games')
-      .send({
-        playerName: 'Player 1',
-        gameName: 'Test Battleship Game',
-      })
-      .expect(201);
+    expect(last!.body.status).toBe('finished');
+    expect(last!.body.winner).toBe('player1');
+    expect(last!.body.lastMove.result).toBe('sunk');
 
-    expect(response.body.gameId).toBeDefined();
-    expect(response.body.token).toBeDefined();
-    expect(response.body.playerId).toBeDefined();
-  });
+    const p2View = await stateFor(gameId, p2.token);
+    expect(p2View.winner).toBe('player1');
+    expect(p2View.boards.player2[1]).toEqual(['sunk', 'sunk', 'sunk', 'sunk', 'empty']);
 
-  it('should allow another player to join the game', async () => {
-    // First create a game
-    const ownerResponse = await request(server.app)
-      .post('/api/games')
-      .send({
-        playerName: 'Player 1',
-        gameName: 'Test Battleship Game',
-      })
-      .expect(201);
-
-    const gameId = ownerResponse.body.gameId;
-
-    // Then join the game
-    const joinResponse = await request(server.app)
-      .post(`/api/games/${gameId}/players`)
-      .send({
-        playerName: 'Player 2',
-      })
-      .expect(201);
-
-    expect(joinResponse.body.success).toBe(true);
-    expect(joinResponse.body.gameId).toBe(gameId);
-    expect(joinResponse.body.token).toBeDefined();
-    expect(joinResponse.body.playerId).toBeDefined();
-  });
-
-  it('should place ships for player 1', async () => {
-    // Setup game
-    const ownerResponse = await request(server.app)
-      .post('/api/games')
-      .send({
-        playerName: 'Player 1',
-        gameName: 'Test Battleship Game',
-      })
-      .expect(201);
-
-    const gameId = ownerResponse.body.gameId;
-    const ownerToken = ownerResponse.body.token;
-
-    await request(server.app)
-      .post(`/api/games/${gameId}/players`)
-      .send({
-        playerName: 'Player 2',
-      })
-      .expect(201);
-
-    // Place destroyer horizontally
-    const response1 = await request(server.app)
-      .post(`/api/games/${gameId}/actions`)
-      .send({
-        action: {
-          type: 'place_ship',
-          shipType: 'destroyer',
-          position: [0, 0],
-          orientation: 'horizontal',
-          timestamp: new Date(),
-        },
-        token: ownerToken,
-      })
-      .expect(201);
-
-    expect(response1.body).toBeDefined();
-    expect(response1.body.status).toBe('setup');
-    expect(response1.body).toHaveProperty('boards');
-    expect(response1.body).toHaveProperty('ships');
-    expect(response1.body).toHaveProperty('currentPlayer');
-    expect(response1.body).toHaveProperty('status');
-
-    // Place submarine vertically
-    const response2 = await request(server.app)
-      .post(`/api/games/${gameId}/actions`)
-      .send({
-        action: {
-          type: 'place_ship',
-          shipType: 'submarine',
-          position: [1, 1],
-          orientation: 'vertical',
-          timestamp: new Date(),
-        },
-        token: ownerToken,
-      })
-      .expect(201);
-
-    expect(response2.body).toBeDefined();
-    expect(response2.body.status).toBe('setup');
-    expect(response2.body).toHaveProperty('boards');
-    expect(response2.body).toHaveProperty('ships');
-    expect(response2.body).toHaveProperty('currentPlayer');
-    expect(response2.body).toHaveProperty('status');
-  });
-
-  it('should place ships for player 2', async () => {
-    // Setup game
-    const ownerResponse = await request(server.app)
-      .post('/api/games')
-      .send({
-        playerName: 'Player 1',
-        gameName: 'Test Battleship Game',
-      })
-      .expect(201);
-
-    const gameId = ownerResponse.body.gameId;
-    const ownerToken = ownerResponse.body.token;
-
-    const joinerResponse = await request(server.app)
-      .post(`/api/games/${gameId}/players`)
-      .send({
-        playerName: 'Player 2',
-      })
-      .expect(201);
-
-    const joinerToken = joinerResponse.body.token;
-
-    // Place ships for player 1
-    await request(server.app)
-      .post(`/api/games/${gameId}/actions`)
-      .send({
-        action: {
-          type: 'place_ship',
-          shipType: 'destroyer',
-          position: [0, 0],
-          orientation: 'horizontal',
-          timestamp: new Date(),
-        },
-        token: ownerToken,
-      })
-      .expect(201);
-
-    await request(server.app)
-      .post(`/api/games/${gameId}/actions`)
-      .send({
-        action: {
-          type: 'place_ship',
-          shipType: 'submarine',
-          position: [1, 1],
-          orientation: 'vertical',
-          timestamp: new Date(),
-        },
-        token: ownerToken,
-      })
-      .expect(201);
-
-    // Place ships for player 2
-    await request(server.app)
-      .post(`/api/games/${gameId}/actions`)
-      .send({
-        action: {
-          type: 'place_ship',
-          shipType: 'destroyer',
-          position: [3, 3],
-          orientation: 'horizontal',
-          timestamp: new Date(),
-        },
-        token: joinerToken,
-      })
-      .expect(201);
-
-    await request(server.app)
-      .post(`/api/games/${gameId}/actions`)
-      .send({
-        action: {
-          type: 'place_ship',
-          shipType: 'submarine',
-          position: [2, 0],
-          orientation: 'vertical',
-          timestamp: new Date(),
-        },
-        token: joinerToken,
-      })
-      .expect(201);
-
-    // Check if game state is valid
-    const stateResponse = await request(server.app)
-      .get(`/api/games/${gameId}/state/current`)
-      .expect(200);
-
-    expect(stateResponse.body.state.status).toBeDefined();
-    expect(['setup', 'playing']).toContain(stateResponse.body.state.status);
-  });
-
-  it('should fire shots and show incomplete information', async () => {
-    // Setup game and place ships
-    const ownerResponse = await request(server.app)
-      .post('/api/games')
-      .send({
-        playerName: 'Player 1',
-        gameName: 'Test Battleship Game',
-      })
-      .expect(201);
-
-    const gameId = ownerResponse.body.gameId;
-    const ownerToken = ownerResponse.body.token;
-
-    const joinerResponse = await request(server.app)
-      .post(`/api/games/${gameId}/players`)
-      .send({
-        playerName: 'Player 2',
-      })
-      .expect(201);
-
-    const joinerToken = joinerResponse.body.token;
-
-    // Place ships for both players
-    const placeShips = async (token: string) => {
-      const response1 = await request(server.app)
-        .post(`/api/games/${gameId}/actions`)
-        .send({
-          action: {
-            type: 'place_ship',
-            shipType: 'destroyer',
-            position: [0, 0],
-            orientation: 'horizontal',
-            timestamp: new Date(),
-          },
-          token,
-        });
-
-      if (response1.status !== 201) {
-        // eslint-disable-next-line no-console, no-undef
-        console.log('Place ship error:', response1.body);
-      }
-      expect(response1.status).toBe(201);
-
-      const response2 = await request(server.app)
-        .post(`/api/games/${gameId}/actions`)
-        .send({
-          action: {
-            type: 'place_ship',
-            shipType: 'submarine',
-            position: [1, 1],
-            orientation: 'vertical',
-            timestamp: new Date(),
-          },
-          token,
-        });
-
-      if (response2.status !== 201) {
-        // eslint-disable-next-line no-console, no-undef
-        console.log('Place ship error:', response2.body);
-      }
-      expect(response2.status).toBe(201);
-    };
-
-    await placeShips(ownerToken);
-    await placeShips(joinerToken);
-
-    // Player 1 fires at Player 2
-    const shotResponse = await request(server.app)
-      .post(`/api/games/${gameId}/actions`)
-      .send({
-        action: {
-          type: 'fire_shot',
-          position: [3, 3],
-          timestamp: new Date(),
-        },
-        token: ownerToken,
-      })
-      .expect(201);
-
-    expect(shotResponse.body).toBeDefined();
-    expect(shotResponse.body.status).toBe('playing');
-    expect(shotResponse.body.currentPlayer).toBe('player2');
-    expect(shotResponse.body).toHaveProperty('boards');
-    expect(shotResponse.body).toHaveProperty('ships');
-    expect(shotResponse.body).toHaveProperty('currentPlayer');
-    expect(shotResponse.body).toHaveProperty('status');
-
-    // Check that Player 1 cannot see Player 2's ships (incomplete information)
-    const player1State = await request(server.app)
-      .get(`/api/games/${gameId}/state/current`)
-      .set('Authorization', `Bearer ${ownerToken}`)
-      .expect(200);
-
-    expect(player1State.body.state.boards.player2[3][3]).not.toBe('ship'); // Should not see ships
-    expect(['hit', 'miss']).toContain(player1State.body.state.boards.player2[3][3]); // Should see hit/miss
-
-    // Check that Player 2 can see their own ships
-    const player2State = await request(server.app)
-      .get(`/api/games/${gameId}/state/current`)
-      .set('Authorization', `Bearer ${joinerToken}`)
-      .expect(200);
-
-    expect(player2State.body.state.boards.player2[3][3]).toBe('ship'); // Should see their own ships
-  });
-
-  it('should complete the game and show winner', async () => {
-    // Setup game and place ships
-    const ownerResponse = await request(server.app)
-      .post('/api/games')
-      .send({
-        playerName: 'Player 1',
-        gameName: 'Test Battleship Game',
-      })
-      .expect(201);
-
-    const gameId = ownerResponse.body.gameId;
-    const ownerToken = ownerResponse.body.token;
-
-    const joinerResponse = await request(server.app)
-      .post(`/api/games/${gameId}/players`)
-      .send({
-        playerName: 'Player 2',
-      })
-      .expect(201);
-
-    const joinerToken = joinerResponse.body.token;
-
-    // Place ships for both players (simplified - just place one ship each)
-    await request(server.app)
-      .post(`/api/games/${gameId}/actions`)
-      .send({
-        action: {
-          type: 'place_ship',
-          shipType: 'destroyer',
-          position: [0, 0],
-          orientation: 'horizontal',
-          timestamp: new Date(),
-        },
-        token: ownerToken,
-      })
-      .expect(201);
-
-    await request(server.app)
-      .post(`/api/games/${gameId}/actions`)
-      .send({
-        action: {
-          type: 'place_ship',
-          shipType: 'destroyer',
-          position: [4, 3],
-          orientation: 'horizontal',
-          timestamp: new Date(),
-        },
-        token: joinerToken,
-      })
-      .expect(201);
-
-    // Player 1 fires at Player 2's ship
-    await request(server.app)
-      .post(`/api/games/${gameId}/actions`)
-      .send({
-        action: {
-          type: 'fire_shot',
-          position: [4, 3],
-          timestamp: new Date(),
-        },
-        token: ownerToken,
-      })
-      .expect(201);
-
-    // Player 2 fires at Player 1's ship
-    const finalResponse = await request(server.app)
-      .post(`/api/games/${gameId}/actions`)
-      .send({
-        action: {
-          type: 'fire_shot',
-          position: [0, 0],
-          timestamp: new Date(),
-        },
-        token: joinerToken,
-      })
-      .expect(201);
-
-    expect(finalResponse.body).toBeDefined();
-    expect(finalResponse.body.status).toBe('finished');
-    expect(finalResponse.body.winner).toBeDefined();
-    expect(finalResponse.body).toHaveProperty('boards');
-    expect(finalResponse.body).toHaveProperty('ships');
-    expect(finalResponse.body).toHaveProperty('currentPlayer');
-    expect(finalResponse.body).toHaveProperty('status');
-    expect(finalResponse.body).toHaveProperty('winner');
-
-    // Retrieve final state
-    const stateResponse = await request(server.app)
-      .get(`/api/games/${gameId}/state/current`)
-      .expect(200);
-
-    expect(stateResponse.body.state.status).toBe('finished');
-    expect(stateResponse.body.state.winner).toBeDefined();
-  });
-
-  it('should not allow additional moves after game is finished', async () => {
-    // Setup game and play to completion
-    const ownerResponse = await request(server.app)
-      .post('/api/games')
-      .send({
-        playerName: 'Player 1',
-        gameName: 'Test Battleship Game',
-      })
-      .expect(201);
-
-    const gameId = ownerResponse.body.gameId;
-    const ownerToken = ownerResponse.body.token;
-
-    const joinerResponse = await request(server.app)
-      .post(`/api/games/${gameId}/players`)
-      .send({
-        playerName: 'Player 2',
-      })
-      .expect(201);
-
-    const joinerToken = joinerResponse.body.token;
-
-    // Place ships
-    await request(server.app)
-      .post(`/api/games/${gameId}/actions`)
-      .send({
-        action: {
-          type: 'place_ship',
-          shipType: 'destroyer',
-          position: [0, 0],
-          orientation: 'horizontal',
-          timestamp: new Date(),
-        },
-        token: ownerToken,
-      })
-      .expect(201);
-
-    await request(server.app)
-      .post(`/api/games/${gameId}/actions`)
-      .send({
-        action: {
-          type: 'place_ship',
-          shipType: 'destroyer',
-          position: [4, 3],
-          orientation: 'horizontal',
-          timestamp: new Date(),
-        },
-        token: joinerToken,
-      })
-      .expect(201);
-
-    // Finish the game
-    await request(server.app)
-      .post(`/api/games/${gameId}/actions`)
-      .send({
-        action: {
-          type: 'fire_shot',
-          position: [4, 3],
-          timestamp: new Date(),
-        },
-        token: ownerToken,
-      })
-      .expect(201);
-
-    await request(server.app)
-      .post(`/api/games/${gameId}/actions`)
-      .send({
-        action: {
-          type: 'fire_shot',
-          position: [0, 0],
-          timestamp: new Date(),
-        },
-        token: joinerToken,
-      })
-      .expect(201);
-
-    // Try to make another move after game is finished
-    const response = await request(server.app)
-      .post(`/api/games/${gameId}/actions`)
-      .send({
-        action: {
-          type: 'fire_shot',
-          position: [1, 1],
-          timestamp: new Date(),
-        },
-        token: ownerToken,
-      })
-      .expect(400);
-
-    expect(response.body.error).toBe('Game is already finished');
+    expect((await fire(gameId, p2.token, 3, 1).expect(400)).body.error).toBe(
+      'Game is already finished'
+    );
   });
 });
