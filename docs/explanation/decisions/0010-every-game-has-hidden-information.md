@@ -1,6 +1,6 @@
 # 0010. Every game is treated as a game with hidden information
 
-Status: Accepted
+Status: Accepted; the patch mechanism it calls for is settled by [0011](0011-patches-are-diffs-of-views.md)
 Date: 2026-09-29
 
 ## Context

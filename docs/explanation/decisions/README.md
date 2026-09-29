@@ -16,6 +16,7 @@ Records aren't edited after the fact, except to update their status. A decision 
 | [0008](0008-format-query-parameter.md) | The update format is chosen with a `format` query parameter | Accepted for the socket, superseded for GET by 0009 |
 | [0009](0009-separate-state-and-update-endpoints.md) | Separate GET endpoints for whole state and for updates | Accepted |
 | [0010](0010-every-game-has-hidden-information.md) | Every game is treated as a game with hidden information | Accepted |
+| [0011](0011-patches-are-diffs-of-views.md) | Patches are diffs of player views; only full states are stored | Accepted |
 
 ## Writing a record
 

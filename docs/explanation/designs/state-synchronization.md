@@ -67,32 +67,20 @@ This is the flow the decisions so far lead to. Open questions are marked at the 
 1. **The client sends an action** over HTTP, with its token. The server authenticates the player. What the response contains is question 6.
 2. **The server loads the state.** It takes the per-game lock, then loads the latest full state and its `sequence`.
 3. **The plugin validates the action** on the read-only state. A rejected action ends the flow here, with nothing changed or stored.
-4. **The plugin determines the new state,** and the library records the changes as *internal patches* (see below). How the plugin hands over its changes is still open: see [JSON diffs](#json-diffs).
-5. **The server stores** the new full state, its internal patches, the action and the new `sequence`, in one transaction, and releases the lock.
-6. **The server filters and sends, per player.** For each subscriber:
-   - a whole state: the player's view, from `filterStateForPlayer`
-   - or *external patches*: the internal patches filtered to what the player may see. The mechanism is open: see [Patches for games with hidden information](#patches-for-games-with-hidden-information).
+4. **The server computes each subscriber's previous view,** before the rules run, since they may change the loaded state in place.
+5. **The plugin determines the new state** with `executeAction`, by changing the state it received or returning a new one.
+6. **The server stores** the new full state, the action and the new `sequence`, in one transaction, and releases the lock. No patches are stored ([0011](../decisions/0011-patches-are-diffs-of-views.md)).
+7. **The server filters and sends, per player.** For each subscriber, it computes the new view with `filterStateForPlayer`, then sends:
+   - a whole state: the new view
+   - or patches: the difference between the previous and the new view ([0011](../decisions/0011-patches-are-diffs-of-views.md))
 
    Each is converted to the subscriber's chosen format ([0007](../decisions/0007-client-chosen-update-format.md)), and labeled with the `sequence` it applies to and the one it produces.
 
-Step 6 runs again later, on stored data, whenever a reconnecting client asks `GET …/updates` ([0009](../decisions/0009-separate-state-and-update-endpoints.md)). So the hidden-information filter must work from the stored states and internal patches, not only during an action.
+Step 7 runs again later, on stored data, whenever a reconnecting client asks `GET …/updates` ([0009](../decisions/0009-separate-state-and-update-endpoints.md)): views are recomputed from the stored states before and after each missed step, and diffed.
 
 ### Internal and external patches
 
-The flow involves two kinds of patches, which are different things:
-
-| | Internal patches | External patches |
-|---|---|---|
-| **Describe** | The full state | One player's view |
-| **Produced by** | Recording what the rules change | Filtering the internal patches for one player |
-| **Seen by** | Only the library | Clients |
-| **Format** | Whatever the library records, currently Immer's | Chosen by the client: JSON Patch or Immer's format |
-| **Stored** | Yes, with each state | No; derived when sending, or when answering GET |
-| **Stability** | An implementation detail | A public protocol, documented and kept compatible |
-
-The internal format can change without clients noticing. Replacing Immer with another way of recording changes would only require converting stored patches. The external "Immer format" is a promise about the shape of the data on the wire, offered because Immer clients can apply it directly. It stays as specified even if the library stops using Immer internally.
-
-For a game without hidden information, both contain the same changes, since the filter removes nothing, but they remain separate concepts.
+An earlier version of this flow recorded *internal patches* of the full state while the rules ran, stored them, and filtered them into *external patches* for each player. Internal patches are only worth keeping if there's a generic way to turn them into external ones. The candidates were a second, game-written patch filter, or visibility declared by path, which would have made the game's state cater to its views. Neither was acceptable, so there are no internal patches: the patches clients receive are diffs of their views ([0011](../decisions/0011-patches-are-diffs-of-views.md)).
 
 ## Option 0: the naive approach
 
@@ -183,26 +171,29 @@ A client could also get part of the rendering benefit without any protocol chang
 
 ### JSON diffs
 
-The current direction is to use [Immer](https://immerjs.github.io/immer/)'s patches, rather than writing or adding a diffing algorithm.
+Decided in [0011](../decisions/0011-patches-are-diffs-of-views.md): patches are the difference between a player's previous and new view, computed with the `rfc6902` library, which produces standard JSON Patch. The alternatives examined on the way are kept here, because they explain the decision.
 
-**How Immer produces them.** Immer doesn't compare two states. It records changes while they're made: `produceWithPatches` hands the code a draft of the state, and every change made to the draft is recorded as a patch. That's the same mechanism Redux Toolkit uses for its reducers.
+**Recording changes with Immer.** Immer's `produceWithPatches` records patches while code changes a draft of the state. On a chess move, rules written that way produced exactly the changed squares. But it records patches of the full state, which can leak hidden information, and it requires the rules to change a draft rather than return a new state. The decision drops it, and the server doesn't use Immer.
 
-Tested on a chess move, rules written as changes to a draft (`draft.board[4][4] = "wP"`, and so on) produced exactly the parts that changed: the two squares, the turn, and the appended move. Applied on the client with Immer's `applyPatches`, only the two changed board rows became new objects, so identity-based stores re-render only those.
+**Diff libraries.** They compare two finished values. Tested on chess positions:
 
-**Immer stays on the server.** What crosses the network is plain JSON data; clients don't need Immer. Immer's patches use the JSON Patch (RFC 6902) operations, but give each path as an array (`["board", 4, 4]`) rather than a string (`/board/4/4`). Clients choose which of the two they receive ([0007](../decisions/0007-client-chosen-update-format.md)). For JSON Patch, the server converts each path to its string form, which is a format translation, not diffing.
+- **`rfc6902`** gives exactly the two changed squares on full and middlegame boards. On sparse endgame boards, it sometimes describes a move as "insert a new row, remove the last row", because it treats arrays as lists and looks for the cheapest edit. The result is always correct, just not minimal.
+- **`microdiff`** compares arrays position by position, so it always gives the changed squares. Its output needs converting to JSON Patch.
 
-**Why not a general-purpose diff.** A diff library compares two finished states and has to guess what happened. Tested with the `rfc6902` library on the same chess move, it described e2-e4 as "insert a row at index 4, remove row 7", because the empty rows all look alike. The result was correct, but it didn't show which squares changed, and applying it replaced rows that hadn't changed. Recording changes as they're made has no such ambiguity.
+Minimal patches are a goal, but not a first concern, so `rfc6902` was chosen for producing standard JSON Patch directly.
 
-**What Immer's patches require from the rest of the design:**
+**Formats on the wire.** Clients choose JSON Patch or Immer's format ([0007](../decisions/0007-client-chosen-update-format.md)). Immer's patches use the same operations, but give each path as an array (`["board", 4, 4]`) rather than a string (`/board/4/4`). The server converts paths for clients that choose it. Clients don't need Immer unless they choose its format.
 
-- **The game's rules must change a draft.** Immer only records what's done to its draft. If `executeAction` returns a new object, as the plugin interface expects today, the only recorded patch is "replace the whole state", which gains nothing. So `executeAction` would have to be written as a reducer that changes a draft, in Redux Toolkit style. That's a breaking change to the [GamePlugin](../../reference/game-plugin.md) interface.
-- **Patches describe the full state, so they can leak hidden information.** In a card game, the patch for Alice drawing a card is `add ["hands", "alice", 2] = "Q♦"`. Sent to Bob, it reveals the card. See [Patches for games with hidden information](#patches-for-games-with-hidden-information).
-- **A patch is only valid on its exact base.** Each update must say which `sequence` it applies to. A client that isn't at that base needs a full view instead, which is option C.
-- **An empty patch list** means the state didn't change.
+**What view diffs require:**
+
+- **A patch is only valid on its exact base.** Each update must say which `sequence` it applies to. A client that isn't at that base needs a whole state instead, which is option C.
+- **An empty diff** means the player's view didn't change.
 
 ### Patches for games with hidden information
 
-Immer records patches on the full state, because that's what the game's rules change. A player may only receive patches that describe their own view. Without diffing views, there are four ways to get there.
+Decided in [0011](../decisions/0011-patches-are-diffs-of-views.md): option E, diffing views. The other options are kept for the reasoning.
+
+Patches recorded on the full state can leak hidden information, and a player may only receive patches that describe their own view. These were the ways to get there.
 
 **A. Whole states only.** Games with hidden information offer only whole-state updates, each player's whole view. Patches are offered only for games without hidden information.
 
@@ -234,6 +225,12 @@ The library applies the same declaration to both whole states and patches. For a
 
 - Exact patches for each player, from any filter logic.
 - Every game with hidden information writes its filter in this style, and must change only what differs, or Immer records large replacements. It costs one producer run per player per update.
+
+**E. Diffing views.** For each player, the patches are the difference between their previous and new view, computed by a diff library.
+
+- Safe by construction, since the diff only sees views, and reveals appear in the diff naturally.
+- `filterStateForPlayer` stays an ordinary function, free to compute and present data.
+- Costs a diff per player per update, and patches aren't always minimal.
 
 ### 3. How does a client catch up after missing updates?
 
@@ -272,8 +269,8 @@ The questions are which of these exist, how the store's reducer applies them, an
 - Do some games need the socket to send the current state when a client connects, instead of the client fetching it? If so, should a game be able to choose?
 - When a client asks for a patch format the game doesn't offer, should the server reject the request, or fall back to whole states? [0008](../decisions/0008-format-query-parameter.md) currently has it rejected.
 - How does `GET …/updates` answer when `since` is older than the stored patches reach, or when the game offers no patches: an error that points to `GET …/state`, or the whole state in its place?
-- Is it acceptable to change `executeAction` into a reducer that changes an Immer draft?
-- Which mechanism produces patches for each player's view: a patch filter written by the game, visibility declared by the game, or patches recorded on each player's view? See [Patches for games with hidden information](#patches-for-games-with-hidden-information).
+- When are minimal patches worth more than standard output: should `microdiff` replace `rfc6902` for games with board-like arrays?
+- Should `GET …/updates` answer step by step, one diff per missed step, or in one jump, a single diff from the view at `since` to the current view, or offer both?
 - What do clients need for rendering: to know which data changed, or what happened in game terms? Is keeping unchanged parts as the same objects on the client enough, or must the server send the change?
 - How large are the states of the games this is meant for, and how often do they change? This decides whether sending changes is worth the complexity.
 - Do clients need intermediate states, for example to animate each move, or only the latest one?
