@@ -1,6 +1,6 @@
 # Audiences
 
-Status: Open; mostly decided in [0024](../decisions/0024-views-per-audience.md) and [0025](../decisions/0025-default-audiences.md)
+Status: Open; mostly decided in [0024](../decisions/0024-views-per-audience.md) [0025](../decisions/0025-default-audiences.md) and [0027](../decisions/0027-audiences-set-by-join-hook-and-actions.md)
 
 ## Problem
 
@@ -44,7 +44,8 @@ Decided in [0024](../decisions/0024-views-per-audience.md):
 
 5. **Default audiences:** a single audience for everyone when the game has no view filter, one per player when it has one ([0025](../decisions/0025-default-audiences.md)).
 
+6. **Setting audiences:** by the join hook and by actions ([0027](../decisions/0027-audiences-set-by-join-hook-and-actions.md)).
+
 ## Open questions
 
-- How the game sets a player's audience when they join, and changes it later, for example through the join hook ([Authorization](authorization.md)) and the result of actions.
 - Whether audience names are ever shown to clients, or stay internal.

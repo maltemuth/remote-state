@@ -31,6 +31,8 @@ Records aren't edited after the fact, except to update their status. A decision 
 | [0023](0023-no-server-to-server-admit.md) | `admit` is only called in-process | Accepted |
 | [0024](0024-views-per-audience.md) | Views are computed per audience | Accepted |
 | [0025](0025-default-audiences.md) | Default audiences depend on whether the game filters views | Accepted |
+| [0026](0026-join-hook-is-a-state-transition.md) | Joining a game is a state transition run by the game | Accepted |
+| [0027](0027-audiences-set-by-join-hook-and-actions.md) | Audiences are set by the join hook and by actions | Accepted |
 
 ## Writing a record
 

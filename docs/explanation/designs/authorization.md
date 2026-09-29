@@ -139,9 +139,8 @@ Decided: rate limiting is the host's job ([0016](../decisions/0016-authenticatio
 
 ## Open questions
 
-- **What the game's join hook receives,** and whether joining is only a check or also changes the state.
 - **The library's operational endpoints,** such as `/admin/log-level` (question 6).
 - **Spectators:** admitted like anyone else; what they see and may do is the game's, through [Audiences](audiences.md).
 - **Limiting tokens:** hosts will be able to limit how many tokens a player has ([0019](../decisions/0019-several-tokens-per-player.md)); how is left for later.
 
-Decided since the proposal was written: games are created with `createGame` ([0021](../decisions/0021-games-created-with-creategame.md)), and `admit` is only called in-process ([0023](../decisions/0023-no-server-to-server-admit.md)). Who may remove a player is the game's decision, discussed in [Game lifecycle](game-lifecycle.md).
+Decided since the proposal was written: joining is a state transition run by the game ([0026](../decisions/0026-join-hook-is-a-state-transition.md)); games are created with `createGame` ([0021](../decisions/0021-games-created-with-creategame.md)), and `admit` is only called in-process ([0023](../decisions/0023-no-server-to-server-admit.md)). Who may remove a player is the game's decision, discussed in [Game lifecycle](game-lifecycle.md).

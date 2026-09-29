@@ -1,6 +1,6 @@
 # Player information for game logic
 
-Status: Open
+Status: Open; largely answered by [0026](../decisions/0026-join-hook-is-a-state-transition.md): games learn who joined through their join hook
 
 ## Problem
 
