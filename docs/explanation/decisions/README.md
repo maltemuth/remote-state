@@ -20,6 +20,7 @@ Records aren't edited after the fact, except to update their status. A decision 
 | [0012](0012-store-player-diffs.md) | Store each player's diffs alongside the full states | Accepted |
 | [0013](0013-store-full-state-diffs.md) | Also store diffs of the full state | Accepted |
 | [0014](0014-immer-patches-only-external-format.md) | Immer's patch format is the only external patch format | Accepted for now |
+| [0015](0015-library-issues-opaque-tokens.md) | The library issues its own opaque tokens | Accepted |
 
 ## Writing a record
 

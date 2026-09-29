@@ -28,6 +28,8 @@ This is a library that runs inside someone else's server ([Goals](../goals.md)).
 
 ### 1. Where does identity come from?
 
+Decided: **A**, the library issues its own opaque tokens ([0015](../decisions/0015-library-issues-opaque-tokens.md)).
+
 - **A. Per-game tokens, as today.** Self-contained, and needs nothing from the host. But players can't be recognized across games, and the host's login is ignored.
 - **B. The host authenticates, and the library maps users to players.** The host provides a function, for example `authenticate(request) → userId | null`, used on every HTTP request and socket handshake. The library links each player to a user. Players are then recognized across games and devices, and there's no separate token to lose.
 - **C. Both.** Tokens by default, so the library works on its own, as in the tutorial. The host's authentication replaces them when configured.
@@ -68,6 +70,5 @@ Independent of question 1, some improvements apply to any token:
 
 ## Open questions
 
-- Will the library usually run behind a host application with its own users, or on its own, as in the tutorial?
 - Should one person be able to take part in the same game twice, for example on two devices as the same player?
 - Must game logic ever see who a player is outside the game, for example a user name or rating from the host?
