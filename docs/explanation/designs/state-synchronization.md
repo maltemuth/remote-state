@@ -47,6 +47,30 @@ Where it falls short:
 
 If the target games have small states and don't need to show missed steps, option 0 may be enough. The questions below are about going further.
 
+## Option 0a: actions over HTTP, all state over the socket
+
+Like option 0, but each kind of traffic has exactly one path:
+
+- **Actions go over HTTP.** The response only says whether the action was accepted: an acknowledgement with the new `sequence`, or the rejection reason. It carries no state.
+- **New states go over the socket, to everyone.** The acting player receives the result of their own action the same way as every other player.
+- **The current state is fetched over HTTP,** with `GET …/state/current`, when a client starts or reconnects.
+
+In terms of the questions below, it's option 0 with 6B instead of 6A.
+
+What it gives, compared to option 0:
+
+- **No duplicate delivery.** Each state reaches each client once, so the race between the HTTP response and the socket disappears.
+- **One code path for applying state.** The middleware handles the acting player's update exactly like everyone else's.
+- **A clear division.** HTTP means "do something" and "tell me where we are", and the socket means "something happened".
+
+What it costs:
+
+- **The acting player needs a working socket to see their own action's effect.** If the socket is down, the action is accepted but the client sees nothing until it reconnects and fetches the state.
+- **Connecting has an ordering race.** Updates can arrive over the socket while the GET for the current state is still in flight. To lose nothing, the client connects the socket first, then fetches the state, and applies whichever is newest by `sequence`, dropping anything older than what it already shows.
+- **Matching an action to its result** uses the `sequence` from the acknowledgement. The client waits until an update with that `sequence` arrives, for example to clear a "sending" indicator.
+
+Bandwidth, lost intermediate steps and the round trip per action are the same as in option 0.
+
 ## Questions to decide
 
 ### 1. What is a cursor?
