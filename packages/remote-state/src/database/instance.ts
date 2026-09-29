@@ -1,5 +1,5 @@
-import { createLogger } from '../utils/logger';
-import { createSequelizeInstance, syncDatabase } from './sequelize';
+import { createLogger } from '../utils/logger.js';
+import { createSequelizeInstance, syncDatabase } from './sequelize.js';
 
 /**
  * Database initialization options

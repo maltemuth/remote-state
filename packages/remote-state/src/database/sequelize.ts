@@ -1,10 +1,10 @@
 import { Sequelize } from 'sequelize-typescript';
-import { createLogger } from '../utils/logger';
+import { createLogger } from '../utils/logger.js';
 
 // Import models at module level to ensure they are registered
-import { Game } from './models/Game';
-import { Player } from './models/Player';
-import { GameState } from './models/GameState';
+import { Game } from './models/Game.js';
+import { Player } from './models/Player.js';
+import { GameState } from './models/GameState.js';
 
 /**
  * Create a Sequelize instance

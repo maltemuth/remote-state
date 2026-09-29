@@ -4,13 +4,13 @@ import { mkdtempSync, rmSync } from 'fs';
 import { tmpdir } from 'os';
 import { join } from 'path';
 import { describe, beforeAll, afterAll, it, expect } from '@jest/globals';
-import { createRemoteStateServer, RemoteStateServer } from '../../src/core/server';
+import { createRemoteStateServer, RemoteStateServer } from '../../src/core/server.js';
 import {
   counterGame,
   CounterAction,
   CounterPlayerState,
   CounterState,
-} from '../helpers/counterGame';
+} from '../helpers/counterGame.js';
 
 type CounterServer = RemoteStateServer<CounterState, CounterAction, CounterPlayerState>;
 

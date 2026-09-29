@@ -7,11 +7,11 @@ export {
   createRemoteStateServer,
   type RemoteStateServer,
   type RemoteStateServerConfiguration,
-} from './core/server';
+} from './core/server.js';
 export {
   type GamePlugin,
   type ActionValidationResult,
   type SocketIOServerConfiguration,
-} from './core/types';
-export { type GameStateUpdateEvent, type SocketManager } from './core/socket';
-export * from './utils/logger';
+} from './core/types.js';
+export { type GameStateUpdateEvent, type SocketManager } from './core/socket.js';
+export * from './utils/logger.js';

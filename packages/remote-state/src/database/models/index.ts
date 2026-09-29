@@ -1,3 +1,3 @@
-export { Game } from './Game';
-export { Player } from './Player';
-export { GameState } from './GameState';
+export { Game } from './Game.js';
+export { Player } from './Player.js';
+export { GameState } from './GameState.js';

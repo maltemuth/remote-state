@@ -1,4 +1,4 @@
-import { LogLevel } from '../utils/logger';
+import { LogLevel } from '../utils/logger.js';
 
 export interface RemoteStateServerConfiguration {
   minimumLogLevel?: LogLevel;

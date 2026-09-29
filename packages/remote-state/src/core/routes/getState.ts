@@ -1,8 +1,8 @@
 import { Request, Response } from 'express';
-import { GamePlugin, stateForPlayer } from '../types';
-import { createLogger } from '../../utils/logger';
-import { DatabaseService } from '../../database/service';
-import { tokenFromRequest } from './auth';
+import { GamePlugin, stateForPlayer } from '../types.js';
+import { createLogger } from '../../utils/logger.js';
+import { DatabaseService } from '../../database/service.js';
+import { tokenFromRequest } from './auth.js';
 
 // Current state retrieval endpoint, filtered for the authenticated player
 export const getState = <StateType, ActionType, PlayerStateType>(

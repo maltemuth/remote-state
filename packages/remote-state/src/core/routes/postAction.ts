@@ -1,10 +1,10 @@
 import { Request, Response } from 'express';
-import { GamePlugin, stateForPlayer } from '../types';
-import { createLogger } from '../../utils/logger';
-import { DatabaseService } from '../../database/service';
-import { SocketManager } from '../socket';
-import { GameLock } from '../gameLock';
-import { tokenFromRequest } from './auth';
+import { GamePlugin, stateForPlayer } from '../types.js';
+import { createLogger } from '../../utils/logger.js';
+import { DatabaseService } from '../../database/service.js';
+import { SocketManager } from '../socket.js';
+import { GameLock } from '../gameLock.js';
+import { tokenFromRequest } from './auth.js';
 
 // Action submission endpoint
 export const postAction = <StateType, ActionType, PlayerStateType>(

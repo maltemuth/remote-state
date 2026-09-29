@@ -10,7 +10,7 @@ import {
   UpdatedAt,
   Default,
 } from 'sequelize-typescript';
-import { Game } from './Game';
+import { Game } from './Game.js';
 import { randomUUID } from 'crypto';
 
 /**

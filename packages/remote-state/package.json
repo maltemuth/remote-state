@@ -4,18 +4,24 @@
   "description": "TypeScript-based multiplayer game infrastructure library",
   "license": "MIT",
   "author": "Malte Muth",
-  "type": "commonjs",
+  "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
   "engines": {
     "node": ">=24"
   },
   "scripts": {
     "build": "tsc",
-    "test": "npm run typecheck && jest",
+    "test": "npm run typecheck && NODE_OPTIONS=--experimental-vm-modules jest",
     "typecheck": "tsc -p tsconfig.test.json",
-    "test:integration": "jest --testMatch='**/__test__/integration/**/*.test.ts'",
-    "test:watch": "jest --watch",
+    "test:integration": "NODE_OPTIONS=--experimental-vm-modules jest --testMatch='**/__test__/integration/**/*.test.ts'",
+    "test:watch": "NODE_OPTIONS=--experimental-vm-modules jest --watch",
     "lint": "eslint src __test__",
     "lint:fix": "eslint src __test__ --fix",
     "format": "prettier --write src __test__",

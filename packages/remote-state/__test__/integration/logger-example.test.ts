@@ -1,4 +1,4 @@
-import { createLogger, LogLevel, setGlobalLogLevel } from '../../src/utils/logger';
+import { createLogger, LogLevel, setGlobalLogLevel } from '../../src/utils/logger.js';
 
 // Import Jest globals
 import { describe, it, beforeEach, afterEach } from '@jest/globals';

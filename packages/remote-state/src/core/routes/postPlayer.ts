@@ -1,8 +1,8 @@
 import { Request, Response } from 'express';
-import { GamePlugin } from '../types';
-import { createLogger } from '../../utils/logger';
-import { DatabaseService } from '../../database/service';
-import { SocketManager } from '../socket';
+import { GamePlugin } from '../types.js';
+import { createLogger } from '../../utils/logger.js';
+import { DatabaseService } from '../../database/service.js';
+import { SocketManager } from '../socket.js';
 
 export const postPlayer = <StateType, ActionType, PlayerStateType>(
   database: DatabaseService<StateType, ActionType>,

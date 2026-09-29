@@ -14,7 +14,7 @@
     "start": "node dist/server.js",
     "build": "tsc",
     "pretest": "npm run build --prefix ../remote-state",
-    "test": "npm run typecheck && jest",
+    "test": "npm run typecheck && NODE_OPTIONS=--experimental-vm-modules jest",
     "typecheck": "tsc -p tsconfig.test.json",
     "lint": "eslint src",
     "lint:fix": "eslint src --fix",

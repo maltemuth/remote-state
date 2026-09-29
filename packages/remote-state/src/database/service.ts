@@ -1,7 +1,7 @@
-import { createLogger } from '../utils/logger';
-import { GameState } from './models/GameState';
-import { Game } from './models/Game';
-import { Player } from './models/Player';
+import { createLogger } from '../utils/logger.js';
+import { GameState } from './models/GameState.js';
+import { Game } from './models/Game.js';
+import { Player } from './models/Player.js';
 import { Sequelize } from 'sequelize';
 import { Transaction } from 'sequelize';
 import * as crypto from 'crypto';

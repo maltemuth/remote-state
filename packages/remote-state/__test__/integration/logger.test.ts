@@ -3,7 +3,7 @@ import {
   LogLevel,
   setGlobalLogLevel,
   getGlobalLogLevel,
-} from '../../src/utils/logger';
+} from '../../src/utils/logger.js';
 
 // Import Jest globals
 import { describe, beforeEach, afterEach, it, expect } from '@jest/globals';

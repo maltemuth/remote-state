@@ -9,6 +9,7 @@ All notable changes to this project are documented here. The format follows [Kee
 - Battleship example: players claim a seat with a `join` action, and ships can only be placed during setup, one of each type. There are now two ship types, a destroyer (3) and a battleship (4). `validateActionSimple` and `executeActionSimple` were removed.
 - Node.js 24 or newer is required (`engines`), and `.nvmrc` pins v24.21.0.
 - The example server's `dev` script was removed; it never worked under ESM. Use `npm run start:example`.
+- The library is now an ES module (`"type": "module"`), with an `exports` map. On Node 24, CommonJS code can still load it with `require()`.
 
 ### Changed
 
@@ -23,6 +24,8 @@ All notable changes to this project are documented here. The format follows [Kee
 - The lint and format toolchain is declared once, at the root.
 - The e2e tests moved to the example package and use the library through its package entry point.
 - Tests are type-checked by a separate `typecheck` step, which `npm test` runs first; ts-jest only transpiles.
+- The whole project is ESM. Jest runs in its native ESM mode, which needs Node's `--experimental-vm-modules` flag; the `test` scripts set it.
+- `emitDecoratorMetadata` is off. Under ESM, its eager class references crashed on the `Game` ↔ `Player` import cycle, and the models don't need the metadata.
 
 ### Added
 

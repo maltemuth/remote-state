@@ -1,19 +1,19 @@
 import express, { Express, Request, Response, NextFunction } from 'express';
-import { GamePlugin, RemoteStateServerConfiguration } from './types';
+import { GamePlugin, RemoteStateServerConfiguration } from './types.js';
 
 import cors from 'cors';
 import { createServer } from 'http';
-import { createLogger, LogLevel, setGlobalLogLevel } from '../utils/logger';
-import { initializeDatabase } from '../database/instance';
-import { createSocketManager, SocketManager } from './socket';
-import { createGameLock } from './gameLock';
+import { createLogger, LogLevel, setGlobalLogLevel } from '../utils/logger.js';
+import { initializeDatabase } from '../database/instance.js';
+import { createSocketManager, SocketManager } from './socket.js';
+import { createGameLock } from './gameLock.js';
 
-import { getState } from './routes/getState';
-import { postAction } from './routes/postAction';
-import { postGame } from './routes/postGame';
-import { postPlayer } from './routes/postPlayer';
+import { getState } from './routes/getState.js';
+import { postAction } from './routes/postAction.js';
+import { postGame } from './routes/postGame.js';
+import { postPlayer } from './routes/postPlayer.js';
 import * as process from 'process';
-import { createDatabaseService } from '../database/service';
+import { createDatabaseService } from '../database/service.js';
 
 export type { RemoteStateServerConfiguration };
 

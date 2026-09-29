@@ -1,5 +1,5 @@
 import { Table, Column, Model, DataType, PrimaryKey, HasMany, Default } from 'sequelize-typescript';
-import { Player } from './Player';
+import { Player } from './Player.js';
 import { randomUUID } from 'crypto';
 
 @Table({

@@ -1,10 +1,10 @@
 import { Sequelize } from 'sequelize-typescript';
-import { createLogger } from '../../src/utils/logger';
-import { createSequelizeInstance, syncDatabase } from '../../src/database/sequelize';
+import { createLogger } from '../../src/utils/logger.js';
+import { createSequelizeInstance, syncDatabase } from '../../src/database/sequelize.js';
 
 // Import Jest globals
 import { describe, beforeAll, afterAll, test, expect } from '@jest/globals';
-import { createDatabaseService, DatabaseService } from '../../src/database/service';
+import { createDatabaseService, DatabaseService } from '../../src/database/service.js';
 
 const { info: _info, error: _error } = createLogger({
   scope: 'database-service-test',

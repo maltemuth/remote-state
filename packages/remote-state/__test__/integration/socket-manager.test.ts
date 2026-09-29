@@ -2,14 +2,14 @@ import request from 'supertest';
 import { AddressInfo } from 'net';
 import { io as connect, Socket } from 'socket.io-client';
 import { describe, beforeAll, afterAll, afterEach, it, expect } from '@jest/globals';
-import { createRemoteStateServer, RemoteStateServer } from '../../src/core/server';
-import { GameStateUpdateEvent } from '../../src/core/socket';
+import { createRemoteStateServer, RemoteStateServer } from '../../src/core/server.js';
+import { GameStateUpdateEvent } from '../../src/core/socket.js';
 import {
   counterGame,
   CounterAction,
   CounterPlayerState,
   CounterState,
-} from '../helpers/counterGame';
+} from '../helpers/counterGame.js';
 
 describe('Socket.IO integration', () => {
   let server: RemoteStateServer<CounterState, CounterAction, CounterPlayerState>;

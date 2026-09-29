@@ -1,6 +1,6 @@
-import { GamePlugin, RemoteStateServerConfiguration } from '../../src/core/types';
+import { GamePlugin, RemoteStateServerConfiguration } from '../../src/core/types.js';
 import { setTimeout as delay } from 'timers/promises';
-import { LogLevel } from '../../src';
+import { LogLevel } from '../../src/index.js';
 
 /** Full state: a shared counter plus which player made each increment */
 export interface CounterState {
