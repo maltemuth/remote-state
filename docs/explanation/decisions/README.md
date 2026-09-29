@@ -26,6 +26,9 @@ Records aren't edited after the fact, except to update their status. A decision 
 | [0018](0018-no-token-expiration-or-revocation.md) | Tokens don't expire and can't be revoked | Accepted for now |
 | [0019](0019-several-tokens-per-player.md) | A player can have several tokens | Accepted |
 | [0020](0020-hosts-admit-players-through-codes.md) | Hosts admit players through single-use codes | Accepted |
+| [0021](0021-games-created-with-creategame.md) | Hosts create games with `createGame`, separately from admitting players | Accepted |
+| [0022](0022-roles-belong-to-game-state.md) | Roles belong to the game's state and rules | Accepted |
+| [0023](0023-no-server-to-server-admit.md) | `admit` is only called in-process | Accepted |
 
 ## Writing a record
 

@@ -42,5 +42,6 @@ The plugin exposes a function, for example `getStatus(state)`, returning `waitin
 
 - Should a disconnect be able to change game state, for example to pause a timed game?
 - Can a player leave for good, and does their seat become free?
+- How a player is removed, and what happens to their tokens and open sockets. Who may remove a player is the game's decision, in its state and rules ([0022](../decisions/0022-roles-belong-to-game-state.md)).
 - What happens to finished games: kept, archived, or deleted after some time?
 - Should this share a mechanism with [Player information](player-information.md) option C and [Server-initiated actions](server-initiated-actions.md)?

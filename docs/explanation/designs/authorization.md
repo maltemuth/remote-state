@@ -111,7 +111,7 @@ Decided: the implementer, the game or the host ([0016](../decisions/0016-authent
 
 ### 4. What do roles mean?
 
-Decided: **B**, the game defines them ([0016](../decisions/0016-authentication-in-library-authorization-by-implementer.md)). Open: whether the library keeps a `role` field for games to use, or leaves it to the game's state.
+Decided: **B**, the game defines them ([0016](../decisions/0016-authentication-in-library-authorization-by-implementer.md)). The library keeps no `role` field; roles live in the game's state and rules ([0022](../decisions/0022-roles-belong-to-game-state.md)).
 
 Candidates for what an `admin` could do: start or restart the game, remove players, change options, close or delete the game. Candidates for further roles: `spectator`, who sees but can't act; `moderator`.
 
@@ -139,7 +139,9 @@ Decided: rate limiting is the host's job ([0016](../decisions/0016-authenticatio
 
 ## Open questions
 
-- Can the host limit how many tokens a player has, for example to one ([0019](../decisions/0019-several-tokens-per-player.md))?
-- How a game is created when a host controls access: a separate `createGame` call followed by `admit`, or `admit` creating the game when it's given none. Today, creating a game also creates its first player, with the `admin` role.
-- What the game's join hook receives: the current state, the identity's details, the game's options.
-- Whether the library needs a server-to-server endpoint for `admit`, for hosts that don't run in the same process. Not while it runs as a single process ([0006](../decisions/0006-single-process.md)).
+- **What the game's join hook receives,** and whether joining is only a check or also changes the state.
+- **The library's operational endpoints,** such as `/admin/log-level` (question 6).
+- **Spectators:** whether someone without a seat can watch a game, how they're admitted, and which view they get.
+- **Limiting tokens:** hosts will be able to limit how many tokens a player has ([0019](../decisions/0019-several-tokens-per-player.md)); how is left for later.
+
+Decided since the proposal was written: games are created with `createGame` ([0021](../decisions/0021-games-created-with-creategame.md)), and `admit` is only called in-process ([0023](../decisions/0023-no-server-to-server-admit.md)). Who may remove a player is the game's decision, discussed in [Game lifecycle](game-lifecycle.md).
