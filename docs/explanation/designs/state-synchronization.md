@@ -60,6 +60,40 @@ These consequences apply whenever views differ between players:
 - **Views can depend on more than the player.** Players who haven't taken a seat, or spectators, need a view too. What they may see is part of [Player information](player-information.md).
 - **Rejections can leak.** The reason `validateAction` gives for rejecting an action goes to the acting client without being filtered.
 
+## Target flow of an action
+
+This is the flow the decisions so far lead to. Open questions are marked at the step they affect.
+
+1. **The client sends an action** over HTTP, with its token. The server authenticates the player. What the response contains is question 6.
+2. **The server loads the state.** It takes the per-game lock, then loads the latest full state and its `sequence`.
+3. **The plugin validates the action** on the read-only state. A rejected action ends the flow here, with nothing changed or stored.
+4. **The plugin determines the new state,** and the library records the changes as *internal patches* (see below). How the plugin hands over its changes is still open: see [JSON diffs](#json-diffs).
+5. **The server stores** the new full state, its internal patches, the action and the new `sequence`, in one transaction, and releases the lock.
+6. **The server filters and sends, per player.** For each subscriber:
+   - a whole state: the player's view, from `filterStateForPlayer`
+   - or *external patches*: the internal patches filtered to what the player may see. The mechanism is open: see [Patches for games with hidden information](#patches-for-games-with-hidden-information).
+
+   Each is converted to the subscriber's chosen format ([0007](../decisions/0007-client-chosen-update-format.md)), and labeled with the `sequence` it applies to and the one it produces.
+
+Step 6 runs again later, on stored data, whenever a reconnecting client asks `GET …/updates` ([0009](../decisions/0009-separate-state-and-update-endpoints.md)). So the hidden-information filter must work from the stored states and internal patches, not only during an action.
+
+### Internal and external patches
+
+The flow involves two kinds of patches, which are different things:
+
+| | Internal patches | External patches |
+|---|---|---|
+| **Describe** | The full state | One player's view |
+| **Produced by** | Recording what the rules change | Filtering the internal patches for one player |
+| **Seen by** | Only the library | Clients |
+| **Format** | Whatever the library records, currently Immer's | Chosen by the client: JSON Patch or Immer's format |
+| **Stored** | Yes, with each state | No; derived when sending, or when answering GET |
+| **Stability** | An implementation detail | A public protocol, documented and kept compatible |
+
+The internal format can change without clients noticing. Replacing Immer with another way of recording changes would only require converting stored patches. The external "Immer format" is a promise about the shape of the data on the wire, offered because Immer clients can apply it directly. It stays as specified even if the library stops using Immer internally.
+
+For a game without hidden information, both contain the same changes, since the filter removes nothing, but they remain separate concepts.
+
 ## Option 0: the naive approach
 
 The client dispatches an action, and the server sends back their whole new view. Every other player receives their own whole new view as well. Nothing else: no changes, no history, no prediction.
