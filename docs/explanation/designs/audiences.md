@@ -21,17 +21,17 @@ Every connection gets a view of the state filtered for one player ([0010](../dec
 
 An **audience** is a group of participants who all see the same view. The game filters the state for an audience instead of for a player, and says which audience each participant belongs to:
 
-| Game | Audiences |
-|---|---|
-| Chess | `everyone` |
-| Poker | one per seated player, and `spectators` |
-| A team game | one per team, and `spectators` |
+| Game        | Audiences                               |
+| ----------- | --------------------------------------- |
+| Chess       | `everyone`                              |
+| Poker       | one per seated player, and `spectators` |
+| A team game | one per team, and `spectators`          |
 
 For every action, the library computes one view and one diff per audience, not per participant, and stores the diffs by audience. Each connection receives its audience's updates. A hundred spectators cost the same as one, and games without hidden information cost one view per action.
 
 This generalizes [0010](../decisions/0010-every-game-has-hidden-information.md): "every player receives the same information" becomes a game with a single audience, rather than a special case that happens to repeat the same work.
 
-It also separates two things the library has so far treated as one: taking part in a game, and seeing it. Anyone admitted to a game ([0020](../decisions/0020-hosts-admit-players-through-codes.md)) is a *participant*, with tokens; whether they hold a seat, may chat, or only watch is the game's business, in its state and rules. Spectators need no concept of their own in the library.
+It also separates two things the library has so far treated as one: taking part in a game, and seeing it. Anyone admitted to a game ([0020](../decisions/0020-hosts-admit-players-through-codes.md)) is a _participant_, with tokens; whether they hold a seat, may chat, or only watch is the game's business, in its state and rules. Spectators need no concept of their own in the library.
 
 ## Questions to decide
 
@@ -42,7 +42,7 @@ It also separates two things the library has so far treated as one: taking part 
 
 ### 2. Does a participant belong to exactly one audience?
 
-One audience per participant keeps a view a single state, as clients expect. A coach who sees their team *and* the public table would then need an audience of their own, whose view combines both.
+One audience per participant keeps a view a single state, as clients expect. A coach who sees their team _and_ the public table would then need an audience of their own, whose view combines both.
 
 ### 3. What happens when a participant changes audience?
 
