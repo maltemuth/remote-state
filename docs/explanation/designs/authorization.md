@@ -131,7 +131,7 @@ Independent of question 1, some improvements apply to any token:
 
 ### 6. What protects the service itself?
 
-Decided: rate limiting is the host's job ([0016](../decisions/0016-authentication-in-library-authorization-by-implementer.md)). Open: the library's own operational endpoints.
+Decided: rate limiting is the host's job ([0016](../decisions/0016-authentication-in-library-authorization-by-implementer.md)). The library installs no operational endpoints ([0028](../decisions/0028-no-operational-endpoints.md)).
 
 - **Operational endpoints,** such as `/admin/log-level`: remove them, or authenticate them through the host. Also listed in the [backlog](../../../BACKLOG.md).
 - **Rate limiting,** at least for creating games and registering players, which today can be called without limit by anyone.
@@ -139,7 +139,6 @@ Decided: rate limiting is the host's job ([0016](../decisions/0016-authenticatio
 
 ## Open questions
 
-- **The library's operational endpoints,** such as `/admin/log-level` (question 6).
 - **Limiting tokens:** hosts will be able to limit how many tokens a player has ([0019](../decisions/0019-several-tokens-per-player.md)); how is left for later.
 
 Decided since the proposal was written: joining is a state transition run by the game ([0026](../decisions/0026-join-hook-is-a-state-transition.md)); games are created with `createGame` ([0021](../decisions/0021-games-created-with-creategame.md)), and `admit` is only called in-process ([0023](../decisions/0023-no-server-to-server-admit.md)). Spectators are admitted like anyone else; what they see is set through [Audiences](audiences.md). Who may remove a player is the game's decision, discussed in [Game lifecycle](game-lifecycle.md).

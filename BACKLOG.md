@@ -12,7 +12,7 @@ The library should behave like a library: its host application stays in control 
 - [ ] **Never exit the host process.** `shutdown()` calls `process.exit()` unless it's passed `false`. It should only release resources, and leave exiting to the host.
 - [ ] **Per-server logging.** `minimumLogLevel` sets a process-wide log level, and output always goes to the console. Make the level per server instance, and accept a logger from the host. MikroORM's own output needs routing through it too: the migrator currently prints `[migrator] …` lines to the console regardless of the log level.
 - [ ] **Configurable HTTP CORS.** HTTP allows every origin (`cors()`), while Socket.IO's CORS is already configurable.
-- [ ] **Remove `/admin/log-level`, or make it opt-in and authenticated.** Today it's installed unauthenticated unless `NODE_ENV=production`.
+- [ ] **Remove `/admin/log-level`** ([0028](docs/explanation/decisions/0028-no-operational-endpoints.md)). Today it's installed unauthenticated unless `NODE_ENV=production`.
 - [ ] **Allow embedding.** The library creates its own Express app and HTTP server. Allow mounting it into an existing app or attaching it to an existing server.
 - [ ] **Report the actual port.** `server.port` returns the requested port, so with port `0` it doesn't show the port actually used.
 - [ ] **Store tokens hashed** ([0017](docs/explanation/decisions/0017-hashed-tokens-in-header-and-handshake.md)), with a migration that hashes existing tokens.
