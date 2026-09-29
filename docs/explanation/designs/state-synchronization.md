@@ -19,6 +19,34 @@ The second of the project's [goals](../goals.md) is that clients keep game state
 - **Transport.** Actions go over HTTP, and updates over Socket.IO ([0001](../decisions/0001-http-actions-socket-updates.md)).
 - **Delivery isn't exactly once.** A client can receive an update twice (the HTTP response and the socket), late, or not at all (while disconnected).
 
+## Option 0: the naive approach
+
+The client dispatches an action, and the server sends back the whole new state. Every other player receives their whole new view as well. Nothing else: no changes, no history, no prediction.
+
+It's essentially what the server does today, so it's the baseline the other options have to improve on. In terms of the questions below, it's:
+
+- **Cursor:** only needed to tell newer from older states
+- **Update contents:** 2A, full player views
+- **Catch-up:** 3A, fetch the latest state
+- **Store:** one message, `state-replaced`
+- **Prediction:** 5A, none
+- **Action response:** 6A, the new player view
+
+What it gives:
+
+- The client middleware is small: send the action, and replace the game state in the store whenever a new state arrives.
+- Every message stands on its own, so duplicate or lost updates can't corrupt the client's copy.
+- Hidden information stays safe without extra work, because only filtered views are ever sent.
+
+Where it falls short:
+
+- **Ordering needs one fix.** The acting client receives its new state twice, in the HTTP response and over the socket, and they can arrive in either order. The HTTP response doesn't include the state's `sequence`, so a late response could overwrite a newer state from the socket. Adding `sequence` to the response, and ignoring anything older than the current state, is enough.
+- **Bandwidth** grows with state size multiplied by the number of players and actions.
+- **Missed steps are lost.** A client that reconnects jumps to the latest state, and can't show what happened in between.
+- **Every action waits for a round trip** before the player sees its effect.
+
+If the target games have small states and don't need to show missed steps, option 0 may be enough. The questions below are about going further.
+
 ## Questions to decide
 
 ### 1. What is a cursor?
