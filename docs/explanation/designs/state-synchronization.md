@@ -70,7 +70,7 @@ This is the flow the decisions so far lead to. Open questions are marked at the 
 4. **The server computes each subscriber's previous view,** before the rules run, since they may change the loaded state in place.
 5. **The plugin determines the new state** with `executeAction`, by changing the state it received or returning a new one.
 6. **The server computes each registered player's new view and diff,** with `filterStateForPlayer` and a diff against the previous view ([0011](../decisions/0011-patches-are-diffs-of-views.md)), for every player, connected or not.
-7. **The server stores** the new full state, the action, the new `sequence` and every player's diff, in one transaction, and releases the lock ([0012](../decisions/0012-store-player-diffs.md)).
+7. **The server stores** the new full state, the action, the new `sequence`, every player's diff ([0012](../decisions/0012-store-player-diffs.md)) and the diff of the full state ([0013](../decisions/0013-store-full-state-diffs.md)), in one transaction, and releases the lock. The full-state diff is for debugging and later use only, and is never sent to clients.
 8. **The server sends, per subscriber:** the new view as a whole state, or the diff as patches, in the subscriber's chosen format.
 
    Each is converted to the subscriber's chosen format ([0007](../decisions/0007-client-chosen-update-format.md)), and labeled with the `sequence` it applies to and the one it produces.

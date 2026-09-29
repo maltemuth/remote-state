@@ -18,6 +18,7 @@ Records aren't edited after the fact, except to update their status. A decision 
 | [0010](0010-every-game-has-hidden-information.md) | Every game is treated as a game with hidden information | Accepted |
 | [0011](0011-patches-are-diffs-of-views.md) | Patches are diffs of player views; only full states are stored | Accepted, storage extended by 0012 |
 | [0012](0012-store-player-diffs.md) | Store each player's diffs alongside the full states | Accepted |
+| [0013](0013-store-full-state-diffs.md) | Also store diffs of the full state | Accepted |
 
 ## Writing a record
 
