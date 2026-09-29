@@ -95,14 +95,14 @@ Decided: **A**, the library issues its own opaque tokens ([0015](../decisions/00
 
 ### 2. Who may create a game?
 
-Decided: the implementer ([0016](../decisions/0016-authentication-in-library-authorization-by-implementer.md)). Decided: the host decides before admitting, so no hook is needed ([0020](../decisions/0020-hosts-admit-players-through-codes.md)).
+Decided: the implementer ([0016](../decisions/0016-authentication-in-library-authorization-by-implementer.md)): the host decides before admitting, so no hook is needed ([0020](../decisions/0020-hosts-admit-players-through-codes.md)).
 
 - **A. Anyone,** as today.
 - **B. Whoever the host allows,** through a hook, for example `canCreateGame(user, options)`.
 
 ### 3. Who may join a game?
 
-Decided: the implementer, the game or the host ([0016](../decisions/0016-authentication-in-library-authorization-by-implementer.md)). Decided: the host decides before admitting, and the game through a hook when a player is first created ([0020](../decisions/0020-hosts-admit-players-through-codes.md)). Invitations are the host's to build on top.
+Decided: the implementer, the game or the host ([0016](../decisions/0016-authentication-in-library-authorization-by-implementer.md)): the host decides before admitting, and the game through a hook when a player is first created ([0020](../decisions/0020-hosts-admit-players-through-codes.md)). Invitations are the host's to build on top.
 
 - **A. Anyone who knows the game's ID,** as today. The ID works like an unguessable invitation link.
 - **B. The game decides,** through a hook asked on registration, for example to enforce a player limit. This overlaps with [Player information](player-information.md) and [Game lifecycle](game-lifecycle.md).
