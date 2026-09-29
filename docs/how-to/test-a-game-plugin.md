@@ -67,5 +67,6 @@ Call `startServer()`, read the port from `server.server.address().port`, and con
 
 ## Examples in this repository
 
-- [tic-tac-toe.e2e.test.ts](../../packages/remote-state/__test__/e2e/tic-tac-toe.e2e.test.ts): a full game through the API
+- [tic-tac-toe.e2e.test.ts](../../packages/remote-state-example-server/__test__/e2e/tic-tac-toe.e2e.test.ts): a full game through the API, using the library through its package name as your project would
+- [jest.config.js](../../packages/remote-state-example-server/jest.config.js): Jest running TypeScript as native ESM. The tests run with `NODE_OPTIONS=--experimental-vm-modules`, which Jest's ESM mode needs.
 - [server.test.ts](../../packages/remote-state/__test__/integration/server.test.ts): authentication, filtering, concurrency and persistence, using a minimal [counter game](../../packages/remote-state/__test__/helpers/counterGame.ts)
