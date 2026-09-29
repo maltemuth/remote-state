@@ -4,7 +4,7 @@ Status: Open
 
 ## Problem
 
-The library knows *who* is acting, through per-player tokens, but decides very little about *what* they may do. Today:
+The library knows _who_ is acting, through per-player tokens, but decides very little about _what_ they may do. Today:
 
 - **Identity is per game.** Creating a game or registering for one issues a player ID and a random 64-character token. The same person in two games is two unrelated players.
 - **Anyone can create a game.** `POST /api/games` requires nothing.
@@ -26,7 +26,7 @@ This is a library that runs inside someone else's server ([Goals](../goals.md)).
 
 ## Proposal: admitting players
 
-The host decides who may play; the library issues and checks tokens ([0016](../decisions/0016-authentication-in-library-authorization-by-implementer.md)). Between the two, the host *admits* a person to a game, and the library turns that into a token, handed over through a single-use code.
+The host decides who may play; the library issues and checks tokens ([0016](../decisions/0016-authentication-in-library-authorization-by-implementer.md)). Between the two, the host _admits_ a person to a game, and the library turns that into a token, handed over through a single-use code.
 
 ```mermaid
 sequenceDiagram
@@ -67,7 +67,17 @@ What this settles:
 - **Recognizing a person again:** within a game, through the identity ID. Across games, the host already knows its users.
 - **Host details for the game:** passed with the identity.
 
-Standalone use, as in the tutorial, keeps today's public endpoints for creating and joining games, which issue tokens directly. A host that controls access turns them off.
+The library has no public endpoints for creating or joining games; today's `POST /api/games` and `POST /api/games/:gameId/players` go away. Every app is a host, and implements these endpoints itself, calling `admit`. The example server and the tutorial show how, as a host that admits anyone without any login:
+
+```ts
+app.post("/games/:gameId/join", async (req, res) => {
+  const code = await remoteState.admit({
+    gameId: req.params.gameId,
+    identity: { id: randomUUID(), name: req.body.name },
+  });
+  res.json({ code });
+});
+```
 
 ## Questions to decide
 
@@ -130,5 +140,4 @@ Decided: rate limiting is the host's job ([0016](../decisions/0016-authenticatio
 - Can the host limit how many tokens a player has, for example to one ([0019](../decisions/0019-several-tokens-per-player.md))?
 - How a game is created when a host controls access: a separate `createGame` call followed by `admit`, or `admit` creating the game when it's given none. Today, creating a game also creates its first player, with the `admin` role.
 - What the game's join hook receives: the current state, the identity's details, the game's options.
-- How public endpoints are turned on and off, and which is the default.
 - Whether the library needs a server-to-server endpoint for `admit`, for hosts that don't run in the same process. Not while it runs as a single process ([0006](../decisions/0006-single-process.md)).
