@@ -21,7 +21,7 @@ The second of the project's [goals](../goals.md) is that clients keep game state
 
 ## Every client has its own view
 
-No client receives the game's state. Each receives a *view*: the state as `filterStateForPlayer` produces it for that player. Some parts may be hidden from everyone, like the deck in a card game. Some are hidden differently per player: each sees their own hand, but not the others'. So in every option below, "the state" a client holds means its own view.
+No client receives the game's state. Each receives a _view_: the state as `filterStateForPlayer` produces it for that player. Some parts may be hidden from everyone, like the deck in a card game. Some are hidden differently per player: each sees their own hand, but not the others'. So in every option below, "the state" a client holds means its own view.
 
 Two terms are used throughout, and never mean the same thing:
 
@@ -30,12 +30,12 @@ Two terms are used throughout, and never mean the same thing:
 
 How much a game hides varies a lot:
 
-| Kind of game | Example | Views |
-|---|---|---|
-| **Open information** | Chess, tic-tac-toe | Every player's view equals the full state |
-| **Hidden from everyone** | A shuffled deck | Every player's view is the same, but less than the state |
-| **Hidden per player** | Hands of cards, battleship fleets | Every player's view is different |
-| **Revealed later** | Rock-paper-scissors choices | Views differ until a reveal, then become the same |
+| Kind of game             | Example                           | Views                                                    |
+| ------------------------ | --------------------------------- | -------------------------------------------------------- |
+| **Open information**     | Chess, tic-tac-toe                | Every player's view equals the full state                |
+| **Hidden from everyone** | A shuffled deck                   | Every player's view is the same, but less than the state |
+| **Hidden per player**    | Hands of cards, battleship fleets | Every player's view is different                         |
+| **Revealed later**       | Rock-paper-scissors choices       | Views differ until a reveal, then become the same        |
 
 A game can mix these: a card game has a hidden deck and private hands, and reveals cards as they're played. A mostly open game may still hide a detail. This repository's tic-tac-toe example, for instance, shows each player the other's ID only as `"opponent"`.
 
@@ -56,7 +56,7 @@ These consequences apply whenever views differ between players:
 - **One update is many messages.** After each action, the server filters the new state once per recipient, and sends each their own payload. A single message can't be broadcast to the whole game. The server does this today, filtering separately for every connected socket.
 - **The server can't reuse work across recipients.** Each view must be filtered and serialized on its own.
 - **A client can't compute its own next state.** Its view lacks what's hidden, so it can't run the game's rules on it. This rules out using the game's own rules for prediction (question 5B), and means any change set must be computed between two views, never between two states (question 2B).
-- **A view can stay the same while the game moves on.** If another player makes a hidden move, a player's view may not change at all. Or it changes only slightly: in the [tutorial](../../tutorials/build-your-first-game.md)'s rock-paper-scissors, Bob only learns *that* Alice has chosen. Today every player receives an update on every action, identical or not. Skipping unchanged views would save messages, but then a client sees gaps in `sequence` and can't tell a skipped update from a missed one, which matters for catch-up (question 3).
+- **A view can stay the same while the game moves on.** If another player makes a hidden move, a player's view may not change at all. Or it changes only slightly: in the [tutorial](../../tutorials/build-your-first-game.md)'s rock-paper-scissors, Bob only learns _that_ Alice has chosen. Today every player receives an update on every action, identical or not. Skipping unchanged views would save messages, but then a client sees gaps in `sequence` and can't tell a skipped update from a missed one, which matters for catch-up (question 3).
 - **Views can depend on more than the player.** Players who haven't taken a seat, or spectators, need a view too. What they may see is part of [Player information](player-information.md).
 - **Rejections can leak.** The reason `validateAction` gives for rejecting an action goes to the acting client without being filtered.
 
@@ -79,7 +79,7 @@ A reconnecting client that asks `GET …/updates` ([0009](../decisions/0009-sepa
 
 ### Internal and external patches
 
-An earlier version of this flow recorded *internal patches* of the full state while the rules ran, stored them, and filtered them into *external patches* for each player. Internal patches are only worth keeping if there's a generic way to turn them into external ones. The candidates were a second, game-written patch filter, or visibility declared by path, which would have made the game's state cater to its views. Neither was acceptable, so there are no internal patches: the patches clients receive are diffs of their views ([0011](../decisions/0011-patches-are-diffs-of-views.md)).
+An earlier version of this flow recorded _internal patches_ of the full state while the rules ran, stored them, and filtered them into _external patches_ for each player. Internal patches are only worth keeping if there's a generic way to turn them into external ones. The candidates were a second, game-written patch filter, or visibility declared by path, which would have made the game's state cater to its views. Neither was acceptable, so there are no internal patches: the patches clients receive are diffs of their views ([0011](../decisions/0011-patches-are-diffs-of-views.md)).
 
 ## Option 0: the naive approach
 
@@ -137,6 +137,8 @@ Message size, the lost change itself, lost intermediate steps, and the round tri
 ## Questions to decide
 
 ### 1. What is a cursor?
+
+Decided: **A**, the `sequence` ([0029](../decisions/0029-sequence-is-the-cursor.md)).
 
 A cursor identifies how far a client is in a game's history.
 
@@ -233,6 +235,8 @@ The library applies the same declaration to both whole states and patches. For a
 
 ### 3. How does a client catch up after missing updates?
 
+Decided: **B**, in one jump from any `since` ([0030](../decisions/0030-updates-in-one-jump.md)); the socket sends the current state on connect ([0031](../decisions/0031-socket-sends-state-on-connect.md)).
+
 While connected, a client receives everything over the socket. The GET endpoints ([0009](../decisions/0009-separate-state-and-update-endpoints.md)) are only needed to close a gap: after reconnecting, a client fetches the updates it missed, or the whole state if the gap is too large.
 
 The current direction is to treat a client's first connection like a reconnect: the client connects the socket, then fetches the whole state with `GET …/state`, and keeps whichever is newer by `sequence`. That gives one mechanism for every gap, and keeps the socket for live updates only. It may not suit every game, so it stays open for revision as more example games are built.
@@ -265,11 +269,8 @@ The questions are which of these exist, how the store's reducer applies them, an
 
 ## Open questions
 
-- Do some games need the socket to send the current state when a client connects, instead of the client fetching it? If so, should a game be able to choose?
 - When a client asks for a patch format the game doesn't offer, should the server reject the request, or fall back to whole states? [0008](../decisions/0008-format-query-parameter.md) currently has it rejected.
-- How does `GET …/updates` answer when `since` is older than the stored patches reach, or when the game offers no patches: an error that points to `GET …/state`, or the whole state in its place?
 - When are minimal patches worth more than standard output: should `microdiff` replace `rfc6902` for games with board-like arrays?
-- Should `GET …/updates` answer step by step, or also in one jump? With stored diffs ([0012](../decisions/0012-store-player-diffs.md)), a jump can be the concatenation of the step diffs, which is correct but not minimal, or a fresh diff between the view at `since` and the current one.
 - What do clients need for rendering: to know which data changed, or what happened in game terms? Is keeping unchanged parts as the same objects on the client enough, or must the server send the change?
 - How large are the states of the games this is meant for, and how often do they change? This decides whether sending changes is worth the complexity.
 - Do clients need intermediate states, for example to animate each move, or only the latest one?

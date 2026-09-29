@@ -1,6 +1,6 @@
 # 0009. Separate GET endpoints for whole state and for updates
 
-Status: Accepted; the updates endpoint's `format` parameter is dropped by [0014](0014-immer-patches-only-external-format.md)
+Status: Accepted; the updates endpoint's `format` parameter is dropped by [0014](0014-immer-patches-only-external-format.md); it answers in one jump per [0030](0030-updates-in-one-jump.md)
 Date: 2026-09-29
 
 ## Context
