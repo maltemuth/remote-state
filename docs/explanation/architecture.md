@@ -19,10 +19,10 @@ The library handles transport, storage, identity and fan-out. A game supplies on
                     │      GamePlugin (validate,      │
                     │      execute, filter)           │
                     │            │                    │
-                    │     database service            │
+                    │  database service (MikroORM)    │
                     └────────────┼────────────────────┘
                                  ▼
-                     SQLite: games, players, gameStates
+                  SQLite: games, players, game_states
 ```
 
 Everything runs in one Node.js process, and that assumption shapes several decisions below.
@@ -57,7 +57,7 @@ The server never overwrites a state. Each accepted action appends a full snapsho
 
 This gives you:
 
-- **An audit trail** of every move, from the stored `actionData` and `playerId`
+- **An audit trail** of every move, from the stored action and the player who sent it
 - **A version number** for clients: `sequence` tells a client whether an update is newer than what it has, and whether it missed any
 - **Crash safety**: a state is either fully written or not written at all
 

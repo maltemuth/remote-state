@@ -5,7 +5,7 @@ These are current properties of the library, not bugs in your game. Each one is 
 ## Scaling
 
 - **One process only.** The per-game lock is in memory, and Socket.IO uses its default in-memory adapter. Two instances sharing a database could interleave actions (the unique `sequence` index turns that into 500 errors rather than corrupt state), and each instance would only broadcast to its own sockets.
-- **SQLite only.** The dialect is fixed.
+- **SQLite only.** MikroORM also supports Postgres, but the migrations are written in SQLite's SQL. Postgres would need its own migrations and driver configuration.
 - **Full snapshot per action.** Storage grows with (state size × number of actions), and nothing prunes old states.
 
 ## Protocol
@@ -26,6 +26,5 @@ These are current properties of the library, not bugs in your game. Each one is 
 
 ## Operations
 
-- **No schema migrations.** Tables are created if missing and never altered.
 - **Process-wide log level.** `minimumLogLevel` changes the level for every logger in the process, including other servers in the same process.
 - **No game lifecycle.** Games are never closed, archived or deleted, and nothing uses `lastActivityAt`.

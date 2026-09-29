@@ -2,7 +2,7 @@ import { DefaultEventsMap, Server as SocketIOServer } from 'socket.io';
 import { Server as HTTPServer } from 'http';
 import { createLogger } from '../utils/logger.js';
 import { SocketIOServerConfiguration } from './types.js';
-import { Player } from '../database/models/index.js';
+import { Player } from '../database/entities/index.js';
 
 export interface GameStateUpdateEvent<PlayerStateType> {
   gameId: string;

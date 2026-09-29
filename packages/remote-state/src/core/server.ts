@@ -4,7 +4,7 @@ import { GamePlugin, RemoteStateServerConfiguration } from './types.js';
 import cors from 'cors';
 import { createServer } from 'http';
 import { createLogger, LogLevel, setGlobalLogLevel } from '../utils/logger.js';
-import { initializeDatabase } from '../database/instance.js';
+import { initializeDatabase } from '../database/orm.js';
 import { createSocketManager, SocketManager } from './socket.js';
 import { createGameLock } from './gameLock.js';
 
@@ -43,7 +43,7 @@ export const createRemoteStateServer = async <StateType, ActionType, PlayerState
   const databasePath = plugin.serverConfiguration?.persistDatabase
     ? plugin.serverConfiguration?.databaseFilename || 'games.db'
     : ':memory:';
-  const database = await initializeDatabase({ databasePath, sync: true }).catch(err => {
+  const database = await initializeDatabase(databasePath).catch(err => {
     throw new Error('Failed to initialize database', { cause: err });
   });
   const databaseService = createDatabaseService<StateType, ActionType>(database);

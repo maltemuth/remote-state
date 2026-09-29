@@ -10,32 +10,40 @@ All notable changes to this project are documented here. The format follows [Kee
 - Node.js 24 or newer is required (`engines`), and `.nvmrc` pins v24.21.0.
 - The example server's `dev` script was removed; it never worked under ESM. Use `npm run start:example`.
 - The library is now an ES module (`"type": "module"`), with an `exports` map. On Node 24, CommonJS code can still load it with `require()`.
+- The data layer moved from Sequelize to MikroORM 7, with a new schema. Database files created by 0.1.0 or earlier can't be migrated and must be deleted. Schema changes:
+  - column names are `snake_case`, and the `gameStates` table is now `game_states`
+  - `state` and `action_data` are native JSON columns
+  - the unused `tokenType` column is gone
+  - `game_states.player_id` is a foreign key to `players`
 
 ### Changed
 
 - Dependencies updated to their latest compatible versions:
-  - express 5.2.1, socket.io 4.8.4, sequelize 6.37.8, sqlite3 6.0.1
+  - express 5.2.1, socket.io 4.8.4
   - TypeScript 6.0 (7 isn't supported by ts-jest or typescript-eslint yet)
   - ESLint 10, Jest 30.5, Prettier 3.9
 - Removed dependencies:
+  - `sequelize`, `sequelize-typescript` and `sqlite3`, replaced by MikroORM (`@mikro-orm/core`, `/sqlite`, `/decorators`, `/migrations`) and its `better-sqlite3` driver
   - `uuid`, replaced by `crypto.randomUUID()`
-  - `zod`, replaced by Sequelize model validators
+  - `zod`, replaced by validation in the database service
   - `ts-node` and `@types/jest`, which were unused
+- Entities use standard (TC39) decorators with explicit property types, so neither `experimentalDecorators` nor decorator metadata is needed.
+- Install scripts are declared in `allowScripts`. All three are denied: `better-sqlite3` ships prebuilt binaries, and the other two are optional Jest speedups.
 - The lint and format toolchain is declared once, at the root.
 - The e2e tests moved to the example package and use the library through its package entry point.
 - Tests are type-checked by a separate `typecheck` step, which `npm test` runs first; ts-jest only transpiles.
 - The whole project is ESM. Jest runs in its native ESM mode, which needs Node's `--experimental-vm-modules` flag; the `test` scripts set it.
-- `emitDecoratorMetadata` is off. Under ESM, its eager class references crashed on the `Game` ↔ `Player` import cycle, and the models don't need the metadata.
 
 ### Added
 
+- Schema migrations. They're applied on startup and recorded in `mikro_orm_migrations`, so persisted databases survive future schema changes.
 - Battleship example: a shared `battleshipPlugin`.
 - The example server has its own test suite, and `npm test` at the root runs every workspace.
 
 ### Fixed
 
 - An empty owner name was accepted when creating a game.
-- Security advisories: `npm audit` goes from 35 findings (2 critical, 21 high) to 3 moderate. All 3 are one chain, Sequelize 6's bundled `uuid` 8, and the affected functions aren't called here.
+- Security advisories: `npm audit` goes from 35 findings (2 critical, 21 high) to 0.
 - Battleship example: ships could never be hit, because firing at any cell that wasn't `empty`, including a cell with a ship, was rejected as already targeted.
 - Battleship example: players without a seat were treated as `player2` when placing ships, and saw `player1`'s ships.
 - Battleship example: `restart` was rejected once a game was finished.

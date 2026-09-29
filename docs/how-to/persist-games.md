@@ -15,7 +15,7 @@ const server = await createRemoteStateServer(
 );
 ```
 
-The directory must already exist. Tables are created on first start.
+The directory must already exist. The tables are created by migrations on first start.
 
 ## After changing your state type
 
@@ -23,9 +23,9 @@ Stored states are replayed as-is. If you change the shape of `StateType`, games 
 
 ## After upgrading the library
 
-The library creates missing tables but never alters existing ones. If a release changes the schema, delete the database file, or migrate it by hand.
+Schema changes ship as migrations and are applied automatically on startup, so existing database files keep working. Back up the file before upgrading. Migrations only move forward; there is no automatic downgrade.
 
-Databases created before commit `ed5d7aa` have unusable state ordering and constraints. They can't be migrated; delete them.
+Databases created by versions up to 0.1.0, which used Sequelize, have a different schema and can't be migrated. Delete them.
 
 ## Back up
 

@@ -9,9 +9,8 @@
     "moduleResolution": "nodenext",
     "esModuleInterop": true,
 
-    // Decorators (sequelize-typescript). No emitDecoratorMetadata: under ESM its
-    // eager class references crash on the Game <-> Player import cycle.
-    "experimentalDecorators": true,
+    // Standard (TC39) decorators need no flags; entity property types are given
+    // explicitly, so no decorator metadata is needed either
 
     "declaration": true,
     "skipLibCheck": true,

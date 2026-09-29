@@ -80,38 +80,37 @@ Also exported: `GamePlugin`, `ActionValidationResult` ([GamePlugin](game-plugin.
 
 ## Database schema
 
-SQLite, managed by Sequelize. Tables are created on startup if they're missing. Existing tables are never altered, so after a schema change an old database file must be deleted.
+SQLite through [MikroORM](https://mikro-orm.io), using the `better-sqlite3` driver. On startup, the server applies any pending migrations. Applied migrations are recorded in the `mikro_orm_migrations` table, so each runs once.
 
 **games**
 
 | Column | Type |
 |---|---|
 | `id` | UUID string, primary key |
-| `name` | string |
-| `createdAt`, `updatedAt` | datetime |
+| `name` | string, non-empty |
+| `created_at`, `updated_at` | datetime |
 
 **players**
 
 | Column | Type | Notes |
 |---|---|---|
 | `id` | UUID string, primary key | |
-| `gameId` | string, indexed | |
-| `name` | string | |
-| `role` | `admin` or `player` | The game's creator is `admin` |
-| `token` | 64 hex characters | |
-| `tokenType` | string | Always `secure` |
-| `lastActivityAt` | datetime, nullable | Updated on each accepted action |
-| `createdAt`, `updatedAt` | datetime | |
+| `game_id` | foreign key to `games`, indexed | |
+| `name` | string, non-empty | |
+| `role` | `admin` or `player` | Enforced by a check constraint. The game's creator is `admin`. |
+| `token` | 64 hex characters, unique | |
+| `last_activity_at` | datetime, nullable | Updated on each accepted action |
+| `created_at`, `updated_at` | datetime | |
 
-**gameStates**: one row per state; the latest row is the current state.
+**game_states**: one row per state; the row with the highest `sequence` is the current state.
 
 | Column | Type | Notes |
 |---|---|---|
 | `id` | UUID string, primary key | The `stateId` |
-| `gameId` | string | |
+| `game_id` | foreign key to `games` | |
 | `sequence` | integer | Unique per game; 0 for the initial state |
 | `state` | JSON | Full, unfiltered state |
-| `playerId` | string | Who caused this state (the creator for sequence 0) |
-| `actionType` | string | `initial`, or the action's `type` |
-| `actionData` | JSON | The action as the client sent it |
-| `createdAt`, `updatedAt` | datetime | |
+| `player_id` | foreign key to `players` | Who caused this state (the creator for sequence 0) |
+| `action_type` | string | `initial`, or the action's `type` |
+| `action_data` | JSON | The action as the client sent it |
+| `created_at` | datetime | |

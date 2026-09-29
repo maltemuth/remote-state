@@ -27,5 +27,10 @@
     "jiti": "^2.7.0",
     "prettier": "^3.9.9",
     "typescript": "^6.0.3"
+  },
+  "allowScripts": {
+    "better-sqlite3": false,
+    "@parcel/watcher": false,
+    "unrs-resolver": false
   }
 }

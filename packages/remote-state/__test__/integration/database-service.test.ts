@@ -1,6 +1,5 @@
-import { Sequelize } from 'sequelize-typescript';
 import { createLogger } from '../../src/utils/logger.js';
-import { createSequelizeInstance, syncDatabase } from '../../src/database/sequelize.js';
+import { initializeDatabase, type Orm } from '../../src/database/orm.js';
 
 // Import Jest globals
 import { describe, beforeAll, afterAll, test, expect } from '@jest/globals';
@@ -11,20 +10,16 @@ const { info: _info, error: _error } = createLogger({
 });
 
 describe('Database Service Integration Tests', () => {
-  let sequelize: Sequelize;
+  let orm: Orm;
   let service: DatabaseService<unknown, unknown>;
 
   beforeAll(async () => {
-    // Create a new Sequelize instance for testing
-    sequelize = await createSequelizeInstance(':memory:');
-    await syncDatabase(sequelize);
-    service = createDatabaseService(sequelize);
+    orm = await initializeDatabase(':memory:');
+    service = createDatabaseService(orm);
   });
 
   afterAll(async () => {
-    if (sequelize) {
-      await sequelize.close();
-    }
+    await orm?.close();
   });
 
   describe('Game Operations', () => {
@@ -80,11 +75,10 @@ describe('Database Service Integration Tests', () => {
       } = await service.createGameWithOwnerAndInitialState(gameData, playerData, {});
 
       expect(admin).toBeDefined();
-      expect(admin.gameId).toBe(gameId);
+      expect(admin.game.id).toBe(gameId);
       expect(admin.name).toBe(playerData.name);
       expect(admin.role).toBe('admin');
       expect(admin.createdAt).toBeDefined();
-      expect(admin.tokenType).toBe('secure');
       expect(admin.token).toBeDefined();
     });
 
@@ -105,7 +99,6 @@ describe('Database Service Integration Tests', () => {
 
       expect(player).toBeDefined();
       expect(player.role).toBe('player');
-      expect(player.tokenType).toBe('secure');
       expect(player.token).toBeDefined();
     });
 
@@ -177,12 +170,16 @@ describe('Database Service Integration Tests', () => {
         name: 'Game Owner',
       };
 
-      const { game } = await service.createGameWithOwnerAndInitialState(gameData, playerData, {});
+      const { game, admin } = await service.createGameWithOwnerAndInitialState(
+        gameData,
+        playerData,
+        {}
+      );
 
       // Record an action to create game state
       await service.recordAction({
         gameId: game.id,
-        playerId: 'test-player-id',
+        playerId: admin.id,
         actionType: 'initial',
         actionData: {},
         gameState: {
@@ -220,6 +217,23 @@ describe('Database Service Integration Tests', () => {
       const currentState = await service.getCurrentGameState(game.id);
       expect(currentState!.sequence).toBe(3);
       expect(currentState!.state).toEqual({ step: 3 });
+    });
+
+    test('should reject a state for a player that does not exist', async () => {
+      const { game } = await service.createGameWithOwnerAndInitialState(
+        { name: 'Foreign key game' },
+        { name: 'Game Owner' },
+        {}
+      );
+      await expect(
+        service.recordAction({
+          gameId: game.id,
+          playerId: 'no-such-player',
+          actionType: 'move',
+          actionData: {},
+          gameState: {},
+        })
+      ).rejects.toThrow();
     });
 
     test('should return null for non-existent game state', async () => {
@@ -265,7 +279,7 @@ describe('Database Service Integration Tests', () => {
 
       const playerDataInvalid = {
         name: '', // Empty name
-        role: 'invalid-role' as 'invalid-role', // Invalid role
+        role: 'invalid-role' as unknown as 'player', // Invalid role, bypassing the type check
       };
 
       await expect(() => service.addPlayerToGame(game, playerDataInvalid)).rejects.toThrow();
