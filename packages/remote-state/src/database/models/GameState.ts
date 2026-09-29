@@ -9,21 +9,18 @@ import {
   CreatedAt,
   UpdatedAt,
   Default,
-  createIndexDecorator,
-  AutoIncrement,
 } from 'sequelize-typescript';
 import { Game } from './Game';
 import { v4 as uuidv4 } from 'uuid';
 
-const GameIdSequenceIndex = createIndexDecorator({
-  name: 'game-id-and-sequence',
-  type: 'UNIQUE',
-  concurrently: true,
-});
-
+/**
+ * One row per state of a game: the initial state has sequence 0, and every accepted
+ * action appends the resulting state with the next sequence number.
+ */
 @Table({
   tableName: 'gameStates',
   timestamps: true,
+  indexes: [{ name: 'game-id-and-sequence', unique: true, fields: ['gameId', 'sequence'] }],
 })
 export class GameState extends Model<GameState> {
   @PrimaryKey
@@ -36,17 +33,15 @@ export class GameState extends Model<GameState> {
   declare id: string;
 
   @ForeignKey(() => Game)
-  @GameIdSequenceIndex
   @Column({
     type: DataType.STRING,
     allowNull: false,
   })
   declare gameId: string;
 
-  @GameIdSequenceIndex
-  @AutoIncrement
   @Column({
     type: DataType.INTEGER,
+    allowNull: false,
   })
   declare sequence: number;
 
@@ -91,8 +86,4 @@ export class GameState extends Model<GameState> {
   // Associations
   @BelongsTo(() => Game)
   declare game: Game;
-}
-
-export interface DeserializedGameState<StateType> extends Omit<GameState, 'state'> {
-  state: StateType;
 }

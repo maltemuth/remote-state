@@ -12,7 +12,7 @@ const { info: _info, error: _error } = createLogger({
 
 describe('Database Service Integration Tests', () => {
   let sequelize: Sequelize;
-  let service: DatabaseService<unknown, unknown, unknown>;
+  let service: DatabaseService<unknown, unknown>;
 
   beforeAll(async () => {
     // Create a new Sequelize instance for testing
@@ -164,8 +164,8 @@ describe('Database Service Integration Tests', () => {
         },
       };
 
-      // recordAction returns void, so we just test that it doesn't throw
-      await expect(service.recordAction(actionData)).resolves.not.toThrow();
+      const stateId = await service.recordAction(actionData);
+      expect(typeof stateId).toBe('string');
     });
 
     test('should get current game state', async () => {
@@ -199,6 +199,27 @@ describe('Database Service Integration Tests', () => {
         board: ['X', 'O', 'X', null, null, null, null, null, null],
         currentPlayer: 'O',
       });
+    });
+
+    test('should return the most recent of several states', async () => {
+      const { game, admin } = await service.createGameWithOwnerAndInitialState(
+        { name: 'Sequence game' },
+        { name: 'Game Owner' },
+        { step: 0 }
+      );
+      for (const step of [1, 2, 3]) {
+        await service.recordAction({
+          gameId: game.id,
+          playerId: admin.id,
+          actionType: 'step',
+          actionData: {},
+          gameState: { step },
+        });
+      }
+
+      const currentState = await service.getCurrentGameState(game.id);
+      expect(currentState!.sequence).toBe(3);
+      expect(currentState!.state).toEqual({ step: 3 });
     });
 
     test('should return null for non-existent game state', async () => {

@@ -1,4 +1,4 @@
-import { RemoteStateServerConfiguration } from '../core/server';
+import { RemoteStateServerConfiguration } from '../core/types';
 import { createLogger } from '../utils/logger';
 import { createSequelizeInstance, syncDatabase } from './sequelize';
 

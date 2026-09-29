@@ -1,42 +1,30 @@
 import express, { Express, Request, Response, NextFunction } from 'express';
-import { GamePlugin } from './types';
+import { GamePlugin, RemoteStateServerConfiguration } from './types';
 
 import cors from 'cors';
 import { createServer } from 'http';
 import { createLogger, LogLevel, setGlobalLogLevel } from '../utils/logger';
 import { initializeDatabase } from '../database/instance';
 import { createSocketManager, SocketManager } from './socket';
+import { createGameLock } from './gameLock';
 
 import { getState } from './routes/getState';
 import { postAction } from './routes/postAction';
 import { postGame } from './routes/postGame';
 import { postPlayer } from './routes/postPlayer';
-
 import * as process from 'process';
 import { createDatabaseService } from '../database/service';
+
+export type { RemoteStateServerConfiguration };
 
 export interface RemoteStateServer<_StateType, _ActionType, PlayerStateType> {
   app: Express;
   server: ReturnType<typeof createServer>;
-  socketIOManager?: SocketManager<PlayerStateType>;
+  socketIOManager: SocketManager<PlayerStateType> | null;
   startServer: () => Promise<void>;
+  /** Close sockets, the HTTP server and the database; exits the process unless `andExit` is false */
   shutdown: (andExit?: boolean) => Promise<void>;
   port: number;
-}
-
-export interface RemoteStateServerConfiguration {
-  minimumLogLevel?: LogLevel;
-  /** Database persistence configuration */
-  persistDatabase?: boolean;
-  databaseFilename?: string;
-  /** Socket.IO server configuration */
-  socketIO?: {
-    enabled?: boolean;
-    cors?: {
-      origin: string | string[];
-      methods: string[];
-    };
-  };
 }
 
 export const createRemoteStateServer = async <StateType, ActionType, PlayerStateType>(
@@ -59,9 +47,10 @@ export const createRemoteStateServer = async <StateType, ActionType, PlayerState
     { databasePath, sync: true },
     plugin.serverConfiguration
   ).catch(err => {
-    throw new Error('Failed to initialize database:', err);
+    throw new Error('Failed to initialize database', { cause: err });
   });
-  const databaseService = createDatabaseService<StateType, ActionType, PlayerStateType>(database);
+  const databaseService = createDatabaseService<StateType, ActionType>(database);
+  const withGameLock = createGameLock();
 
   const app = express();
 
@@ -71,20 +60,9 @@ export const createRemoteStateServer = async <StateType, ActionType, PlayerState
   // Socket.IO Manager
   let socketIOManager: SocketManager<PlayerStateType> | null = null;
   if (plugin.serverConfiguration?.socketIO?.enabled !== false) {
-    // Create authenticatePlayer function that uses the database service
-    const authenticatePlayer = async (playerId: string, token: string, gameId: string) => {
-      const player = await databaseService.getPlayerByToken(token);
-      const game = await databaseService.getGame(gameId);
-      if (!player || !game || player.gameId !== game.id || player.id !== player.id) {
-        return null;
-      }
-      return { player, game };
-    };
-
-    socketIOManager = createSocketManager<StateType, ActionType, PlayerStateType>(
+    socketIOManager = createSocketManager<PlayerStateType>(
       server,
-      authenticatePlayer,
-      plugin,
+      databaseService.authenticatePlayer,
       plugin.serverConfiguration?.socketIO
     );
   }
@@ -94,7 +72,10 @@ export const createRemoteStateServer = async <StateType, ActionType, PlayerState
   app.use(express.json());
 
   // Action submission endpoint
-  app.post('/api/games/:gameId/actions', postAction(databaseService, plugin, socketIOManager));
+  app.post(
+    '/api/games/:gameId/actions',
+    postAction(databaseService, plugin, withGameLock, socketIOManager)
+  );
 
   // Current state retrieval endpoint
   app.get('/api/games/:gameId/state/:cursor', getState(databaseService, plugin));
@@ -153,35 +134,25 @@ export const createRemoteStateServer = async <StateType, ActionType, PlayerState
       });
     });
 
-  // Graceful shutdown handling
   const shutdown = async (andExit: boolean = true) => {
     info('Shutting down server...');
     try {
-      // Close database connections
+      if (socketIOManager) {
+        // Also closes the underlying HTTP server
+        await socketIOManager.close();
+      } else if (server.listening) {
+        await new Promise<void>((resolve, reject) =>
+          server.close(err => (err ? reject(err) : resolve()))
+        );
+      }
       await database.close();
-      // Close HTTP server
-      await new Promise<void>((resolve, reject) => {
-        server.close(err => {
-          if (err) {
-            reject(err);
-          } else {
-            resolve();
-          }
-        });
-      });
       info('Server shut down successfully');
       if (andExit) process.exit(0);
-    } catch (_error) {
-      error('Error during shutdown:', { _error });
+    } catch (err) {
+      error('Error during shutdown:', { error: err });
       if (andExit) process.exit(1);
     }
   };
-
-  // Listen for shutdown signals only in Node.js environment (not in tests)
-  if (typeof process !== 'undefined' && process.on) {
-    process.on('SIGTERM', shutdown);
-    process.on('SIGINT', shutdown);
-  }
 
   return {
     app,

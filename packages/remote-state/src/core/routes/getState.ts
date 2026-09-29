@@ -1,11 +1,12 @@
 import { Request, Response } from 'express';
-import { GamePlugin } from '../types';
+import { GamePlugin, stateForPlayer } from '../types';
 import { createLogger } from '../../utils/logger';
 import { DatabaseService } from '../../database/service';
+import { tokenFromRequest } from './auth';
 
-// Current state retrieval endpoint
+// Current state retrieval endpoint, filtered for the authenticated player
 export const getState = <StateType, ActionType, PlayerStateType>(
-  database: DatabaseService<StateType, ActionType, PlayerStateType>,
+  database: DatabaseService<StateType, ActionType>,
   plugin: GamePlugin<StateType, ActionType, PlayerStateType>
 ) => {
   const { info, error } = createLogger({
@@ -14,49 +15,31 @@ export const getState = <StateType, ActionType, PlayerStateType>(
   return async (req: Request, res: Response) => {
     try {
       const { gameId } = req.params;
-      const playerId = req.headers['x-player-id'] as string;
 
-      info(
-        `Retrieving current state for game ${gameId}${playerId ? ` and player ${playerId}` : ''}`
-      );
-
-      // Check if game exists
       const game = await database.getGame(gameId);
       if (!game) {
         return res.status(404).json({ error: 'Game not found' });
       }
 
-      // Get current game state from database
-      let gameState = await database.getCurrentGameState(gameId);
-
-      // Apply player filtering if playerId is provided and plugin supports it
-      if (playerId && gameState && plugin.filterStateForPlayer) {
-        const filteredState = await plugin.filterStateForPlayer(
-          gameState.state as StateType,
-          playerId
-        );
-        gameState = {
-          ...gameState,
-          // @ts-ignore - Type conversion for filtered state
-          state: filteredState,
-        };
+      const player = await database.authenticatePlayer(tokenFromRequest(req), gameId);
+      if (!player) {
+        return res.status(401).json({ error: 'Invalid or expired token' });
       }
 
-      const response = {
-        gameId,
-        state: gameState?.state || null,
-        lastAction: null,
-        timestamp: new Date().toISOString(),
-        cursor: {
-          id: `cursor-${Date.now()}`,
-          gameId,
-          timestamp: new Date().toISOString(),
-          stateHash: 'demo-hash',
-          position: 0,
-        },
-      };
+      info(`Retrieving current state for game ${gameId} and player ${player.id}`);
 
-      res.json(response);
+      const current = await database.getCurrentGameState(gameId);
+      if (!current) {
+        return res.status(404).json({ error: 'Game has no state' });
+      }
+
+      res.json({
+        gameId,
+        stateId: current.stateId,
+        sequence: current.sequence,
+        state: await stateForPlayer(plugin, current.state, player.id),
+        timestamp: current.timestamp.toISOString(),
+      });
     } catch (err) {
       error('Error retrieving state:', {
         error: err instanceof Error ? err.message : String(err),

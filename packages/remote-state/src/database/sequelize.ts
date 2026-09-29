@@ -5,7 +5,7 @@ import { createLogger } from '../utils/logger';
 import { Game } from './models/Game';
 import { Player } from './models/Player';
 import { GameState } from './models/GameState';
-import { RemoteStateServerConfiguration } from '../core/server';
+import { RemoteStateServerConfiguration } from '../core/types';
 
 /**
  * Create a Sequelize instance

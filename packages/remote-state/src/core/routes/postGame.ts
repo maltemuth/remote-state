@@ -4,7 +4,7 @@ import { createLogger } from '../../utils/logger';
 import { DatabaseService } from '../../database/service';
 
 export const postGame = <StateType, ActionType, PlayerStateType>(
-  database: DatabaseService<StateType, ActionType, PlayerStateType>,
+  database: DatabaseService<StateType, ActionType>,
   plugin: GamePlugin<StateType, ActionType, PlayerStateType>
 ) => {
   const { info, error } = createLogger({
@@ -42,7 +42,7 @@ export const postGame = <StateType, ActionType, PlayerStateType>(
       error('Error registering game owner:', {
         error: err instanceof Error ? err.message : String(err),
       });
-      res.status(500);
+      res.status(500).json({ error: 'Internal server error' });
     }
   };
 };

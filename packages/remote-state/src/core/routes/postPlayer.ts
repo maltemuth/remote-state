@@ -5,7 +5,7 @@ import { DatabaseService } from '../../database/service';
 import { SocketManager } from '../socket';
 
 export const postPlayer = <StateType, ActionType, PlayerStateType>(
-  database: DatabaseService<StateType, ActionType, PlayerStateType>,
+  database: DatabaseService<StateType, ActionType>,
   plugin: GamePlugin<StateType, ActionType, PlayerStateType>,
   socketIOManager?: SocketManager<PlayerStateType>
 ) => {

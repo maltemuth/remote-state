@@ -587,6 +587,7 @@ describe('Tic-Tac-Toe E2E Tests', () => {
     // Retrieve final state
     const response = await request(server.app)
       .get(`/api/games/${gameId}/state/current`)
+      .set('Authorization', `Bearer ${ownerToken}`)
       .expect(200);
 
     expect(response.body.gameId).toBe(gameId);

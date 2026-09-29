@@ -8,12 +8,12 @@ import { Sequelize } from 'sequelize';
 import { Transaction } from 'sequelize';
 import * as crypto from 'crypto';
 
-const { debug, error } = createLogger({
+const { debug } = createLogger({
   scope: 'database',
 });
 
 /**
- * Create a new game
+ * Create a game, its admin player and the initial state in one transaction
  */
 const createGameWithOwnerAndInitialState = async <StateType>(
   database: Sequelize,
@@ -47,9 +47,10 @@ const createGameWithOwnerAndInitialState = async <StateType>(
       { transaction }
     );
 
-    const _state = await GameState.create(
+    await GameState.create(
       {
         gameId: game.id,
+        sequence: 0,
         playerId: admin.id,
         actionData: safeJsonStringify({}),
         actionType: 'initial',
@@ -68,16 +69,9 @@ const createGameWithOwnerAndInitialState = async <StateType>(
 /**
  * Get a game by ID
  */
-const getGame = async (gameId: string): Promise<Game> => {
+const getGame = async (gameId: string): Promise<Game | null> => {
   debug(`Retrieving game: ${gameId}`);
-
-  const result = await Game.findByPk(gameId);
-
-  if (!result) {
-    return null;
-  }
-
-  return result;
+  return await Game.findByPk(gameId);
 };
 
 /**
@@ -135,20 +129,19 @@ const generateToken = (length: number = 32): string => {
 const getPlayerByToken = async (token: string): Promise<Player | null> => {
   debug(`Retrieving player by token`);
 
-  const result = await Player.findOne({
-    where: {
-      token: token,
-    },
-  });
-
-  if (!result) {
-    return null;
-  }
-
-  return result;
+  return await Player.findOne({ where: { token } });
 };
 
-const findPlayer = async (playerId: string) => await Player.findByPk(playerId);
+/**
+ * Resolve a token to a player of the given game, or null if it does not belong to it
+ */
+const authenticatePlayer = async (token: string, gameId: string): Promise<Player | null> => {
+  if (!token || !gameId) {
+    return null;
+  }
+  const player = await getPlayerByToken(token);
+  return player && player.gameId === gameId ? player : null;
+};
 
 interface ActionData<S, A> {
   gameId: string;
@@ -159,28 +152,48 @@ interface ActionData<S, A> {
 }
 
 /**
- * Record an action and game state
+ * Append the state resulting from an action. Callers must serialize calls per game
+ * (see core/gameLock); the unique (gameId, sequence) index rejects any that slip through.
+ * @returns the id of the new state
  */
-const recordAction = async <S, A>(actionData: ActionData<S, A>): Promise<void> => {
+const recordAction = async <S, A>(
+  database: Sequelize,
+  actionData: ActionData<S, A>
+): Promise<string> => {
   debug(`Recording action: ${actionData.actionType} for game ${actionData.gameId}`);
 
-  const _newGameState = await GameState.create({
-    gameId: actionData.gameId,
-    playerId: actionData.playerId,
-    state: safeJsonStringify(actionData.gameState),
-    actionType: actionData.actionType,
-    actionData: safeJsonStringify(actionData.actionData),
-  }).catch(e => error(e));
-
-  return;
+  return await database.transaction(async (transaction: Transaction) => {
+    const latest: number | null = await GameState.max('sequence', {
+      where: { gameId: actionData.gameId },
+      transaction,
+    });
+    const newGameState = await GameState.create(
+      {
+        gameId: actionData.gameId,
+        sequence: (latest ?? -1) + 1,
+        playerId: actionData.playerId,
+        state: safeJsonStringify(actionData.gameState),
+        actionType: actionData.actionType,
+        actionData: safeJsonStringify(actionData.actionData),
+      },
+      { transaction }
+    );
+    return newGameState.id;
+  });
 };
 
+export interface CurrentGameState<S> {
+  gameId: string;
+  stateId: string;
+  sequence: number;
+  state: S;
+  timestamp: Date;
+}
+
 /**
- * Get current game state
+ * Get the latest state of a game
  */
-const getCurrentGameState = async <S>(
-  gameId: string
-): Promise<{ gameId: string; state: S; timestamp: Date; stateId: string } | null> => {
+const getCurrentGameState = async <S>(gameId: string): Promise<CurrentGameState<S> | null> => {
   debug(`Retrieving current game state for game: ${gameId}`);
 
   const result = await GameState.findOne({
@@ -194,35 +207,29 @@ const getCurrentGameState = async <S>(
     return null;
   }
 
-  const parsedState = safeJsonParse<S>(result.state);
   return {
     gameId: result.gameId,
-    state: parsedState,
-    timestamp: result.createdAt,
     stateId: result.id,
+    sequence: result.sequence,
+    state: safeJsonParse<S>(result.state),
+    timestamp: result.createdAt,
   };
 };
 
 /**
- * Create a typed database service instance
- * @param actionType - The Action type for this service
- * @param stateType - The State type for this service
-
- * @returns A typed database service instance
+ * Create a database service typed to one game's state and action types
  */
-export const createDatabaseService = <StateType, ActionType, _PlayerStateType>(db: Sequelize) => {
-  // Return service with properly typed functions
+export const createDatabaseService = <StateType, ActionType>(db: Sequelize) => {
   return {
     getGame,
     addPlayerToGame,
     getPlayerByToken,
+    authenticatePlayer,
 
-    // Action operations (typed)
-    recordAction: recordAction<StateType, ActionType>,
+    recordAction: (actionData: ActionData<StateType, ActionType>) =>
+      recordAction<StateType, ActionType>(db, actionData),
 
     getCurrentGameState: getCurrentGameState<StateType>,
-
-    findPlayer,
 
     createGameWithOwnerAndInitialState: (
       game: Pick<Game, 'name'>,
@@ -232,9 +239,6 @@ export const createDatabaseService = <StateType, ActionType, _PlayerStateType>(d
   };
 };
 
-/**
- * Service factory interface with typed Action and State generics
- */
-export type DatabaseService<StateType, ActionType, PlayerStateType> = ReturnType<
-  typeof createDatabaseService<StateType, ActionType, PlayerStateType>
+export type DatabaseService<StateType, ActionType> = ReturnType<
+  typeof createDatabaseService<StateType, ActionType>
 >;

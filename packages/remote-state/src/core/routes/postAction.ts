@@ -1,14 +1,17 @@
 import { Request, Response } from 'express';
-import { GamePlugin } from '../types';
+import { GamePlugin, stateForPlayer } from '../types';
 import { createLogger } from '../../utils/logger';
 import { Player } from '../../database/models';
 import { DatabaseService } from '../../database/service';
 import { SocketManager } from '../socket';
+import { GameLock } from '../gameLock';
+import { tokenFromRequest } from './auth';
 
 // Action submission endpoint
 export const postAction = <StateType, ActionType, PlayerStateType>(
-  database: DatabaseService<StateType, ActionType, PlayerStateType>,
+  database: DatabaseService<StateType, ActionType>,
   gamePlugin: GamePlugin<StateType, ActionType, PlayerStateType>,
+  withGameLock: GameLock,
   socketIOManager?: SocketManager<PlayerStateType>
 ) => {
   const { debug, error } = createLogger({
@@ -17,109 +20,79 @@ export const postAction = <StateType, ActionType, PlayerStateType>(
   return async (req: Request, res: Response) => {
     try {
       const { gameId } = req.params;
-      const { action, token } = req.body;
+      const { action } = req.body;
 
-      debug(`Received action for game ${gameId}:`, { action, hasToken: !!token });
+      debug(`Received action for game ${gameId}:`, { action });
 
-      // Validate request
       if (!action) {
         return res.status(400).json({ error: 'Action is required' });
       }
-      if (!gameId) {
-        return res.status(400).json({ error: 'Game ID is required' });
-      }
 
-      // Check if game exists
       const game = await database.getGame(gameId);
       if (!game) {
         return res.status(404).json({ error: `No game found with id ${gameId}` });
       }
 
-      // Validate player token if provided
-      let player: Player | null = null;
-      if (token) {
-        player = await database.getPlayerByToken(token);
-        if (!player) {
-          return res.status(401).json({
-            error: 'Invalid or expired token',
-          });
-        }
-
-        // Verify player belongs to this game
-        if (player.gameId !== gameId) {
-          return res.status(401).json({
-            error: 'Invalid or expired token',
-          });
-        }
-      } else {
-        // Return error if no token is provided
-        return res.status(401).json({
-          error: 'Invalid or expired token',
-        });
+      const player = await database.authenticatePlayer(tokenFromRequest(req), gameId);
+      if (!player) {
+        return res.status(401).json({ error: 'Invalid or expired token' });
       }
 
-      // Get current game state
-      debug(`Getting current game state for game: ${gameId}`);
-      const { state } = await database.getCurrentGameState(gameId);
-      debug(`Current state:`, state);
-      // Use game-specific validation through dedicated module
-      const validationResult = await gamePlugin.validateAction(
-        state,
-        action as ActionType,
-        player.id
-      );
-      if (validationResult !== true) {
-        return res.status(400).json({
-          error: validationResult,
+      // Read, validate, execute and record without another action on this game interleaving
+      const outcome = await withGameLock(gameId, async () => {
+        const current = await database.getCurrentGameState(gameId);
+        const validationResult = await gamePlugin.validateAction(
+          current.state,
+          action as ActionType,
+          player.id
+        );
+        if (validationResult !== true) {
+          return { rejected: validationResult } as const;
+        }
+
+        await Player.update({ lastActivityAt: new Date() }, { where: { id: player.id } });
+
+        const actionWithPlayer = {
+          ...action,
+          playerId: player.id,
+          timestamp: new Date(),
+        };
+        const newState = await gamePlugin.executeAction(
+          current.state,
+          actionWithPlayer as ActionType,
+          player.id
+        );
+
+        const stateId = await database.recordAction({
+          gameId,
+          playerId: player.id,
+          actionType: action.type || 'unknown',
+          actionData: action,
+          gameState: newState,
         });
-      }
 
-      // Update player's last activity
-      await Player.update({ lastActivityAt: new Date() }, { where: { id: player.id } });
-
-      // Execute the action
-      const actionWithPlayer = {
-        ...action,
-        playerId: player.id,
-        timestamp: new Date(),
-      };
-
-      const executionResult = await gamePlugin.executeAction(
-        state,
-        actionWithPlayer as ActionType & { playerId: string; timestamp: Date },
-        player.id
-      );
-
-      // Record the action in the database
-      await database.recordAction({
-        gameId,
-        playerId: player.id,
-        actionType: action.type || 'unknown',
-        actionData: action,
-        gameState: executionResult,
+        return { newState, stateId, sequence: current.sequence + 1 } as const;
       });
 
-      // Get the current game state to get the state ID
-      const currentGameState = await database.getCurrentGameState(gameId);
+      if ('rejected' in outcome) {
+        return res.status(400).json({ error: outcome.rejected });
+      }
 
-      // Return success response
-      res.status(201).json(executionResult);
+      res.status(201).json(await stateForPlayer(gamePlugin, outcome.newState, player.id));
 
-      // Broadcast game state update via Socket.IO if manager is available
-      if (socketIOManager && currentGameState) {
-        const updateEvent = {
-          gameId,
-          stateId: currentGameState.stateId,
-        };
-        socketIOManager.broadcastGameStateUpdate(updateEvent, async ({ id: playerId }) => {
-          return gamePlugin.filterStateForPlayer(executionResult, playerId);
-        });
+      if (socketIOManager) {
+        await socketIOManager.broadcastGameStateUpdate(
+          { gameId, stateId: outcome.stateId, sequence: outcome.sequence },
+          playerId => stateForPlayer(gamePlugin, outcome.newState, playerId)
+        );
       }
     } catch (err) {
       error('Error processing action:', {
         error: err instanceof Error ? err.message : String(err),
       });
-      res.status(500).json({ error: 'Internal server error' });
+      if (!res.headersSent) {
+        res.status(500).json({ error: 'Internal server error' });
+      }
     }
   };
 };

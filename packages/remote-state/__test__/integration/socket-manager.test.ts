@@ -1,135 +1,136 @@
-import { SocketIOManager } from '../../src/core/socket';
-import { Server as HTTPServer } from 'http';
-import { Server } from 'socket.io';
-import { jest, describe, expect, it, beforeEach } from '@jest/globals';
-import { GamePlugin } from '../../src/core/types';
-import { LogLevel } from '../../src';
-import { RemoteStateServerConfiguration } from '../../src/core/server';
+import request from 'supertest';
+import { AddressInfo } from 'net';
+import { io as connect, Socket } from 'socket.io-client';
+import { describe, beforeAll, afterAll, afterEach, it, expect } from '@jest/globals';
+import { createRemoteStateServer, RemoteStateServer } from '../../src/core/server';
+import { GameStateUpdateEvent } from '../../src/core/socket';
+import {
+  counterGame,
+  CounterAction,
+  CounterPlayerState,
+  CounterState,
+} from '../helpers/counterGame';
 
-// Mock socket.io
-jest.mock('socket.io');
+describe('Socket.IO integration', () => {
+  let server: RemoteStateServer<CounterState, CounterAction, CounterPlayerState>;
+  let url: string;
+  const sockets: Socket[] = [];
 
-// Mock HTTP server
-const mockHTTPServer = {
-  on: jest.fn(),
-  emit: jest.fn(),
-} as unknown as HTTPServer;
+  const open = (auth: Record<string, string>) => {
+    const socket = connect(url, { auth, transports: ['websocket'], forceNew: true });
+    sockets.push(socket);
+    return socket;
+  };
 
-// Mock authenticatePlayer function
-const mockAuthenticatePlayer = jest.fn(async () => ({
-  player: { id: 'player1', name: 'Player 1' } as any,
-  game: { id: 'game1', name: 'Test Game' } as any,
-}));
+  const connected = (socket: Socket) =>
+    new Promise<void>((resolve, reject) => {
+      socket.once('connect', () => resolve());
+      socket.once('connect_error', reject);
+    });
 
-// Mock game plugin
-const mockGamePlugin = {
-  getInitialState: jest.fn(),
-  validateAction: jest.fn(),
-  executeAction: jest.fn(),
-  serverConfiguration: {
-    minimumLogLevel: LogLevel.warn,
-  } as RemoteStateServerConfiguration,
-} as GamePlugin<unknown, unknown, unknown>;
+  const rejected = (socket: Socket) =>
+    new Promise<Error>((resolve, reject) => {
+      socket.once('connect', () => reject(new Error('connection was accepted')));
+      socket.once('connect_error', resolve);
+    });
 
-describe('SocketIOManager', () => {
-  let socketManager: ReturnType<typeof SocketIOManager<unknown, unknown, unknown>>;
-  let mockSocketIO: Server;
+  const next = <T>(socket: Socket, event: string) =>
+    new Promise<T>(resolve => socket.once(event, resolve));
 
-  beforeEach(() => {
-    jest.clearAllMocks();
+  const createGame = async () => {
+    const owner = await request(server.app)
+      .post('/api/games')
+      .send({ playerName: 'Owner', gameName: 'Counter game' });
+    const joiner = await request(server.app)
+      .post(`/api/games/${owner.body.gameId}/players`)
+      .send({ playerName: 'Joiner' });
+    return {
+      gameId: owner.body.gameId as string,
+      owner: { playerId: owner.body.playerId as string, token: owner.body.token as string },
+      joiner: { playerId: joiner.body.playerId as string, token: joiner.body.token as string },
+    };
+  };
 
-    // Mock socket.io server
-    mockSocketIO = new Server();
-    (Server as unknown as jest.Mock).mockImplementation(() => mockSocketIO);
-
-    socketManager = SocketIOManager(mockHTTPServer, mockAuthenticatePlayer, mockGamePlugin);
+  beforeAll(async () => {
+    server = await createRemoteStateServer(counterGame(), 0);
+    await server.startServer();
+    url = `http://localhost:${(server.server.address() as AddressInfo).port}`;
   });
 
-  describe('constructor', () => {
-    it('should create socket.io server with correct configuration', () => {
-      expect(Server).toHaveBeenCalledWith(mockHTTPServer, {
-        cors: {
-          origin: '*',
-          methods: ['GET', 'POST'],
-        },
-      });
-    });
-
-    it('should set up event handlers', () => {
-      expect(mockSocketIO.on).toHaveBeenCalledWith('connection', expect.any(Function));
-    });
+  afterEach(() => {
+    sockets.splice(0).forEach(socket => socket.disconnect());
   });
 
-  describe('broadcastGameStateUpdate', () => {
-    it('should send game state update to all connected players in game room', () => {
-      const mockEmit = jest.fn();
-      const mockTo = jest.fn().mockReturnValue({ emit: mockEmit });
-      mockSocketIO.to = mockTo as any;
-
-      // Mock player sockets
-      // Access the internal state through the socket manager's functions
-      // Since we're using a functional approach, we need to mock the internal state
-      // This test will need to be updated to work with the new functional approach
-
-      const updateEvent = {
-        gameId: 'test-game',
-        stateId: 'state-123',
-      };
-
-      const mockStateForPlayer = jest.fn(async () => ({ playerState: 'test' }) as any);
-      // Resolve the promise returned by mockStateForPlayer
-      mockStateForPlayer.mockResolvedValue({ playerState: 'test' });
-      socketManager.broadcastGameStateUpdate(updateEvent, mockStateForPlayer);
-
-      // Should emit to each individual player socket
-      expect(mockTo).toHaveBeenCalledTimes(2);
-      expect(mockTo).toHaveBeenCalledWith('socket1');
-      expect(mockTo).toHaveBeenCalledWith('socket2');
-      expect(mockEmit).toHaveBeenCalledTimes(2);
-      expect(mockEmit).toHaveBeenCalledWith(
-        'game-state-update',
-        Promise.resolve({ playerState: 'test' })
-      );
-    });
+  afterAll(async () => {
+    await server.shutdown(false);
   });
 
-  describe('broadcastToGame', () => {
-    it('should broadcast custom event to all clients in game room', () => {
-      const mockEmit = jest.fn();
-      const mockTo = jest.fn().mockReturnValue({ emit: mockEmit });
-      mockSocketIO.to = mockTo as any;
-
-      socketManager.broadcastToGame('test-game', 'custom-event', { data: 'test' });
-
-      expect(mockTo).toHaveBeenCalledWith('test-game');
-      expect(mockEmit).toHaveBeenCalledWith('custom-event', { data: 'test' });
-    });
+  it('rejects an unknown token', async () => {
+    const { gameId } = await createGame();
+    const error = await rejected(open({ gameId, token: 'not-a-token' }));
+    expect(error.message).toBe('Invalid player or game');
   });
 
-  describe('sendToPlayer', () => {
-    it('should send message to specific player socket', () => {
-      const mockEmit = jest.fn();
-      const mockTo = jest.fn().mockReturnValue({ emit: mockEmit });
-      mockSocketIO.to = mockTo as any;
+  it('rejects a token from another game', async () => {
+    const { gameId } = await createGame();
+    const other = await createGame();
+    await rejected(open({ gameId, token: other.owner.token }));
+  });
 
-      // Access the internal state through the socket manager's functions
-      // Since we're using a functional approach, we need to mock the internal state
-      // This test will need to be updated to work with the new functional approach
-      socketManager.sendToPlayer('player1', 'private-event', { data: 'secret' });
+  it('rejects a playerId that does not match the token', async () => {
+    const { gameId, owner, joiner } = await createGame();
+    await rejected(open({ gameId, token: owner.token, playerId: joiner.playerId }));
+  });
 
-      expect(mockTo).toHaveBeenCalledWith('socket123');
-      expect(mockEmit).toHaveBeenCalledWith('private-event', { data: 'secret' });
-    });
+  it('sends every player their own view of each new state', async () => {
+    const { gameId, owner, joiner } = await createGame();
+    const ownerSocket = open({ gameId, ...owner });
+    const joinerSocket = open({ gameId, token: joiner.token });
+    await Promise.all([connected(ownerSocket), connected(joinerSocket)]);
 
-    it('should not send message if player socket not found', () => {
-      const mockEmit = jest.fn();
-      const mockTo = jest.fn().mockReturnValue({ emit: mockEmit });
-      mockSocketIO.to = mockTo as any;
+    const ownerUpdate = next<GameStateUpdateEvent<CounterPlayerState>>(
+      ownerSocket,
+      'game-state-update'
+    );
+    const joinerUpdate = next<GameStateUpdateEvent<CounterPlayerState>>(
+      joinerSocket,
+      'game-state-update'
+    );
+    await request(server.app)
+      .post(`/api/games/${gameId}/actions`)
+      .send({ action: { type: 'increment' }, token: owner.token })
+      .expect(201);
 
-      socketManager.sendToPlayer('unknown-player', 'private-event', { data: 'secret' });
+    expect(await ownerUpdate).toMatchObject({ gameId, sequence: 1, state: { count: 1, mine: 1 } });
+    expect(await joinerUpdate).toMatchObject({ gameId, sequence: 1, state: { count: 1, mine: 0 } });
+  });
 
-      expect(mockTo).not.toHaveBeenCalled();
-      expect(mockEmit).not.toHaveBeenCalled();
-    });
+  it('announces players joining and leaving', async () => {
+    const { gameId, owner, joiner } = await createGame();
+    const ownerSocket = open({ gameId, token: owner.token });
+    await connected(ownerSocket);
+
+    const joined = next(ownerSocket, 'player-joined');
+    const joinerSocket = open({ gameId, token: joiner.token });
+    expect(await joined).toEqual({ playerId: joiner.playerId, playerName: 'Joiner' });
+
+    const left = next(ownerSocket, 'player-left');
+    joinerSocket.disconnect();
+    expect(await left).toEqual({ playerId: joiner.playerId });
+  });
+
+  it('delivers direct messages only to the addressed player', async () => {
+    const { gameId, owner, joiner } = await createGame();
+    const ownerSocket = open({ gameId, token: owner.token });
+    const joinerSocket = open({ gameId, token: joiner.token });
+    await Promise.all([connected(ownerSocket), connected(joinerSocket)]);
+
+    let ownerReceived = false;
+    ownerSocket.on('private-event', () => (ownerReceived = true));
+    const received = next(joinerSocket, 'private-event');
+    server.socketIOManager!.sendToPlayer(joiner.playerId, 'private-event', { secret: 42 });
+
+    expect(await received).toEqual({ secret: 42 });
+    expect(ownerReceived).toBe(false);
   });
 });
