@@ -2,7 +2,15 @@
 
 Proposals for open design questions. A proposal explains a problem and the options for solving it, so the decision can be made with the trade-offs in view. Once decided, the outcome is recorded in [decisions](../decisions/README.md), and the proposal links to that record.
 
-There are no open proposals yet. The questions they're likely to start from are in [Known limitations](../limitations.md).
+| Proposal | About | Status |
+|---|---|---|
+| [Player information](player-information.md) | Letting game logic see who has registered | Open |
+| [Game options](game-options.md) | Creating a game with settings | Open |
+| [Game lifecycle](game-lifecycle.md) | Joining, leaving, disconnecting, and the end of a game | Open |
+| [Server-initiated actions](server-initiated-actions.md) | Timers, computer players, scheduled events | Open |
+| [Client package](client-package.md) | A library for game clients | Deferred |
+
+Further open questions are listed in [Known limitations](../limitations.md).
 
 ## Writing a proposal
 
@@ -11,7 +19,7 @@ Create `designs/<short-topic>.md`:
 ```markdown
 # <Topic>
 
-Status: Open | Decided in [NNNN](../decisions/NNNN-title.md) | Abandoned
+Status: Open | Deferred until … | Decided in [NNNN](../decisions/NNNN-title.md) | Abandoned
 
 ## Problem
 

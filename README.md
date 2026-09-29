@@ -19,6 +19,7 @@ await server.startServer();
 | [packages/remote-state](packages/remote-state) | The library |
 | [packages/remote-state-example-server](packages/remote-state-example-server) | Tic-tac-toe with a browser client, and a battleship game plugin |
 | [docs](docs/README.md) | Documentation |
+| [BACKLOG.md](BACKLOG.md) | Planned work that doesn't depend on open designs |
 
 ## Quick start
 
