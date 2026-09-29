@@ -46,9 +46,9 @@ sequenceDiagram
     B->>L: POST /api/tokens { code }
     L->>L: Checks and consumes the code
     alt No player with this identity in the game
-        L->>G: May this player join? (game rules)
-        G-->>L: Yes
-        L->>L: Creates the player
+        L->>G: onJoin(state, player)
+        G-->>L: New state and audience, or refusal
+        L->>L: Creates the player, records the new state
     end
     L->>L: Creates a token, stores its hash
     L-->>B: { gameId, playerId, token }
@@ -140,7 +140,6 @@ Decided: rate limiting is the host's job ([0016](../decisions/0016-authenticatio
 ## Open questions
 
 - **The library's operational endpoints,** such as `/admin/log-level` (question 6).
-- **Spectators:** admitted like anyone else; what they see and may do is the game's, through [Audiences](audiences.md).
 - **Limiting tokens:** hosts will be able to limit how many tokens a player has ([0019](../decisions/0019-several-tokens-per-player.md)); how is left for later.
 
-Decided since the proposal was written: joining is a state transition run by the game ([0026](../decisions/0026-join-hook-is-a-state-transition.md)); games are created with `createGame` ([0021](../decisions/0021-games-created-with-creategame.md)), and `admit` is only called in-process ([0023](../decisions/0023-no-server-to-server-admit.md)). Who may remove a player is the game's decision, discussed in [Game lifecycle](game-lifecycle.md).
+Decided since the proposal was written: joining is a state transition run by the game ([0026](../decisions/0026-join-hook-is-a-state-transition.md)); games are created with `createGame` ([0021](../decisions/0021-games-created-with-creategame.md)), and `admit` is only called in-process ([0023](../decisions/0023-no-server-to-server-admit.md)). Spectators are admitted like anyone else; what they see is set through [Audiences](audiences.md). Who may remove a player is the game's decision, discussed in [Game lifecycle](game-lifecycle.md).
