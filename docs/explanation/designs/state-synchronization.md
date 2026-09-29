@@ -23,6 +23,11 @@ The second of the project's [goals](../goals.md) is that clients keep game state
 
 No client receives the game's state. Each receives a *view*: the state as `filterStateForPlayer` produces it for that player. Some parts may be hidden from everyone, like the deck in a card game. Some are hidden differently per player: each sees their own hand, but not the others'. So in every option below, "the state" a client holds means its own view.
 
+Two terms are used throughout, and never mean the same thing:
+
+- **Full state:** the game's complete, unfiltered state. Only the server has it.
+- **Whole state:** everything one player may see, their whole view. A "whole-state" update always sends that player's view, never the full state.
+
 How much a game hides varies a lot:
 
 | Kind of game | Example | Views |
@@ -158,11 +163,44 @@ Tested on a chess move, rules written as changes to a draft (`draft.board[4][4] 
 **What Immer's patches require from the rest of the design:**
 
 - **The game's rules must change a draft.** Immer only records what's done to its draft. If `executeAction` returns a new object, as the plugin interface expects today, the only recorded patch is "replace the whole state", which gains nothing. So `executeAction` would have to be written as a reducer that changes a draft, in Redux Toolkit style. That's a breaking change to the [GamePlugin](../../reference/game-plugin.md) interface.
-- **Patches describe the full state, so they can leak hidden information.** In a card game, the patch for Alice drawing a card is `add ["hands", "alice", 2] = "Q♦"`. Sent to Bob, it reveals the card. Immer can't produce patches for a filtered view, because the view isn't what the rules change. For games with hidden information, the options are:
-  - **Full views only.** Patches are sent only for games without hidden information (see [Games without hidden information](#games-without-hidden-information)). Other games keep receiving full views, as in option 0 or 0a.
-  - **Patch filtering by the game.** Next to `filterStateForPlayer`, the game provides a filter for patches that drops or rewrites the ones a player mustn't see. Game authors then maintain two filters that must agree, and a mistake in the second one leaks information.
+- **Patches describe the full state, so they can leak hidden information.** In a card game, the patch for Alice drawing a card is `add ["hands", "alice", 2] = "Q♦"`. Sent to Bob, it reveals the card. See [Patches for games with hidden information](#patches-for-games-with-hidden-information).
 - **A patch is only valid on its exact base.** Each update must say which `sequence` it applies to. A client that isn't at that base needs a full view instead, which is option C.
 - **An empty patch list** means the state didn't change.
+
+### Patches for games with hidden information
+
+Immer records patches on the full state, because that's what the game's rules change. A player may only receive patches that describe their own view. Without diffing views, there are four ways to get there.
+
+**A. Whole states only.** Games with hidden information offer only whole-state updates, each player's whole view. Patches are offered only for games without hidden information.
+
+- Safe without any extra work by the game.
+- These games lose the benefits of patches: small messages, and knowing what changed.
+
+**B. A patch filter written by the game.** Next to `filterStateForPlayer`, the game provides a second function that drops or rewrites the patches a player mustn't see.
+
+- Works for any game.
+- The game maintains two filters that must agree. A mistake in the patch filter leaks information, and nothing checks the two against each other.
+
+**C. Visibility declared by the game.** Instead of filter code, the game declares which parts of its state each player may see, by path. For example, for a card game:
+
+```ts
+visibility: {
+  "deck": "nobody",
+  "hands/:player": "owner", // only the player whose ID is in the path
+  // everything else: everyone
+}
+```
+
+The library applies the same declaration to both whole states and patches. For a whole state, it removes the hidden paths. For each patch, it finds the rule for the patch's path, and drops the patch for players who can't see it. When a patch replaces a larger part that contains hidden paths, the library filters its value by the same rules. That's filtering, not diffing.
+
+- One declaration for both formats, so views and patches can't disagree.
+- Only whole paths can be shown or hidden. Anything derived, such as how many cards an opponent holds, must be kept by the rules as a visible value of its own. A transformation like the tic-tac-toe example's, which shows the opponent's ID as `"opponent"`, can't be expressed.
+- **Visibility can change without the hidden data changing.** In rock-paper-scissors, both choices become visible when the round ends, but the action that ends it doesn't touch the choices, so there's no patch to pass on. Rules would need to depend on the state (for example, "visible to everyone once there's a winner"), and the library would need to check, after each action, which paths have become visible or hidden for each player. It would then send the newly visible values as additions, and removals for newly hidden ones.
+
+**D. Patches recorded on each player's view.** The game writes its filter as an Immer producer: instead of returning a new view, it updates a draft of the player's previous view. Immer then records patches of the view directly.
+
+- Exact patches for each player, from any filter logic.
+- Every game with hidden information writes its filter in this style, and must change only what differs, or Immer records large replacements. It costs one producer run per player per update.
 
 ### 3. How does a client catch up after missing updates?
 
@@ -202,7 +240,7 @@ The questions are which of these exist, how the store's reducer applies them, an
 - When a client asks for a patch format the game doesn't offer, should the server reject the request, or fall back to whole states? [0008](../decisions/0008-format-query-parameter.md) currently has it rejected.
 - How does `GET …/updates` answer when `since` is older than the stored patches reach, or when the game offers no patches: an error that points to `GET …/state`, or the whole state in its place?
 - Is it acceptable to change `executeAction` into a reducer that changes an Immer draft?
-- For games with hidden information: full views only, or patch filtering by the game?
+- For games with hidden information: whole states only, a patch filter written by the game, visibility declared by the game, or patches recorded on each player's view? See [Patches for games with hidden information](#patches-for-games-with-hidden-information).
 - What do clients need for rendering: to know which data changed, or what happened in game terms? Is keeping unchanged parts as the same objects on the client enough, or must the server send the change?
 - Should the library treat games without hidden information differently, for example by broadcasting one message and allowing client-side prediction? If so, does a game declare it, or does the library infer it from the missing `filterStateForPlayer`?
 - How large are the states of the games this is meant for, and how often do they change? This decides whether sending changes is worth the complexity.
