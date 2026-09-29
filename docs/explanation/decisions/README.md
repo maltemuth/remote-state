@@ -25,6 +25,7 @@ Records aren't edited after the fact, except to update their status. A decision 
 | [0017](0017-hashed-tokens-in-header-and-handshake.md) | Tokens are stored hashed, and accepted only in the header and the handshake | Accepted |
 | [0018](0018-no-token-expiration-or-revocation.md) | Tokens don't expire and can't be revoked | Accepted for now |
 | [0019](0019-several-tokens-per-player.md) | A player can have several tokens | Accepted |
+| [0020](0020-hosts-admit-players-through-codes.md) | Hosts admit players through single-use codes | Accepted |
 
 ## Writing a record
 
