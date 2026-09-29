@@ -1,6 +1,6 @@
 # Audiences
 
-Status: Open; mostly decided in [0024](../decisions/0024-views-per-audience.md)
+Status: Open; mostly decided in [0024](../decisions/0024-views-per-audience.md) and [0025](../decisions/0025-default-audiences.md)
 
 ## Problem
 
@@ -42,13 +42,7 @@ Decided in [0024](../decisions/0024-views-per-audience.md):
 3. **Changing audience:** the player starts from a whole state.
 4. **Storage:** diffs are stored per audience, and membership is recorded after each action.
 
-### 5. Default audiences
-
-What does a game that describes no audiences get?
-
-- **One audience per player,** today's behavior. Safe for a game with a view filter that forgets to declare audiences, but repeats the work for games without one.
-- **A single `everyone`.** Cheapest, and exact for a game without a view filter, where every view is the whole state anyway.
-- **Depending on the game:** `everyone` when there's no view filter, one per player when there is.
+5. **Default audiences:** a single audience for everyone when the game has no view filter, one per player when it has one ([0025](../decisions/0025-default-audiences.md)).
 
 ## Open questions
 

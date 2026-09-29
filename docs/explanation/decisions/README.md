@@ -30,6 +30,7 @@ Records aren't edited after the fact, except to update their status. A decision 
 | [0022](0022-roles-belong-to-game-state.md) | Roles belong to the game's state and rules | Accepted |
 | [0023](0023-no-server-to-server-admit.md) | `admit` is only called in-process | Accepted |
 | [0024](0024-views-per-audience.md) | Views are computed per audience | Accepted |
+| [0025](0025-default-audiences.md) | Default audiences depend on whether the game filters views | Accepted |
 
 ## Writing a record
 

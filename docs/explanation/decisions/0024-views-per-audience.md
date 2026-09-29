@@ -1,6 +1,6 @@
 # 0024. Views are computed per audience
 
-Status: Accepted
+Status: Accepted; default audiences settled by [0025](0025-default-audiences.md)
 Date: 2026-09-29
 
 ## Context
