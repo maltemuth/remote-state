@@ -1,6 +1,6 @@
 # 0008. The update format is chosen with a `format` query parameter
 
-Status: Accepted
+Status: Accepted for the socket; superseded for GET by [0009](0009-separate-state-and-update-endpoints.md)
 Date: 2026-09-29
 
 ## Context

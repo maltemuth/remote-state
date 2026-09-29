@@ -91,7 +91,7 @@ Like option 0, but each kind of traffic has exactly one path:
 
 - **Actions go over HTTP.** The response only says whether the action was accepted: an acknowledgement with the new `sequence`, or the rejection reason. It carries no state.
 - **New views go over the socket, to everyone.** Each player receives their own view of the new state. The acting player receives the result of their own action the same way as every other player.
-- **The current state is fetched over HTTP,** with `GET …/state/current`, when a client starts or reconnects.
+- **The current state is fetched over HTTP,** with `GET …/state` ([0009](../decisions/0009-separate-state-and-update-endpoints.md)), when a client starts or reconnects.
 
 In terms of the questions below, it's option 0 with 6B instead of 6A.
 
@@ -123,7 +123,7 @@ A cursor identifies how far a client is in a game's history.
 
 This question stays semi-open: what updates need to carry will become clearer as more example games are built. The current direction is data changes, the part of the state that changed, as JSON patches recorded by Immer. See [JSON diffs](#json-diffs) below.
 
-The format is partly decided ([0007](../decisions/0007-client-chosen-update-format.md)): each client chooses whole state, JSON Patch, or Immer patches, both for its socket subscription and for GET requests, with a `format` query parameter ([0008](../decisions/0008-format-query-parameter.md)).
+The format is partly decided ([0007](../decisions/0007-client-chosen-update-format.md)): each client chooses whole state, JSON Patch, or Immer patches. On the socket, it says so with a `format` handshake parameter ([0008](../decisions/0008-format-query-parameter.md)). Over GET, it uses one endpoint for the whole state and another for updates since a given `sequence`, which takes the patch format as a parameter ([0009](../decisions/0009-separate-state-and-update-endpoints.md)).
 
 Sending only what changed matters for two separate reasons:
 
@@ -167,7 +167,7 @@ Tested on a chess move, rules written as changes to a draft (`draft.board[4][4] 
 ### 3. How does a client catch up after missing updates?
 
 - **A. Fetch the latest state,** as today. Simple, but intermediate states are lost; a client can't animate the moves it missed.
-- **B. Fetch everything since a cursor.** `GET …/state/:cursor` returns every update after the cursor, in the client's chosen format ([0007](../decisions/0007-client-chosen-update-format.md)), or a single full view if the gap is too large. For patch formats, this needs the recorded patches stored with each state.
+- **B. Fetch everything since a cursor.** `GET …/updates?since=<sequence>&format=…` returns every update after that sequence ([0009](../decisions/0009-separate-state-and-update-endpoints.md)). A client whose gap is too large fetches `GET …/state` instead. This needs the recorded patches stored with each state.
 - **C. Send the cursor when connecting.** The client includes its cursor in the socket handshake, and the server sends the missed updates before live ones. This keeps catch-up and live updates in one ordered stream. Clients still send nothing over the socket after connecting.
 
 ### 4. What reaches the client's store?
@@ -195,6 +195,7 @@ The questions are which of these exist, how the store's reducer applies them, an
 ## Open questions
 
 - When a client asks for a patch format the game doesn't offer, should the server reject the request, or fall back to whole states? [0008](../decisions/0008-format-query-parameter.md) currently has it rejected.
+- How does `GET …/updates` answer when `since` is older than the stored patches reach, or when the game offers no patches: an error that points to `GET …/state`, or the whole state in its place?
 - Is it acceptable to change `executeAction` into a reducer that changes an Immer draft?
 - For games with hidden information: full views only, or patch filtering by the game?
 - What do clients need for rendering: to know which data changed, or what happened in game terms? Is keeping unchanged parts as the same objects on the client enough, or must the server send the change?

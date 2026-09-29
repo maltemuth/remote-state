@@ -1,6 +1,6 @@
 # 0007. Clients choose the format of state updates
 
-Status: Accepted
+Status: Accepted; how GET offers the choice is refined by [0009](0009-separate-state-and-update-endpoints.md)
 Date: 2026-09-29
 
 ## Context

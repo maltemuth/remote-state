@@ -12,8 +12,9 @@ Records aren't edited after the fact, except to update their status. A decision 
 | [0004](0004-esm-with-jest.md) | ESM throughout, tested with Jest | Accepted |
 | [0005](0005-mikro-orm.md) | MikroORM with standard decorators for the data layer | Accepted |
 | [0006](0006-single-process.md) | Run as a single process for now | Accepted |
-| [0007](0007-client-chosen-update-format.md) | Clients choose the format of state updates | Accepted |
-| [0008](0008-format-query-parameter.md) | The update format is chosen with a `format` query parameter | Accepted |
+| [0007](0007-client-chosen-update-format.md) | Clients choose the format of state updates | Accepted, refined by 0009 |
+| [0008](0008-format-query-parameter.md) | The update format is chosen with a `format` query parameter | Accepted for the socket, superseded for GET by 0009 |
+| [0009](0009-separate-state-and-update-endpoints.md) | Separate GET endpoints for whole state and for updates | Accepted |
 
 ## Writing a record
 
