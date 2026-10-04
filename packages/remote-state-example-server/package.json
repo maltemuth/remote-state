@@ -22,7 +22,8 @@
     "format": "prettier --write src",
     "format:check": "prettier --check src",
     "clean": "rm -rf dist",
-    "perf": "npm run build --prefix ../remote-state && npm run build && node dist/perf/run.js"
+    "perf": "npm run build --prefix ../remote-state && npm run build && node dist/perf/run.js",
+    "perf:profile": "npm run build && node dist/perf/profile.js"
   },
   "dependencies": {
     "@malte.muth/remote-state": "file:../remote-state",

@@ -1,6 +1,7 @@
 /**
  * Starts the example server in its own process for a performance run, with its
- * databases in a fresh temporary directory, and waits until it answers.
+ * databases in a fresh temporary directory, and waits until it answers. Optionally
+ * the process writes a CPU profile when it stops.
  */
 
 import { spawn } from "child_process";
@@ -31,9 +32,15 @@ const waitUntilUp = async (url: string, attempts = 100) => {
   throw new Error(`The server at ${url} didn't start`);
 };
 
-export const startServer = async (port: number): Promise<RunningServer> => {
+export const startServer = async (
+  port: number,
+  profileDirectory?: string,
+): Promise<RunningServer> => {
   const directory = mkdtempSync(path.join(tmpdir(), "remote-state-perf-"));
-  const child = spawn(process.execPath, [serverScript], {
+  const profiling = profileDirectory
+    ? ["--cpu-prof", "--cpu-prof-dir", path.resolve(profileDirectory)]
+    : [];
+  const child = spawn(process.execPath, [...profiling, serverScript], {
     cwd: directory,
     env: { ...process.env, PORT: String(port) },
     stdio: "ignore",

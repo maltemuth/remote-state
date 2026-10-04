@@ -4,6 +4,10 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ## Unreleased
 
+### Added
+
+- Load test: `--runs` repeats a run against a freshly started server each time, and `--profile` has the server write a CPU profile per run. `npm run perf:profile` summarizes a profile by package and function.
+
 ## 0.6.0 - 2026-10-04
 
 Server-initiated actions (decisions 0039–0042).

@@ -31,11 +31,26 @@ Each game has two players, who place their fleets and fire until one fleet is su
 | `--games`   | `100`   | Games played at the same time                                                                                                |
 | `--pause`   | `0`     | Average milliseconds a player waits before each action, randomized by ±50%. `0` sends actions as fast as the server answers. |
 | `--format`  | `state` | What the socket sends: `state` or `immer`                                                                                    |
+| `--runs`    | `1`     | Repeat the run this many times, each against a freshly started server, and report each run                                   |
+| `--profile` |         | Directory where each started server writes a CPU profile when it stops; not with `--url`                                     |
 | `--url`     |         | Test a server that's already running, instead of starting one                                                                |
 | `--port`    | `3999`  | Port for the server it starts                                                                                                |
-| `--max-p95` |         | Fail with exit code 1 when the end-to-end p95, in milliseconds, exceeds this                                                 |
+| `--max-p95` |         | Fail with exit code 1 when any run's end-to-end p95, in milliseconds, exceeds this                                           |
 
 The run also fails when any action fails.
+
+Environment variables are passed on to the server it starts, so a run can switch settings of the server.
+
+## Profile the server
+
+```sh
+npm run perf -- --games 100 --profile profiles
+npm run perf:profile -- profiles/CPU.20261004.174039.47726.0.001.cpuprofile
+```
+
+The first command writes a `.cpuprofile` file per run into `profiles`. The second prints where the server's sampled time went: by package, by function, and by function including everything it called. `--top` sets how many lines each list shows, 25 by default. Chrome DevTools and VS Code also open `.cpuprofile` files, as flame graphs.
+
+Profiling slows the server down, so measure throughput and latency without `--profile`.
 
 ## Read the results
 

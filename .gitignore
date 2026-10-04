@@ -109,3 +109,5 @@ packages/*/demo/
 
 .roo/*
 .roomodes
+# CPU profiles from the load test
+*.cpuprofile
