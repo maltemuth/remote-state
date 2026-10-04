@@ -4,6 +4,13 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ## Unreleased
 
+### Fixed
+
+- A transition with a change passed as `undefined`, such as `transition(state, { schedule: undefined })`, failed the action with status 500; missing and undefined changes now both default to none.
+- Client: a whole view that arrived while a catch-up failed was dropped, leaving the view stale until the next change.
+- Client: `waitFor` never settled after `close()` or a refused connection; it now rejects. After `close()`, subscribers aren't called anymore.
+- Example: battleship accepted ship types inherited from `Object.prototype`, such as `toString`, which made a fleet unsinkable, and failed with status 500 on fractional positions and on actions that aren't objects; all are rejected now. The tic-tac-toe page shows its connection state from the start.
+
 ## 0.8.0 - 2026-10-04
 
 Databases from earlier versions have to be deleted (decision 0048).

@@ -31,7 +31,10 @@ export interface RemoteStateClient<View, Action> {
   getSnapshot: () => Snapshot<View> | null;
   /** Called with every new view; returns a function that unsubscribes */
   subscribe: (listener: (snapshot: Snapshot<View>) => void) => () => void;
-  /** Resolves once the view has reached this sequence, such as an action's */
+  /**
+   * Resolves once the view has reached this sequence, such as an action's. Rejects
+   * once no more views can come: after `close()` or a refused connection.
+   */
   waitFor: (sequence: number) => Promise<Snapshot<View>>;
   /**
    * Send an action. Resolves with the sequence of the state it produced, which
@@ -40,7 +43,7 @@ export interface RemoteStateClient<View, Action> {
   send: (action: Action) => Promise<{ sequence: number }>;
   getConnection: () => ConnectionState;
   onConnection: (listener: (state: ConnectionState) => void) => () => void;
-  /** Disconnect for good */
+  /** Disconnect for good; subscribers aren't called anymore */
   close: () => void;
 }
 
@@ -86,6 +89,7 @@ export const createClient = <View = unknown, Action = unknown>(
     onUpdate: store.receive,
     onState: state => {
       connection = state;
+      if (state.status === 'refused') store.close(new Error(`Connection refused: ${state.error}`));
       connectionListeners.forEach(listener => listener(state));
     },
   });
@@ -114,6 +118,9 @@ export const createClient = <View = unknown, Action = unknown>(
       connectionListeners.add(listener);
       return () => void connectionListeners.delete(listener);
     },
-    close: socket.close,
+    close: () => {
+      socket.close();
+      store.close(new Error('The client was closed'));
+    },
   };
 };

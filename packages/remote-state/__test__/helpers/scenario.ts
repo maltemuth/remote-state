@@ -16,6 +16,7 @@ import {
   silentLogger,
   type StateEvent,
 } from '../../src/index.js';
+import { waitUntil } from './waitUntil.js';
 import { initialModelState, type ModelAction, modelGame, type ModelState } from './modelGame.js';
 
 export type ModelServer = RemoteStateServer<ModelState>;
@@ -139,11 +140,6 @@ export interface Played {
 }
 
 const lastSequence = (player: PlayedPlayer) => player.events.at(-1)?.payload.sequence ?? -1;
-
-const waitUntil = async (condition: () => boolean, what: string) => {
-  for (let i = 0; i < 500 && !condition(); i++) await new Promise(r => setTimeout(r, 5));
-  if (!condition()) throw new Error(`Timed out waiting for ${what}`);
-};
 
 export const playScenario = async (server: ModelServer, scenario: Scenario): Promise<Played> => {
   const url = urlOf(server);

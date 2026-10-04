@@ -25,6 +25,8 @@ export interface ViewStore<View> {
   /** Resolves once the view has reached this sequence */
   waitFor: (sequence: number) => Promise<Snapshot<View>>;
   receive: (update: Update<View>) => void;
+  /** No more updates will come: reject waiters, and stop telling subscribers */
+  close: (reason: Error) => void;
 }
 
 export const createViewStore = <View>(
@@ -33,11 +35,17 @@ export const createViewStore = <View>(
 ): ViewStore<View> => {
   let current: Snapshot<View> | null = null;
   const listeners = new Set<(snapshot: Snapshot<View>) => void>();
-  const waiting = new Set<{ sequence: number; resolve: (snapshot: Snapshot<View>) => void }>();
+  const waiting = new Set<{
+    sequence: number;
+    resolve: (snapshot: Snapshot<View>) => void;
+    reject: (reason: Error) => void;
+  }>();
+  let closedBy: Error | null = null;
   let catchingUp = false;
   const arrivedMeanwhile: Update<View>[] = [];
 
   const set = (sequence: number, view: View) => {
+    if (closedBy) return;
     // Frozen, so no one can change a view that later patches apply to
     current = { sequence, view: freeze(view, true) };
     const snapshot = current;
@@ -67,14 +75,16 @@ export const createViewStore = <View>(
       } finally {
         catchingUp = false;
         const queued = arrivedMeanwhile.splice(0);
-        // Without progress, replaying would only start the same catch-up again; the
-        // next update, or the whole view on the next reconnect, tries again
-        if (current?.sequence !== since) queued.forEach(receive);
+        // Without progress, replaying patches would only start the same catch-up
+        // again; whole views still apply, and the next update tries again
+        const progressed = current?.sequence !== since;
+        queued.filter(update => progressed || 'state' in update).forEach(receive);
       }
     })();
   };
 
   const receive = (update: Update<View>) => {
+    if (closedBy) return;
     if (catchingUp) {
       arrivedMeanwhile.push(update);
       return;
@@ -105,10 +115,17 @@ export const createViewStore = <View>(
       listeners.add(listener);
       return () => void listeners.delete(listener);
     },
-    waitFor: sequence =>
-      current && current.sequence >= sequence
-        ? Promise.resolve(current)
-        : new Promise(resolve => waiting.add({ sequence, resolve })),
+    waitFor: sequence => {
+      if (current && current.sequence >= sequence) return Promise.resolve(current);
+      if (closedBy) return Promise.reject(closedBy);
+      return new Promise((resolve, reject) => waiting.add({ sequence, resolve, reject }));
+    },
     receive,
+    close: reason => {
+      closedBy ??= reason;
+      listeners.clear();
+      waiting.forEach(waiter => waiter.reject(reason));
+      waiting.clear();
+    },
   };
 };

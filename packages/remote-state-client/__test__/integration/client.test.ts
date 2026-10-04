@@ -108,5 +108,6 @@ describe('client', () => {
     );
     expect(refused).toEqual({ status: 'refused', error: 'Invalid token or game' });
     expect(client.getSnapshot()).toBeNull();
+    await expect(client.waitFor(1)).rejects.toThrow('Connection refused: Invalid token or game');
   });
 });

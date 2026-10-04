@@ -90,3 +90,30 @@ describe('view store', () => {
     expect((await store.waitFor(1)).sequence).toBe(2);
   });
 });
+
+describe('view store, catching up and closing', () => {
+  it('still applies a whole view that arrived during a failed catch-up', async () => {
+    let fail: (error: Error) => void = () => undefined;
+    const { store } = storeWith({
+      updates: () => new Promise((_resolve, reject) => (fail = reject)),
+    });
+    store.receive({ sequence: 1, state: view('a') });
+    store.receive({ sequence: 3, patches: add(1, 'c') });
+    store.receive({ sequence: 4, state: view('reconnected') });
+    fail(new Error('offline'));
+    await settle();
+    expect(store.getSnapshot()).toEqual({ sequence: 4, view: view('reconnected') });
+  });
+
+  it('rejects waiters and stops telling subscribers once closed', async () => {
+    const { store } = storeWith();
+    const seen: number[] = [];
+    store.subscribe(({ sequence }) => seen.push(sequence));
+    const waiting = store.waitFor(2);
+    store.close(new Error('closed'));
+    store.receive({ sequence: 2, state: view('late') });
+    await expect(waiting).rejects.toThrow('closed');
+    await expect(store.waitFor(3)).rejects.toThrow('closed');
+    expect(seen).toEqual([]);
+  });
+});

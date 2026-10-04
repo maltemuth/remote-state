@@ -51,6 +51,11 @@ export const unwrapTransition = <StateType>(
     : { state: result as StateType, changes: {} as TransitionChanges };
   return {
     state,
-    changes: { audiences: {}, schedule: [], cancel: [], ...changes },
+    // `??`, not spread defaults: a game may pass a field as undefined
+    changes: {
+      audiences: changes.audiences ?? {},
+      schedule: changes.schedule ?? [],
+      cancel: changes.cancel ?? [],
+    },
   };
 };

@@ -4,7 +4,7 @@
  */
 
 import { describe, expect, it } from "@jest/globals";
-import { SYSTEM } from "@malte.muth/remote-state";
+import { SYSTEM, transition } from "@malte.muth/remote-state";
 import {
   applyAction,
   checkAction,
@@ -14,6 +14,7 @@ import {
   placeMark,
   type Board,
   type Position,
+  withTurnTimer,
 } from "../../../src/games/tic-tac-toe/index.js";
 
 const boardWith = (cells: Position[]): Board =>
@@ -114,5 +115,23 @@ describe("tic-tac-toe rules", () => {
       winner: "X",
       timeout: true,
     });
+  });
+
+  it("restarts the turn timer on every move, and cancels it at the end", () => {
+    const moved = applyAction(
+      { ...seated(), turnSeconds: 0.1 },
+      { type: "place", row: 0, col: 0 },
+    );
+    expect(withTurnTimer(moved)).toEqual(
+      transition(moved, {
+        schedule: [
+          { name: "turn", in: 100, action: { type: "timeout", moves: 1 } },
+        ],
+      }),
+    );
+    const over = applyAction(moved, { type: "timeout", moves: 1 });
+    expect(withTurnTimer(over)).toEqual(transition(over, { cancel: ["turn"] }));
+    const unlimited = seated();
+    expect(withTurnTimer(unlimited)).toBe(unlimited);
   });
 });

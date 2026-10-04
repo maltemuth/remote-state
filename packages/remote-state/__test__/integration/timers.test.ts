@@ -17,9 +17,10 @@ import {
   UnknownGameError,
 } from '../../src/index.js';
 import { entities, GameState } from '../../src/database/entities/index.js';
+import { waitUntil } from '../helpers/waitUntil.js';
 import { type TimerAction, timerGame, type TimerState } from '../helpers/timerGame.js';
 
-const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+import { setTimeout as sleep } from 'timers/promises';
 
 describe('timers', () => {
   const directory = mkdtempSync(joinPath(tmpdir(), 'remote-state-timers-'));
@@ -57,26 +58,27 @@ describe('timers', () => {
 
   it('runs a due timer as the system', async () => {
     const { send, fired } = await newPlayer();
-    await send({ type: 'arm', name: 'turn', ms: 30, label: 'timeout' }).expect(201);
+    await send({ type: 'arm', name: 'turn', ms: 300, label: 'timeout' }).expect(201);
     expect(await fired()).toEqual([]);
-    await sleep(100);
+    await waitUntil(async () => (await fired()).length > 0, 'the timer');
     expect(await fired()).toEqual(['timeout']);
   });
 
   it('replaces a timer scheduled again under the same name', async () => {
     const { send, fired } = await newPlayer();
-    await send({ type: 'arm', name: 'turn', ms: 40, label: 'first' }).expect(201);
-    await send({ type: 'arm', name: 'turn', ms: 40, label: 'second' }).expect(201);
-    await send({ type: 'arm', name: 'clock', ms: 40, label: 'clock' }).expect(201);
-    await sleep(150);
+    await send({ type: 'arm', name: 'turn', ms: 300, label: 'first' }).expect(201);
+    await send({ type: 'arm', name: 'turn', ms: 300, label: 'second' }).expect(201);
+    await send({ type: 'arm', name: 'clock', ms: 300, label: 'clock' }).expect(201);
+    await waitUntil(async () => (await fired()).length === 2, 'two timers');
     expect((await fired()).sort()).toEqual(['clock', 'second']);
   });
 
   it('drops a cancelled timer', async () => {
     const { send, fired } = await newPlayer();
-    await send({ type: 'arm', name: 'turn', ms: 40, label: 'never' }).expect(201);
+    await send({ type: 'arm', name: 'turn', ms: 200, label: 'never' }).expect(201);
     await send({ type: 'cancel', name: 'turn' }).expect(201);
-    await sleep(120);
+    // Nothing to wait for: give the timer time to fire if it weren't cancelled
+    await sleep(300);
     expect(await fired()).toEqual([]);
   });
 
@@ -100,9 +102,9 @@ describe('timers', () => {
   it('logs and records who acted, from which audience', async () => {
     const { gameId, playerId, send } = await newPlayer();
     await send({ type: 'arm', name: 'turn', ms: 1, label: 'late' }).expect(201);
-    await sleep(60);
+    const fire = `fire by system in game ${gameId}, now at 3`;
+    await waitUntil(() => logged.includes(fire), 'the timer');
     expect(logged).toContain(`arm by everyone:${playerId} in game ${gameId}, now at 2`);
-    expect(logged).toContain(`fire by system in game ${gameId}, now at 3`);
 
     const orm = await MikroORM.init({ dbName: database, entities, debug: false });
     try {

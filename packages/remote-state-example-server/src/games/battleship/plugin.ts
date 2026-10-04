@@ -31,7 +31,7 @@ export const battleshipPlugin: GamePlugin<BattleshipState, BattleshipAction> = {
     return (await executeAction(state, join, playerId)).state;
   },
   validateAction: async (state, action, playerId) => {
-    if (lifecycleActions.includes(action.type))
+    if (lifecycleActions.includes(action?.type))
       return `${action.type} isn't an action`;
     const result = await validateAction(state, action, playerId);
     return result.valid ? true : result.message;

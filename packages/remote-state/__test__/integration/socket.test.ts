@@ -16,6 +16,7 @@ import {
   serverUrl,
   startCounterServer,
 } from '../helpers/testServer.js';
+import { waitUntil } from '../helpers/waitUntil.js';
 
 enablePatches();
 
@@ -84,7 +85,7 @@ describe('socket', () => {
       sendAction(server, gameId, alice.token, { type: 'increment' }),
     ]);
     await sendAction(server, gameId, alice.token, { type: 'spectate' }).expect(201);
-    await new Promise(resolve => setTimeout(resolve, 100));
+    await waitUntil(() => received.length === 4, 'four updates');
 
     expect(received.map(event => event.sequence)).toEqual([3, 4, 5, 6]);
     for (const event of received) view = applyPatches(view as object, event.patches);

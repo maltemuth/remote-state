@@ -62,16 +62,16 @@ Outside a browser, `baseUrl` must be an absolute URL.
 
 ## RemoteStateClient
 
-| Member                   | Description                                                                                    |
-| ------------------------ | ---------------------------------------------------------------------------------------------- |
-| `session`                | The session it was created with                                                                |
-| `getSnapshot()`          | The latest `{ sequence, view }`, or `null` before the first view arrived                       |
-| `subscribe(listener)`    | Calls `listener` with every new snapshot. Returns a function that unsubscribes                 |
-| `waitFor(sequence)`      | Resolves with the snapshot once the view has reached `sequence`                                |
-| `send(action)`           | Sends an action. Resolves with `{ sequence }` of the state it produced                         |
-| `getConnection()`        | The connection's state; see below                                                              |
-| `onConnection(listener)` | Calls `listener` whenever the connection's state changes. Returns a function that unsubscribes |
-| `close()`                | Disconnects for good                                                                           |
+| Member                   | Description                                                                                                                                    |
+| ------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------- |
+| `session`                | The session it was created with                                                                                                                |
+| `getSnapshot()`          | The latest `{ sequence, view }`, or `null` before the first view arrived                                                                       |
+| `subscribe(listener)`    | Calls `listener` with every new snapshot. Returns a function that unsubscribes                                                                 |
+| `waitFor(sequence)`      | Resolves with the snapshot once the view has reached `sequence`. Rejects after `close()` or a refused connection, since no more views can come |
+| `send(action)`           | Sends an action. Resolves with `{ sequence }` of the state it produced                                                                         |
+| `getConnection()`        | The connection's state; see below                                                                                                              |
+| `onConnection(listener)` | Calls `listener` whenever the connection's state changes. Returns a function that unsubscribes                                                 |
+| `close()`                | Disconnects for good. Subscribers aren't called anymore                                                                                        |
 
 `getSnapshot` and `subscribe` fit React's `useSyncExternalStore`, and stores that can subscribe to outside sources.
 
@@ -87,7 +87,7 @@ interface Snapshot<View> {
 - **Views are frozen.** Copy a view before changing it.
 - **Unchanged parts keep their identity** from one snapshot to the next, so stores and components that compare by identity see only what changed ([0044](../explanation/decisions/0044-client-hands-out-whole-views.md)).
 - **Sequences only increase.** Updates at or before the current sequence are ignored.
-- **After a gap,** or patches that don't apply, the client catches up with [`GET …/updates`](http-api.md#get-apigamesgameidupdates), or with the whole state when the server can't build a patch. Updates that arrive meanwhile are applied afterwards. If catching up fails, the error goes to `onError`, and the next update or reconnect tries again.
+- **After a gap,** or patches that don't apply, the client catches up with [`GET …/updates`](http-api.md#get-apigamesgameidupdates), or with the whole state when the server can't build a patch. Updates that arrive meanwhile are applied afterwards. If catching up fails, the error goes to `onError`. Whole views that arrived meanwhile still apply, and the next update tries again.
 
 ### send
 

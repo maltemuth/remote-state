@@ -111,6 +111,25 @@ describe("Battleship E2E", () => {
     );
   });
 
+  it("rejects inherited ship types, fractional cells and non-actions", async () => {
+    const { gameId, p1 } = await seatedGame();
+    const send = (action: unknown) =>
+      client.act(gameId, p1.token, action as object).expect(400);
+    await send({
+      type: "place_ship",
+      shipType: "toString",
+      position: [0, 0],
+      orientation: "horizontal",
+    });
+    await send({
+      type: "place_ship",
+      shipType: "destroyer",
+      position: [0.5, 0],
+      orientation: "horizontal",
+    });
+    for (const action of [null, 42, "fire_shot", []]) await send(action);
+  });
+
   it("hides the opponent's ships but shows shots", async () => {
     const { gameId, p1, p2 } = await startedGame();
     await fire(gameId, p1.token, 0, 0).expect(201);

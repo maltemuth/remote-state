@@ -147,24 +147,18 @@ describe("Tic-tac-toe E2E", () => {
   });
 
   it("ends the game when the player to move runs out of time", async () => {
-    const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
     const gameId = await example.ticTacToe.createGame(
       newTicTacToeGame({ turnSeconds: 0.1 }),
     );
     const x = await client.joinAs(gameId, "Xena");
-    const o = await client.joinAs(gameId, "Otto");
+    await client.joinAs(gameId, "Otto");
     const outcome = async () =>
       (await client.stateFor<TicTacToeState>(gameId, x.token)).outcome;
 
-    // Each move restarts the 100 ms turn
-    await sleep(60);
-    await place(gameId, x.token, 0, 0).expect(201);
-    await sleep(60);
-    await place(gameId, o.token, 1, 1).expect(201);
-    await sleep(60);
-    expect(await outcome()).toBeNull();
-
-    await sleep(120);
+    // X never moves; restarting the timer on each move is covered by the rules tests
+    for (let i = 0; i < 100 && !(await outcome()); i++) {
+      await new Promise((resolve) => setTimeout(resolve, 20));
+    }
     expect(await outcome()).toEqual({ winner: "O", timeout: true });
   });
 });

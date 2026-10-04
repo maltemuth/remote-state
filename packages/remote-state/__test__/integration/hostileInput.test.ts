@@ -19,6 +19,7 @@ import {
   type PatchesEvent,
   type StateEvent,
 } from '../../src/index.js';
+import { waitUntil } from '../helpers/waitUntil.js';
 
 enablePatches();
 
@@ -112,9 +113,7 @@ describe('hostile input', () => {
       const reserved = /__proto__|constructor/.test(JSON.stringify(bag));
       expect(warnings.length - before).toBe(reserved ? 1 : 0);
 
-      for (let i = 0; i < 100 && sequence < answer.sequence; i++) {
-        await new Promise(resolve => setTimeout(resolve, 5));
-      }
+      await waitUntil(() => sequence >= answer.sequence, 'the update');
       expect(view).toEqual(current.state);
     }
     expect(warnings[0]).toMatch(

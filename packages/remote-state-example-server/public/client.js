@@ -80,6 +80,7 @@ class TicTacToeClient {
     $("share-link").href = $("share-link").textContent = link;
 
     this.client = createClient({ session: this.session, baseUrl });
+    this.showConnection(this.client.getConnection());
     this.client.onConnection((connection) => this.showConnection(connection));
     this.client.subscribe(({ view }) => this.render(view));
   }

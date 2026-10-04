@@ -14,15 +14,11 @@ import request from 'supertest';
 import { type StateEvent, type RemoteStateServer } from '../../src/index.js';
 import { initialCounterState } from '../helpers/counterGame.js';
 import { startCounterServer } from '../helpers/testServer.js';
+import { waitUntil } from '../helpers/waitUntil.js';
 import { timerGame, type TimerState } from '../helpers/timerGame.js';
 import { createRemoteStateServer, silentLogger } from '../../src/index.js';
 
 enablePatches();
-
-const waitFor = async (condition: () => boolean, what: string) => {
-  for (let i = 0; i < 400 && !condition(); i++) await new Promise(r => setTimeout(r, 10));
-  if (!condition()) throw new Error(`Timed out waiting for ${what}`);
-};
 
 jest.setTimeout(20_000);
 
@@ -70,7 +66,7 @@ describe('restart', () => {
     sockets.push(socket);
     const views: StateEvent[] = [];
     socket.on('state', (event: StateEvent) => views.push(event));
-    await waitFor(() => views.length === 1, 'the view on connect');
+    await waitUntil(() => views.length === 1, 'the view on connect');
 
     await server.close();
     server = await startCounterServer(undefined, { database, port });
@@ -97,7 +93,7 @@ describe('restart', () => {
       expect(applyPatches(before.state, since.body.patches)).toEqual(now.state);
 
       // The socket reconnected by itself and got the latest view
-      await waitFor(() => views.at(-1)?.sequence === 4, 'the socket to reconnect');
+      await waitUntil(() => views.at(-1)?.sequence === 4, 'the socket to reconnect');
       expect(views.at(-1)!.state).toEqual(now.state);
     } finally {
       await server.close();
@@ -121,19 +117,23 @@ describe('restart', () => {
         .post(`/api/games/${gameId}/actions`)
         .set('Authorization', `Bearer ${token}`)
         .send({ action });
-    await send({ type: 'arm', name: 'turn', ms: 100, label: 'lost' }).expect(201);
+    await send({ type: 'arm', name: 'turn', ms: 300, label: 'lost' }).expect(201);
 
     await server.close();
     server = await createRemoteStateServer(timerGame, { port, logger: silentLogger, database });
     await server.startServer();
     try {
-      await new Promise(resolve => setTimeout(resolve, 200));
+      // Nothing to wait for: give the lost timer time to fire if it survived
+      await new Promise(resolve => setTimeout(resolve, 400));
       await send({ type: 'arm', name: 'turn', ms: 10, label: 'after' }).expect(201);
-      await new Promise(resolve => setTimeout(resolve, 100));
-      const { body } = await request(server.app)
-        .get(`/api/games/${gameId}/state`)
-        .set('Authorization', `Bearer ${token}`);
-      expect(body.state.fired).toEqual(['after']);
+      const fired = async () =>
+        (
+          await request(server.app)
+            .get(`/api/games/${gameId}/state`)
+            .set('Authorization', `Bearer ${token}`)
+        ).body.state.fired as string[];
+      await waitUntil(async () => (await fired()).length > 0, 'the new timer');
+      expect(await fired()).toEqual(['after']);
     } finally {
       await server.close();
     }

@@ -21,9 +21,13 @@ import {
 /**
  * Check if a position is valid on the board
  */
-export const isValidPosition = (row: number, col: number): boolean => {
-  return row >= 0 && row < 5 && col >= 0 && col < 5;
-};
+export const isValidPosition = (row: number, col: number): boolean =>
+  Number.isInteger(row) &&
+  Number.isInteger(col) &&
+  row >= 0 &&
+  row < 5 &&
+  col >= 0 &&
+  col < 5;
 
 /**
  * Check if a position is empty
@@ -221,7 +225,8 @@ export const validateAction = async (
 ): Promise<GameValidationResult> => {
   const seat = seatOf(state, playerId);
 
-  switch (action.type) {
+  // Actions come from clients unchecked, so they may not even be objects
+  switch (action?.type) {
     case "join":
       if (seat) {
         return invalid(`Already playing as ${seat}`, "ALREADY_JOINED");
@@ -256,7 +261,8 @@ export const validateAction = async (
           "MISSING_PARAMETERS",
         );
       }
-      if (!(shipType in SHIP_CONFIGS)) {
+      // Own keys only: `in` would also accept inherited names such as toString
+      if (!Object.hasOwn(SHIP_CONFIGS, shipType)) {
         return invalid(`Unknown ship type ${shipType}`, "UNKNOWN_SHIP_TYPE");
       }
       if (orientation !== "horizontal" && orientation !== "vertical") {
@@ -324,7 +330,7 @@ export const validateAction = async (
 
     default:
       return invalid(
-        `Unknown action type ${String(action.type)}`,
+        `Unknown action type ${String(action?.type)}`,
         "UNKNOWN_ACTION",
       );
   }
