@@ -4,6 +4,8 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ## Unreleased
 
+## 0.4.2 - 2026-10-04
+
 ### Added
 
 - The library package has a README for its npm page, a `LICENSE` file, keywords, and `publishConfig` for public access.
