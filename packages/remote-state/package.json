@@ -4,6 +4,17 @@
   "description": "TypeScript-based multiplayer game infrastructure library",
   "license": "MIT",
   "author": "Malte Muth",
+  "keywords": [
+    "multiplayer",
+    "game",
+    "server-authoritative",
+    "state",
+    "socket.io",
+    "express",
+    "immer",
+    "patches",
+    "hidden-information"
+  ],
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -13,11 +24,17 @@
       "default": "./dist/index.js"
     }
   },
+  "files": [
+    "dist"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
   "engines": {
     "node": ">=24"
   },
   "scripts": {
-    "build": "tsc",
+    "build": "npm run clean && tsc",
     "test": "npm run typecheck && NODE_OPTIONS=--experimental-vm-modules jest",
     "typecheck": "tsc -p tsconfig.test.json",
     "test:integration": "NODE_OPTIONS=--experimental-vm-modules jest --testMatch='**/__test__/integration/**/*.test.ts'",
@@ -26,7 +43,8 @@
     "lint:fix": "eslint src __test__ --fix",
     "format": "prettier --write src __test__",
     "format:check": "prettier --check src __test__",
-    "clean": "rm -rf dist"
+    "clean": "rm -rf dist",
+    "prepack": "npm run build"
   },
   "dependencies": {
     "@mikro-orm/core": "^7.2.2",

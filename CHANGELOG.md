@@ -4,6 +4,16 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ## Unreleased
 
+### Added
+
+- The library package has a README for its npm page, a `LICENSE` file, keywords, and `publishConfig` for public access.
+
+### Changed
+
+- The library's package contains only `dist/`, `README.md`, `LICENSE` and `package.json`.
+- `npm run build` removes `dist/` first, and packing or publishing rebuilds it (`prepack`), so files from older builds can't be published.
+- The example package is marked `private`, so it can't be published.
+
 ## 0.4.1 - 2026-10-04
 
 ### Changed

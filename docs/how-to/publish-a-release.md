@@ -2,7 +2,7 @@
 
 This guide is for maintainers releasing `@malte.muth/remote-state` to npm. Only the library package is published. The example server and the repository root aren't.
 
-The library hasn't been published yet. Until the "Before the first release" items in [BACKLOG.md](../../BACKLOG.md) are done, step 3 fails.
+The library hasn't been published yet. Before the first release, the remaining items under "Before the first release" in [BACKLOG.md](../../BACKLOG.md) must be done.
 
 ## 1. Start from a clean state
 
@@ -38,7 +38,7 @@ The listed files must be exactly:
 - `LICENSE`
 - the contents of `dist/`
 
-No sources, tests or config files.
+No sources, tests or config files. Packing runs the `prepack` script, which rebuilds `dist/` from scratch, so files from older builds can't slip in.
 
 ## 4. Test the packed package as a user would
 
