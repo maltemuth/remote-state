@@ -33,10 +33,16 @@ class TicTacToeClient {
 
     $("enter-btn").textContent = this.gameId ? "Join game" : "New game";
     $("enter-btn").addEventListener("click", () => this.enter());
-    $("rematch-btn").addEventListener("click", () => this.send({ type: "rematch" }));
+    $("rematch-btn").addEventListener("click", () =>
+      this.send({ type: "rematch" }),
+    );
     document.querySelectorAll(".cell").forEach((cell, index) =>
       cell.addEventListener("click", () =>
-        this.send({ type: "place", row: Math.floor(index / 3), col: index % 3 }),
+        this.send({
+          type: "place",
+          row: Math.floor(index / 3),
+          col: index % 3,
+        }),
       ),
     );
 
@@ -49,10 +55,19 @@ class TicTacToeClient {
     if (!name) return this.showError("Please enter your name", "lobby-error");
     try {
       this.gameId ??= (await request("POST", "/lobby/games")).gameId;
-      const { code } = await request("POST", `/lobby/games/${this.gameId}/codes`, { name });
-      const { playerId, token } = await request("POST", "/api/tokens", { code });
+      const { code } = await request(
+        "POST",
+        `/lobby/games/${this.gameId}/codes`,
+        { name },
+      );
+      const { playerId, token } = await request("POST", "/api/tokens", {
+        code,
+      });
       this.session = { playerId, token };
-      sessionStorage.setItem(storageKey(this.gameId), JSON.stringify(this.session));
+      sessionStorage.setItem(
+        storageKey(this.gameId),
+        JSON.stringify(this.session),
+      );
       history.replaceState(null, "", `#${this.gameId}`);
       this.connect();
     } catch (error) {
@@ -83,7 +98,12 @@ class TicTacToeClient {
     if (!this.session) return;
     try {
       this.showError("");
-      await request("POST", `/api/games/${this.gameId}/actions`, { action }, this.session.token);
+      await request(
+        "POST",
+        `/api/games/${this.gameId}/actions`,
+        { action },
+        this.session.token,
+      );
     } catch (error) {
       this.showError(error.message);
     }
@@ -91,10 +111,13 @@ class TicTacToeClient {
 
   render(state) {
     const me = this.session.playerId;
-    const mine = ["X", "O"].find((mark) => state.seats[mark]?.playerId === me) ?? null;
+    const mine =
+      ["X", "O"].find((mark) => state.seats[mark]?.playerId === me) ?? null;
     const waiting = !state.seats.X || !state.seats.O;
     const myTurn = !waiting && !state.outcome && state.turn === mine;
-    const winCells = new Set((state.outcome?.line ?? []).map(([row, col]) => row * 3 + col));
+    const winCells = new Set(
+      (state.outcome?.line ?? []).map(([row, col]) => row * 3 + col),
+    );
 
     document.querySelectorAll(".cell").forEach((cell, index) => {
       const value = state.board[Math.floor(index / 3)][index % 3];
@@ -108,8 +131,13 @@ class TicTacToeClient {
       const seat = state.seats[mark];
       $(`seat-${mark}`).querySelector("span").textContent = !seat
         ? "(open)"
-        : seat.playerId === me ? `${seat.name} (you)` : seat.name;
-      $(`seat-${mark}`).classList.toggle("active", !waiting && !state.outcome && state.turn === mark);
+        : seat.playerId === me
+          ? `${seat.name} (you)`
+          : seat.name;
+      $(`seat-${mark}`).classList.toggle(
+        "active",
+        !waiting && !state.outcome && state.turn === mark,
+      );
     }
 
     const onTime = state.outcome?.timeout ? " on time" : "";
@@ -120,14 +148,17 @@ class TicTacToeClient {
         ? state.outcome.winner === mine
           ? `You win${onTime}!`
           : `${state.seats[state.outcome.winner].name} wins${onTime}`
-        : state.outcome ? "Draw"
-        : myTurn ? `Your turn (${mine})${limit}`
-        : `Waiting for ${state.seats[state.turn].name}${limit}`;
+        : state.outcome
+          ? "Draw"
+          : myTurn
+            ? `Your turn (${mine})${limit}`
+            : `Waiting for ${state.seats[state.turn].name}${limit}`;
   }
 
   setConnection(message, connected) {
     $("connection-status").textContent = message;
-    $("connection-status").className = `connection-status ${connected ? "connected" : "disconnected"}`;
+    $("connection-status").className =
+      `connection-status ${connected ? "connected" : "disconnected"}`;
   }
 
   showError(message, element = "error") {

@@ -7,7 +7,7 @@ Date: 2026-09-29
 
 Clients may choose patches instead of whole states ([0007](0007-client-chosen-update-format.md)), and every game is treated as having hidden information ([0010](0010-every-game-has-hidden-information.md)). A player may only receive patches that describe their own view, and views come from `filterStateForPlayer`, a function the game writes.
 
-Recording patches with Immer while the rules run was considered first. It produces patches of the *full* state, which can leak hidden information, and turning those into per-player patches needs one of:
+Recording patches with Immer while the rules run was considered first. It produces patches of the _full_ state, which can leak hidden information, and turning those into per-player patches needs one of:
 
 - a second, patch-level filter written by each game, which must agree with its view filter
 - visibility declared by path, which only works if views are projections of the state. That would make the game's state cater to its views, and rule out views that compute or present data.

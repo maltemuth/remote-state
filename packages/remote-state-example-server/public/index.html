@@ -1,45 +1,55 @@
-<!DOCTYPE html>
+<!doctype html>
 <!-- The tic-tac-toe example client: a lobby to create or join a game, and the board. -->
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Tic-Tac-Toe</title>
-    <link rel="stylesheet" href="style.css">
-</head>
-<body>
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
     <div class="game-container">
-        <h1>Tic-Tac-Toe</h1>
+      <h1>Tic-Tac-Toe</h1>
 
-        <div id="connection-status" class="connection-status disconnected">Not connected</div>
+      <div id="connection-status" class="connection-status disconnected">
+        Not connected
+      </div>
 
-        <div id="lobby" class="controls">
-            <input type="text" id="player-name" placeholder="Your name">
-            <button id="enter-btn">New game</button>
-            <div class="error" id="lobby-error"></div>
+      <div id="lobby" class="controls">
+        <input type="text" id="player-name" placeholder="Your name" />
+        <button id="enter-btn">New game</button>
+        <div class="error" id="lobby-error"></div>
+      </div>
+
+      <div id="game" hidden>
+        <div class="player-info">
+          <div class="player" id="seat-X"><strong>X</strong> <span></span></div>
+          <div class="player" id="seat-O"><strong>O</strong> <span></span></div>
         </div>
 
-        <div id="game" hidden>
-            <div class="player-info">
-                <div class="player" id="seat-X"><strong>X</strong> <span></span></div>
-                <div class="player" id="seat-O"><strong>O</strong> <span></span></div>
-            </div>
+        <div class="status" id="game-status"></div>
+        <div class="error" id="error"></div>
 
-            <div class="status" id="game-status"></div>
-            <div class="error" id="error"></div>
-
-            <div class="game-board" id="board">
-                <div class="cell"></div><div class="cell"></div><div class="cell"></div>
-                <div class="cell"></div><div class="cell"></div><div class="cell"></div>
-                <div class="cell"></div><div class="cell"></div><div class="cell"></div>
-            </div>
-
-            <div class="controls"><button id="rematch-btn" disabled>Rematch</button></div>
-            <p class="share">Invite a player: <a id="share-link"></a></p>
+        <div class="game-board" id="board">
+          <div class="cell"></div>
+          <div class="cell"></div>
+          <div class="cell"></div>
+          <div class="cell"></div>
+          <div class="cell"></div>
+          <div class="cell"></div>
+          <div class="cell"></div>
+          <div class="cell"></div>
+          <div class="cell"></div>
         </div>
+
+        <div class="controls">
+          <button id="rematch-btn" disabled>Rematch</button>
+        </div>
+        <p class="share">Invite a player: <a id="share-link"></a></p>
+      </div>
     </div>
 
     <script src="/tic-tac-toe/socket.io/socket.io.js"></script>
     <script src="client.js"></script>
-</body>
+  </body>
 </html>

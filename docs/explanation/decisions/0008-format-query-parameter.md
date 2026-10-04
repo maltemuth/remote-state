@@ -16,11 +16,11 @@ The choice is a query parameter named `format`, the same for both channels:
 
 Its values are:
 
-| Value | Format |
-|---|---|
-| `state` | The player's whole view. This is the default when the parameter is missing. |
-| `json-patch` | JSON Patch (RFC 6902) |
-| `immer` | Immer patches |
+| Value        | Format                                                                      |
+| ------------ | --------------------------------------------------------------------------- |
+| `state`      | The player's whole view. This is the default when the parameter is missing. |
+| `json-patch` | JSON Patch (RFC 6902)                                                       |
+| `immer`      | Immer patches                                                               |
 
 ## Alternatives considered
 

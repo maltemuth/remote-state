@@ -210,4 +210,3 @@ The library is rebuilt around the decisions in `docs/explanation/decisions/` 001
 ## 0.0.1
 
 Initial development version.
-
