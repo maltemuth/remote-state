@@ -27,7 +27,12 @@ export interface Scheduler {
 }
 
 /** Reject timer requests a game shouldn't make, before anything is recorded */
-export const checkTimerRequests = (requests: TimerRequest[]) => {
+export const checkTimerRequests = (requests: TimerRequest[], cancel: string[]) => {
+  for (const name of cancel) {
+    if (typeof name !== 'string' || name.length === 0) {
+      throw new Error('Timers to cancel are named by non-empty strings');
+    }
+  }
   for (const { name, in: delay } of requests) {
     if (typeof name !== 'string' || name.length === 0) {
       throw new Error('A timer needs a non-empty name');

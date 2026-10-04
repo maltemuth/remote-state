@@ -50,7 +50,7 @@ const persist = (
   orm.em.fork().transactional(async em => {
     const { gameId, previous, joiningPlayer } = input;
     const { state: returned, changes } = unwrapTransition(input.result);
-    checkTimerRequests(changes.schedule);
+    checkTimerRequests(changes.schedule, changes.cancel);
     const state = toJson(returned);
     const playerId = input.authorId === SYSTEM ? null : input.authorId;
     const sequence = previous.sequence + 1;
