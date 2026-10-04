@@ -21,6 +21,8 @@ export default [
     },
     rules: {
       "no-unused-vars": "off",
+      // TypeScript checks names itself, including globals such as `process` (typescript-eslint recommends this)
+      "no-undef": "off",
       // TypeScript specific rules
       "@typescript-eslint/no-unused-vars": [
         "error",

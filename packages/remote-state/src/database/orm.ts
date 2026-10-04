@@ -1,3 +1,7 @@
+/**
+ * Opens the SQLite database through MikroORM and applies pending schema migrations.
+ */
+
 import { MikroORM } from '@mikro-orm/sqlite';
 import { Migrator } from '@mikro-orm/migrations';
 import { createLogger } from '../utils/logger.js';

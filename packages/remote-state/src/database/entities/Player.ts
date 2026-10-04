@@ -1,11 +1,16 @@
+/**
+ * Anyone admitted to a game, seated or watching (decisions 0020, 0024). A player is
+ * identified within its game by the host's identity ID, which the library never
+ * interprets.
+ */
+
 import { type Opt } from '@mikro-orm/core';
-import { Entity, Enum, ManyToOne, PrimaryKey, Property } from '@mikro-orm/decorators/es';
+import { Entity, ManyToOne, PrimaryKey, Property, Unique } from '@mikro-orm/decorators/es';
 import { randomUUID } from 'crypto';
 import { Game } from './Game.js';
 
-export type PlayerRole = 'admin' | 'player';
-
 @Entity({ tableName: 'players' })
+@Unique({ properties: ['game', 'identityId'] })
 export class Player {
   @PrimaryKey({ type: 'string' })
   id: Opt<string> = randomUUID();
@@ -13,23 +18,18 @@ export class Player {
   @ManyToOne(() => Game)
   game!: Game;
 
+  /** Chosen by the host when admitting */
   @Property({ type: 'string' })
-  name!: string;
+  identityId!: string;
 
-  /** The game's creator is `admin` */
-  @Enum({ items: ['admin', 'player'] })
-  role!: PlayerRole;
-
-  @Property({ type: 'string', unique: true })
-  token!: string;
+  /** The audience set by the game, or null for the default audience (decision 0025) */
+  @Property({ type: 'string', nullable: true })
+  audience: Opt<string> | null = null;
 
   /** Updated on each accepted action */
   @Property({ type: 'datetime', nullable: true })
-  lastActivityAt: Opt<Date | null> = null;
+  lastActivityAt: Opt<Date> | null = null;
 
   @Property({ type: 'datetime' })
   createdAt: Opt<Date> = new Date();
-
-  @Property({ type: 'datetime', onUpdate: () => new Date() })
-  updatedAt: Opt<Date> = new Date();
 }

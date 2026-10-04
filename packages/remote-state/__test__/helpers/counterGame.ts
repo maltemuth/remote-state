@@ -1,40 +1,65 @@
-import { GamePlugin, RemoteStateServerConfiguration } from '../../src/core/types.js';
-import { setTimeout as delay } from 'timers/promises';
-import { LogLevel } from '../../src/index.js';
+/**
+ * A small game for the library's tests: players increment a shared counter and see
+ * their own increments; spectators see only the counter. It exercises the join
+ * hook, refusals, audiences and audience changes.
+ */
 
-/** Full state: a shared counter plus which player made each increment */
+import { setTimeout as delay } from 'timers/promises';
+import { GameRefusal, LogLevel, withAudiences, type GamePlugin } from '../../src/index.js';
+
+export const MAX_PLAYERS = 3;
+
 export interface CounterState {
   count: number;
-  incrementedBy: string[];
+  /** Player ID → increments, for seated players */
+  increments: Record<string, number>;
+  names: Record<string, string>;
 }
 
-export interface CounterAction {
-  type: 'increment' | 'forbidden';
-}
+export type CounterAction = { type: 'increment' | 'spectate' | 'forbidden' | 'refuse' };
 
-/** What a player sees: the counter and their own increments, not who else played */
-export interface CounterPlayerState {
+/** Seated players see their own increments; spectators see `mine: null` */
+export interface CounterView {
   count: number;
-  mine: number;
+  mine: number | null;
 }
+
+export const initialCounterState = (): CounterState => ({ count: 0, increments: {}, names: {} });
 
 export const counterGame = (
-  overrides: Partial<GamePlugin<CounterState, CounterAction, CounterPlayerState>> = {},
-  serverConfiguration: RemoteStateServerConfiguration = {}
-): GamePlugin<CounterState, CounterAction, CounterPlayerState> => ({
-  getInitialState: async () => ({ count: 0, incrementedBy: [] }),
-  validateAction: async (_state, action) =>
-    action.type === 'increment' ? true : `Action ${action.type} is not allowed`,
-  executeAction: async (state, _action, playerId) => {
-    // Yield so that unserialized concurrent actions would interleave
-    await delay(5);
-    return { count: state.count + 1, incrementedBy: [...state.incrementedBy, playerId] };
+  overrides: Partial<GamePlugin<CounterState, CounterAction, CounterView>> = {}
+): GamePlugin<CounterState, CounterAction, CounterView> => ({
+  onJoin: (state, { playerId, details }) => {
+    const names = { ...state.names, [playerId]: String(details.name ?? '') };
+    if (details.spectator) {
+      return withAudiences({ ...state, names }, { [playerId]: 'spectators' });
+    }
+    if (Object.keys(state.increments).length >= MAX_PLAYERS) {
+      throw new GameRefusal('Game is full');
+    }
+    return { ...state, names, increments: { ...state.increments, [playerId]: 0 } };
   },
-  filterStateForPlayer: async (state, playerId) => ({
+  validateAction: (state, action, playerId) => {
+    if (action.type === 'forbidden') return `Action ${action.type} is not allowed`;
+    if (action.type === 'increment' && !(playerId in state.increments)) return 'Not seated';
+    return true;
+  },
+  executeAction: async (state, action, playerId) => {
+    if (action.type === 'refuse') throw new GameRefusal('Refused by the rules');
+    if (action.type === 'spectate') {
+      const { [playerId]: _, ...increments } = state.increments;
+      return withAudiences({ ...state, increments }, { [playerId]: 'spectators' });
+    }
+    // Yield, so that unserialized concurrent actions would interleave
+    await delay(5);
+    const increments = { ...state.increments, [playerId]: state.increments[playerId] + 1 };
+    return { ...state, count: state.count + 1, increments };
+  },
+  filterStateForAudience: (state, audience) => ({
     count: state.count,
-    mine: state.incrementedBy.filter(id => id === playerId).length,
+    mine: audience === 'spectators' ? null : (state.increments[audience] ?? null),
   }),
   gameConfig: { name: 'Counter' },
-  serverConfiguration: { minimumLogLevel: LogLevel.error, ...serverConfiguration },
+  serverConfiguration: { minimumLogLevel: LogLevel.error },
   ...overrides,
 });

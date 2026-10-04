@@ -1,13 +1,15 @@
+/**
+ * One row per state of a game: `createGame` stores sequence 0, and every join or
+ * accepted action appends the next. Full states are the source of truth; the
+ * full-state diff is informational and sensitive (decision 0013).
+ */
+
 import { type Opt } from '@mikro-orm/core';
 import { Entity, ManyToOne, PrimaryKey, Property, Unique } from '@mikro-orm/decorators/es';
 import { randomUUID } from 'crypto';
 import { Game } from './Game.js';
 import { Player } from './Player.js';
 
-/**
- * One row per state of a game: the initial state has sequence 0, and every accepted
- * action appends the resulting state with the next sequence number.
- */
 @Entity({ tableName: 'game_states' })
 @Unique({ properties: ['game', 'sequence'] })
 export class GameState {
@@ -24,17 +26,21 @@ export class GameState {
   @Property({ type: 'json' })
   state!: unknown;
 
-  /** Who caused this state; the creator for sequence 0 */
-  @ManyToOne(() => Player)
-  player!: Player;
+  /** Immer patches from the previous full state; null for sequence 0. Never sent to clients. */
+  @Property({ type: 'json', nullable: true })
+  fullDiff: Opt<unknown> | null = null;
 
-  /** `initial`, or the action's `type` */
+  /** Who caused this state; null for the initial state */
+  @ManyToOne(() => Player, { nullable: true })
+  player: Opt<Player> | null = null;
+
+  /** `initial`, `join`, or the action's `type` */
   @Property({ type: 'string' })
   actionType!: string;
 
-  /** The action as the client sent it */
-  @Property({ type: 'json' })
-  actionData!: unknown;
+  /** The action as the client sent it, or null */
+  @Property({ type: 'json', nullable: true })
+  actionData: Opt<unknown> | null = null;
 
   @Property({ type: 'datetime' })
   createdAt: Opt<Date> = new Date();
