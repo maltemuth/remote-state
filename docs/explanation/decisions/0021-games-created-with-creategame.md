@@ -1,6 +1,6 @@
 # 0021. Hosts create games with `createGame`, separately from admitting players
 
-Status: Accepted
+Status: Accepted; `createGame` takes the initial state instead of options, per [0036](0036-hosts-pass-the-initial-state.md)
 Date: 2026-09-29
 
 ## Context

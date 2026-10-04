@@ -1,6 +1,10 @@
 # Game options
 
-Status: Open
+Status: Decided in [0036](../decisions/0036-hosts-pass-the-initial-state.md)
+
+## Outcome
+
+The library has no concept of game options. The host gets an initial state from the game, with whatever settings the game offers, and passes it to `createGame` ([0036](../decisions/0036-hosts-pass-the-initial-state.md)). Options a game has are part of its state: whether players see them is up to its view filter and audiences, and whether they change is up to its rules. The questions below are answered by that.
 
 ## Problem
 
