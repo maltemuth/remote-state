@@ -45,6 +45,8 @@ Records aren't edited after the fact, except to update their status. A decision 
 | [0037](0037-embeddable-core-and-server-options.md) | The library is an embeddable core; deployment settings are server options | Accepted |
 | [0038](0038-several-games-by-mounting-several-instances.md) | Several games share a server by mounting several instances | Accepted |
 | [0039](0039-actions-recorded-with-authors-audience.md) | Actions are logged and recorded with their author's audience | Accepted |
+| [0040](0040-server-initiated-actions.md) | Games schedule actions, and hosts can act as the system | Accepted |
+| [0041](0041-named-timers.md) | Timers are named, stored, and restart with the server | Accepted |
 
 ## Writing a record
 

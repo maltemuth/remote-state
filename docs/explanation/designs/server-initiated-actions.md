@@ -1,6 +1,10 @@
 # Server-initiated actions
 
-Status: Open
+Status: Decided in [0040](../decisions/0040-server-initiated-actions.md) and [0041](../decisions/0041-named-timers.md)
+
+## Outcome
+
+Games schedule named timers, returned along with a new state, and hosts can run actions as the system through `act` (options A and C). Scheduling a name again replaces the timer, actions can cancel timers, and due timers run as the player `"system"` through the usual validation. Pending timers are stored, and start over with their full duration when the server restarts. A seeded random number generator is left for later.
 
 ## Problem
 
