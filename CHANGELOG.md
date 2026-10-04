@@ -4,6 +4,8 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ## Unreleased
 
+## 0.4.1 - 2026-10-04
+
 ### Changed
 
 - `admit` deletes admission codes that are used or expired, so they no longer accumulate.

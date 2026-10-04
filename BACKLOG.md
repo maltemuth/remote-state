@@ -4,11 +4,6 @@ Planned work that doesn't depend on open design questions. Work that does is dis
 
 Remove an item when it's done; the changelog records what changed.
 
-## Architecture fixes
-
-The library should behave like a library: its host application stays in control of the process, configuration and logging.
-
-
 ## Before the first release
 
 Each of these makes a check in [Publish a release](docs/how-to/publish-a-release.md) fail today.
