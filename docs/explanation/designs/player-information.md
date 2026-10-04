@@ -1,6 +1,12 @@
 # Player information for game logic
 
-Status: Open; largely answered by [0026](../decisions/0026-join-hook-is-a-state-transition.md): games learn who joined through their join hook
+Status: Decided in [0026](../decisions/0026-join-hook-is-a-state-transition.md)
+
+## Outcome
+
+Games learn who joined through a join hook, `onJoin(state, player)`, which receives the new player's ID and the details the host passed when admitting them, and returns the new state ([0026](../decisions/0026-join-hook-is-a-state-transition.md)). It's closest to option C, but as a dedicated hook rather than a system action passed through `executeAction`, and joining and being accepted by the game are one step.
+
+The open questions below are answered by later decisions: spectators are players whose seat and view the game decides ([0024](../decisions/0024-views-per-audience.md)); capacity is the game's, by refusing in the join hook ([0026](../decisions/0026-join-hook-is-a-state-transition.md)); the library has no `admin` role ([0022](../decisions/0022-roles-belong-to-game-state.md)). Leaving a game is part of [Game lifecycle](game-lifecycle.md).
 
 ## Problem
 

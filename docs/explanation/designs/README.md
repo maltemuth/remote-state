@@ -7,7 +7,7 @@ Proposals for open design questions. A proposal explains a problem and the optio
 | [State synchronization](state-synchronization.md) | How clients keep their copy of the state in step with the server | Open |
 | [Authorization](authorization.md) | Who may create, join and act in games, and how they prove it | Decided; limiting tokens deferred |
 | [Audiences](audiences.md) | Views shared by groups of participants, such as spectators | Open |
-| [Player information](player-information.md) | Letting game logic see who has registered | Open |
+| [Player information](player-information.md) | Letting game logic see who has registered | Decided |
 | [Game options](game-options.md) | Creating a game with settings | Open |
 | [Game lifecycle](game-lifecycle.md) | Joining, leaving, disconnecting, and the end of a game | Open |
 | [Server-initiated actions](server-initiated-actions.md) | Timers, computer players, scheduled events | Open |
