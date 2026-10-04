@@ -15,7 +15,10 @@ export interface Seat {
 }
 
 export type Outcome =
-  { winner: Mark; line: Position[] } | { winner: null; draw: true } | null;
+  | { winner: Mark; line: Position[] }
+  | { winner: Mark; timeout: true }
+  | { winner: null; draw: true }
+  | null;
 
 export interface TicTacToeState {
   board: Board;
@@ -24,7 +27,12 @@ export interface TicTacToeState {
   starter: Mark;
   turn: Mark;
   outcome: Outcome;
+  /** Seconds per move before the player to move loses, or null for no limit */
+  turnSeconds: number | null;
 }
 
 export type TicTacToeAction =
-  { type: "place"; row: number; col: number } | { type: "rematch" };
+  | { type: "place"; row: number; col: number }
+  | { type: "rematch" }
+  /** Sent by the system when a turn's time runs out; `moves` is the number of marks on the board then */
+  | { type: "timeout"; moves: number };

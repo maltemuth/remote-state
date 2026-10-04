@@ -11,6 +11,7 @@ import {
   type ExampleServer,
 } from "../../src/host/servers.js";
 import type { TicTacToeState } from "../../src/games/tic-tac-toe/types.js";
+import { newTicTacToeGame } from "../../src/games/tic-tac-toe/rules.js";
 import { clientFor } from "../helpers/client.js";
 
 describe("Tic-tac-toe E2E", () => {
@@ -143,5 +144,27 @@ describe("Tic-tac-toe E2E", () => {
     expect(sequence).toBe(3);
     expect(state.board[1][1]).toBe("X");
     expect(state.turn).toBe("O");
+  });
+
+  it("ends the game when the player to move runs out of time", async () => {
+    const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+    const gameId = await example.ticTacToe.createGame(
+      newTicTacToeGame({ turnSeconds: 0.1 }),
+    );
+    const x = await client.joinAs(gameId, "Xena");
+    const o = await client.joinAs(gameId, "Otto");
+    const outcome = async () =>
+      (await client.stateFor<TicTacToeState>(gameId, x.token)).outcome;
+
+    // Each move restarts the 100 ms turn
+    await sleep(60);
+    await place(gameId, x.token, 0, 0).expect(201);
+    await sleep(60);
+    await place(gameId, o.token, 1, 1).expect(201);
+    await sleep(60);
+    expect(await outcome()).toBeNull();
+
+    await sleep(120);
+    expect(await outcome()).toEqual({ winner: "O", timeout: true });
   });
 });

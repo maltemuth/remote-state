@@ -17,6 +17,9 @@ import { ticTacToePlugin } from "../games/tic-tac-toe/plugin.js";
 import type { TicTacToeState } from "../games/tic-tac-toe/types.js";
 import { type MountedGame, mountGame } from "./mountGame.js";
 
+/** Seconds per tic-tac-toe move before the player to move loses */
+export const TURN_SECONDS = 60;
+
 export interface ExampleServerOptions {
   /** Keep games in `tic-tac-toe.db` and `battleship.db` in this directory; in memory if unset */
   databaseDirectory?: string;
@@ -49,7 +52,10 @@ export const createExampleServer = async ({
     app,
     server,
     "/tic-tac-toe",
-    { plugin: ticTacToePlugin, newGame: newTicTacToeGame },
+    {
+      plugin: ticTacToePlugin,
+      newGame: () => newTicTacToeGame({ turnSeconds: TURN_SECONDS }),
+    },
     { database: database("tic-tac-toe"), logger },
   );
   const battleship = await mountGame(

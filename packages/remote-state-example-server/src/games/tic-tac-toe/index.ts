@@ -6,4 +6,5 @@
 export * from "./types.js";
 export * from "./board.js";
 export * from "./rules.js";
+export * from "./turnTimer.js";
 export * from "./plugin.js";

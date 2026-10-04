@@ -4,6 +4,7 @@
  */
 
 import { describe, expect, it } from "@jest/globals";
+import { SYSTEM } from "@malte.muth/remote-state";
 import {
   applyAction,
   checkAction,
@@ -96,5 +97,22 @@ describe("tic-tac-toe rules", () => {
     expect(checkAction(state, { type: "rematch" }, "x")).toBe(
       "The game isn't over yet",
     );
+  });
+
+  it("only accepts a timeout from the system, for the current turn", () => {
+    const state = applyAction(seated(), { type: "place", row: 0, col: 0 });
+    expect(checkAction(state, { type: "timeout", moves: 1 }, "x")).toBe(
+      "Only the system can end a turn",
+    );
+    expect(checkAction(state, { type: "timeout", moves: 0 }, SYSTEM)).toBe(
+      "That turn is over",
+    );
+    expect(checkAction(state, { type: "timeout", moves: 1 }, SYSTEM)).toBe(
+      true,
+    );
+    expect(applyAction(state, { type: "timeout", moves: 1 }).outcome).toEqual({
+      winner: "X",
+      timeout: true,
+    });
   });
 });

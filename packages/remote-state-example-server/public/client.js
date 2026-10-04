@@ -112,13 +112,17 @@ class TicTacToeClient {
       $(`seat-${mark}`).classList.toggle("active", !waiting && !state.outcome && state.turn === mark);
     }
 
+    const onTime = state.outcome?.timeout ? " on time" : "";
+    const limit = state.turnSeconds ? ` (${state.turnSeconds} s per move)` : "";
     $("game-status").textContent = waiting
       ? "Waiting for an opponent. Share the link below."
       : state.outcome?.winner
-        ? state.outcome.winner === mine ? "You win!" : `${state.seats[state.outcome.winner].name} wins`
+        ? state.outcome.winner === mine
+          ? `You win${onTime}!`
+          : `${state.seats[state.outcome.winner].name} wins${onTime}`
         : state.outcome ? "Draw"
-        : myTurn ? `Your turn (${mine})`
-        : `Waiting for ${state.seats[state.turn].name}`;
+        : myTurn ? `Your turn (${mine})${limit}`
+        : `Waiting for ${state.seats[state.turn].name}${limit}`;
   }
 
   setConnection(message, connected) {
