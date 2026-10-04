@@ -4,6 +4,8 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ## Unreleased
 
+## 0.8.0 - 2026-10-04
+
 Databases from earlier versions have to be deleted (decision 0048).
 
 ### Added
