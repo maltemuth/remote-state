@@ -26,4 +26,3 @@ These are current properties of the library, not bugs in your game. Each one is 
 ## Operations
 
 - **No game lifecycle.** Games are never closed, archived or deleted, players can't leave, and nothing uses `lastActivityAt`.
-- **Admission codes are kept.** Used and expired codes are never deleted.

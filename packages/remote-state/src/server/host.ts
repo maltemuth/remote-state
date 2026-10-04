@@ -4,6 +4,7 @@
  */
 
 import { AdmissionCode, Game, GameState } from '../database/entities/index.js';
+import { type EntityManager } from '@mikro-orm/sqlite';
 import { type Orm } from '../database/orm.js';
 import { toJson } from '../json.js';
 import { hashSecret, newSecret } from '../secrets.js';
@@ -33,7 +34,13 @@ export const createGame = async (orm: Orm, initialState: unknown): Promise<strin
   return game.id;
 };
 
-/** Issue a single-use code that admits this identity to the game */
+/** Delete codes that can't be redeemed anymore, because they're used or expired */
+const deleteSpentCodes = (em: EntityManager) =>
+  em.nativeDelete(AdmissionCode, {
+    $or: [{ usedAt: { $ne: null } }, { expiresAt: { $lt: new Date(Date.now()) } }],
+  });
+
+/** Issue a single-use code that admits this identity to the game, cleaning up spent codes */
 export const admit = async (orm: Orm, { gameId, identity }: Admission): Promise<string> => {
   const { id: identityId, ...details } = identity ?? ({} as Identity);
   if (typeof identityId !== 'string' || identityId.length === 0) {
@@ -42,6 +49,7 @@ export const admit = async (orm: Orm, { gameId, identity }: Admission): Promise<
   const em = orm.em.fork();
   if (!(await em.findOne(Game, gameId))) throw new UnknownGameError(gameId);
 
+  await deleteSpentCodes(em);
   const code = newSecret();
   em.create(AdmissionCode, {
     game: gameId,

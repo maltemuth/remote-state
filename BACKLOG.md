@@ -8,7 +8,6 @@ Remove an item when it's done; the changelog records what changed.
 
 The library should behave like a library: its host application stays in control of the process, configuration and logging.
 
-- [ ] **Clean up admission codes.** Used and expired codes stay in `admission_codes` for good. Delete them, for example when a new code is issued.
 
 ## Before the first release
 

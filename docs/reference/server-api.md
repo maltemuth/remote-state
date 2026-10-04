@@ -72,7 +72,7 @@ interface Identity {
 const CODE_LIFETIME_MS = 60_000;
 ```
 
-The code is 64 hex characters, and can be exchanged once at [`POST /api/tokens`](http-api.md#post-apitokens) within `CODE_LIFETIME_MS` ([0020](../explanation/decisions/0020-hosts-admit-players-through-codes.md)). Only its hash is stored.
+The code is 64 hex characters, and can be exchanged once at [`POST /api/tokens`](http-api.md#post-apitokens) within `CODE_LIFETIME_MS` ([0020](../explanation/decisions/0020-hosts-admit-players-through-codes.md)). Only its hash is stored. Each call also deletes the codes that can't be redeemed anymore, because they're used or expired.
 
 Each `identity.id` maps to at most one player per game. The first code redeemed for an identity creates its player through [`onJoin`](game-plugin.md#onjoin). Codes redeemed later for the same identity return the same player with a new token, and their details are ignored ([0019](../explanation/decisions/0019-several-tokens-per-player.md)).
 
@@ -218,7 +218,7 @@ All IDs are UUID strings. Tokens and codes are stored only as SHA-256 hashes ([0
 | `token_hash` | string, unique                    |                           |
 | `created_at` | datetime                          |                           |
 
-**admission_codes**
+**admission_codes**: rows are deleted once used or expired, the next time `admit` is called.
 
 | Column        | Type                            | Notes                         |
 | ------------- | ------------------------------- | ----------------------------- |
