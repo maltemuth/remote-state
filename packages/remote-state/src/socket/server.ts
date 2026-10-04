@@ -4,14 +4,20 @@
  * refused, 0008). On connect, a client gets its whole view, then updates (0031).
  */
 
+import { type CorsOptions } from 'cors';
 import { type Server as HTTPServer } from 'http';
 import { Server } from 'socket.io';
 import { type EngineContext } from '../engine/context.js';
 import { currentView } from '../engine/currentView.js';
 import { authenticate } from '../engine/tokens.js';
-import { type SocketIOServerConfiguration } from '../server/configuration.js';
-import { createLogger } from '../utils/logger.js';
 import { type Format, formats, type ServerToClientEvents, type SocketData } from './events.js';
+
+export type SocketServer = Server<never, ServerToClientEvents, never, SocketData>;
+
+export interface SocketOptions {
+  cors: CorsOptions;
+  path?: string;
+}
 
 const parseFormat = (value: unknown): Format | null =>
   value === undefined ? 'state' : (formats.find(format => format === value) ?? null);
@@ -19,11 +25,14 @@ const parseFormat = (value: unknown): Format | null =>
 export const createSocketServer = (
   httpServer: HTTPServer,
   context: Omit<EngineContext, 'publisher'>,
-  config: Omit<SocketIOServerConfiguration, 'enabled'> = {}
-) => {
-  const { info, error } = createLogger({ scope: 'socket' });
-  const io = new Server<never, ServerToClientEvents, never, SocketData>(httpServer, {
-    cors: { origin: '*', methods: ['GET', 'POST'], ...config.cors },
+  { cors, path }: SocketOptions
+): SocketServer => {
+  const { info, error } = context.logger;
+  const io: SocketServer = new Server(httpServer, {
+    cors,
+    ...(path ? { path } : {}),
+    // Leave upgrade requests for other paths to the host, such as another game's socket
+    destroyUpgrade: false,
   });
 
   io.use(async (socket, next) => {
@@ -36,14 +45,14 @@ export const createSocketServer = (
       socket.data = { gameId, playerId: player.id, format };
       next();
     } catch (err) {
-      error('Socket authentication failed:', err);
+      error('Socket authentication failed', err);
       next(new Error('Failed to authenticate'));
     }
   });
 
   io.on('connection', socket => {
     const { gameId, playerId } = socket.data;
-    info(`Player ${playerId} connected to game ${gameId}`, { socketId: socket.id });
+    info(`Player ${playerId} connected to game ${gameId}`);
     // Under the lock, so no update is sent between the view and joining the room
     void context
       .withGameLock(gameId, async () => {
@@ -58,4 +67,10 @@ export const createSocketServer = (
   });
 
   return io;
+};
+
+/** Disconnect every client and stop accepting new ones, leaving the HTTP server running */
+export const closeSocketServer = (io: SocketServer) => {
+  io.disconnectSockets(true);
+  io.engine.close();
 };

@@ -28,7 +28,7 @@ describe('socket', () => {
   });
   afterAll(async () => {
     sockets.forEach(socket => socket.disconnect());
-    await server.shutdown(false);
+    await server.close();
   });
 
   const open = (auth: object, format?: string) => {

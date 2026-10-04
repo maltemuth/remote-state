@@ -1,12 +1,12 @@
 /**
- * Remote State servers for the example games, each with the example's lobby
- * endpoints attached.
+ * The example host: one Express app and HTTP server serving both example games,
+ * tic-tac-toe under /tic-tac-toe and battleship under /battleship, plus the
+ * browser client.
  */
 
-import {
-  createRemoteStateServer,
-  type RemoteStateServer,
-} from "@malte.muth/remote-state";
+import express, { type Express } from "express";
+import { createServer, type Server } from "http";
+import { consoleLogger, type Logger } from "@malte.muth/remote-state";
 import {
   battleshipPlugin,
   newBattleshipGame,
@@ -15,32 +15,64 @@ import type { BattleshipState } from "../games/battleship/types.js";
 import { newTicTacToeGame } from "../games/tic-tac-toe/rules.js";
 import { ticTacToePlugin } from "../games/tic-tac-toe/plugin.js";
 import type { TicTacToeState } from "../games/tic-tac-toe/types.js";
-import { addLobby } from "./lobby.js";
+import { type MountedGame, mountGame } from "./mountGame.js";
 
-export interface ServerOptions {
-  persistDatabase?: boolean;
+export interface ExampleServerOptions {
+  /** Keep games in `tic-tac-toe.db` and `battleship.db` in this directory; in memory if unset */
+  databaseDirectory?: string;
+  logger?: Logger;
+  /** Serve static files from this directory, for example the browser client */
+  publicDirectory?: string;
 }
 
-export const createTicTacToeServer = async (
-  port: number = 3000,
-  { persistDatabase = false }: ServerOptions = {},
-): Promise<RemoteStateServer<TicTacToeState>> => {
-  const server = await createRemoteStateServer(
-    { ...ticTacToePlugin, serverConfiguration: { persistDatabase } },
-    port,
-  );
-  addLobby(server, newTicTacToeGame);
-  return server;
-};
+export interface ExampleServer {
+  app: Express;
+  server: Server;
+  ticTacToe: MountedGame<TicTacToeState>;
+  battleship: MountedGame<BattleshipState>;
+  /** Listen; resolves with the port */
+  listen: (port: number) => Promise<number>;
+  close: () => Promise<void>;
+}
 
-export const createBattleshipServer = async (
-  port: number = 3000,
-  { persistDatabase = false }: ServerOptions = {},
-): Promise<RemoteStateServer<BattleshipState>> => {
-  const server = await createRemoteStateServer(
-    { ...battleshipPlugin, serverConfiguration: { persistDatabase } },
-    port,
+export const createExampleServer = async ({
+  databaseDirectory,
+  logger = consoleLogger(),
+  publicDirectory,
+}: ExampleServerOptions = {}): Promise<ExampleServer> => {
+  const app = express();
+  const server = createServer(app);
+  const database = (name: string) =>
+    databaseDirectory ? `${databaseDirectory}/${name}.db` : ":memory:";
+
+  const ticTacToe = await mountGame(
+    app,
+    server,
+    "/tic-tac-toe",
+    { plugin: ticTacToePlugin, newGame: newTicTacToeGame },
+    { database: database("tic-tac-toe"), logger },
   );
-  addLobby(server, newBattleshipGame);
-  return server;
+  const battleship = await mountGame(
+    app,
+    server,
+    "/battleship",
+    { plugin: battleshipPlugin, newGame: newBattleshipGame },
+    { database: database("battleship"), logger },
+  );
+  if (publicDirectory) app.use(express.static(publicDirectory));
+
+  const listen = (port: number) =>
+    new Promise<number>((resolve) =>
+      server.listen(port, () =>
+        resolve((server.address() as { port: number }).port),
+      ),
+    );
+
+  const close = async () => {
+    await Promise.all([ticTacToe.close(), battleship.close()]);
+    server.closeAllConnections();
+    await new Promise<void>((resolve) => server.close(() => resolve()));
+  };
+
+  return { app, server, ticTacToe, battleship, listen, close };
 };

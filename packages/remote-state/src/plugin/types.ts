@@ -1,9 +1,9 @@
 /**
  * The contract between the library and a game: the functions a game provides, and
- * what they receive. Games never see hosts, tokens or the transport.
+ * what they receive. Games never see hosts, tokens, the transport or deployment
+ * settings.
  */
 
-import { type RemoteStateServerConfiguration } from '../server/configuration.js';
 import { type Transition } from './transition.js';
 
 export type Awaitable<T> = T | Promise<T>;
@@ -52,7 +52,6 @@ export interface GamePlugin<StateType, ActionType, ViewType = StateType> {
     name: string;
     description?: string;
   };
-  serverConfiguration?: RemoteStateServerConfiguration;
 }
 
 /** A plugin as the library handles it, independent of the game's types */

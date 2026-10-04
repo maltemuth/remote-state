@@ -5,7 +5,7 @@
  */
 
 import { setTimeout as delay } from 'timers/promises';
-import { GameRefusal, LogLevel, withAudiences, type GamePlugin } from '../../src/index.js';
+import { GameRefusal, withAudiences, type GamePlugin } from '../../src/index.js';
 
 export const MAX_PLAYERS = 3;
 
@@ -60,6 +60,5 @@ export const counterGame = (
     mine: audience === 'spectators' ? null : (state.increments[audience] ?? null),
   }),
   gameConfig: { name: 'Counter' },
-  serverConfiguration: { minimumLogLevel: LogLevel.error },
   ...overrides,
 });

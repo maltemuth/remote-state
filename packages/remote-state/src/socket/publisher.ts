@@ -9,7 +9,7 @@ import { type Publisher, type TransitionOutcome } from '../engine/context.js';
 import { diff } from '../patches/diff.js';
 import { type AnyGamePlugin } from '../plugin/types.js';
 import { viewFor } from '../plugin/views.js';
-import { createLogger } from '../utils/logger.js';
+import { type Logger } from '../logging/logger.js';
 import { type ServerToClientEvents, type SocketData } from './events.js';
 
 type GameSocket = RemoteSocket<ServerToClientEvents, SocketData>;
@@ -28,10 +28,9 @@ const patchesFor = async (
 
 export const createPublisher = (
   io: Server<never, ServerToClientEvents>,
-  plugin: AnyGamePlugin
+  plugin: AnyGamePlugin,
+  { error }: Logger
 ): Publisher => {
-  const { error } = createLogger({ scope: 'socket' });
-
   const send = async (socket: GameSocket, outcome: TransitionOutcome) => {
     const { gameId, sequence } = outcome;
     const { playerId, format } = socket.data;

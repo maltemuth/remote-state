@@ -1,9 +1,10 @@
 /**
  * What the engine's operations share: the database, the game, the per-game lock,
- * and where finished transitions are published (the socket, if enabled).
+ * the logger, and where finished transitions are published (the socket, if any).
  */
 
 import { type Orm } from '../database/orm.js';
+import { type Logger } from '../logging/logger.js';
 import { type Patch } from '../patches/diff.js';
 import { type AnyGamePlugin } from '../plugin/types.js';
 import { type GameLock } from './gameLock.js';
@@ -33,5 +34,6 @@ export interface EngineContext {
   orm: Orm;
   plugin: AnyGamePlugin;
   withGameLock: GameLock;
+  logger: Logger;
   publisher: Publisher;
 }

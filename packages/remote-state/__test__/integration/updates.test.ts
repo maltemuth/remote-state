@@ -30,18 +30,10 @@ describe('updates', () => {
   let server: CounterServer;
 
   beforeAll(async () => {
-    const plugin = counterGame();
-    server = await startCounterServer({
-      ...plugin,
-      serverConfiguration: {
-        ...plugin.serverConfiguration,
-        persistDatabase: true,
-        databaseFilename,
-      },
-    });
+    server = await startCounterServer(counterGame(), { database: databaseFilename });
   });
   afterAll(async () => {
-    await server.shutdown(false);
+    await server.close();
     rmSync(directory, { recursive: true, force: true });
   });
 

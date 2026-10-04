@@ -1,100 +1,73 @@
 /**
- * Creates a Remote State server for one game: database, HTTP API, socket, and the
- * host API (`createGame`, `admit`) that the host app calls in-process.
+ * A standalone Remote State server for one game: its own Express app and HTTP
+ * server around the embeddable core. Hosts add their routes to `app`. It never
+ * exits the process; the host decides when to.
  */
 
-import { createServer } from 'http';
-import { type Express } from 'express';
-import { initializeDatabase } from '../database/orm.js';
-import { type EngineContext, type Publisher } from '../engine/context.js';
-import { createGameLock } from '../engine/gameLock.js';
-import { createApp } from '../http/app.js';
+import express, { type Express } from 'express';
+import { createServer, type Server as HTTPServer } from 'http';
+import { consoleLogger } from '../logging/logger.js';
 import { type GamePlugin } from '../plugin/types.js';
-import { createPublisher } from '../socket/publisher.js';
-import { createSocketServer } from '../socket/server.js';
-import { createLogger, setGlobalLogLevel } from '../utils/logger.js';
-import { type Admission, admit, createGame } from './host.js';
+import { createRemoteState, type RemoteState } from './createRemoteState.js';
+import { type RemoteStateServerOptions } from './options.js';
 
-export interface RemoteStateServer<StateType> {
+export interface RemoteStateServer<StateType> extends Omit<RemoteState<StateType>, 'attach'> {
   app: Express;
-  server: ReturnType<typeof createServer>;
-  port: number;
-  /** Store a new game with an initial state the host got from the game (0036); returns its ID */
-  createGame: (initialState: StateType) => Promise<string>;
-  /** Issue a single-use code admitting an identity to a game (0020) */
-  admit: (admission: Admission) => Promise<string>;
-  startServer: () => Promise<void>;
-  /** Close sockets, the HTTP server and the database; exits the process unless `andExit` is false */
-  shutdown: (andExit?: boolean) => Promise<void>;
+  server: HTTPServer;
+  /** The port listened on once started, also when 0 was requested; the requested port before */
+  readonly port: number;
+  /** Listen; resolves with the port */
+  startServer: () => Promise<number>;
+  /** Stop listening, disconnect clients and close the database */
+  close: () => Promise<void>;
 }
-
-const noPublisher: Publisher = { publish: async () => undefined };
 
 export const createRemoteStateServer = async <StateType, ActionType, ViewType>(
   plugin: GamePlugin<StateType, ActionType, ViewType>,
-  port: number = 3000
+  { port: requestedPort = 3000, ...options }: RemoteStateServerOptions = {}
 ): Promise<RemoteStateServer<StateType>> => {
-  const configuration = plugin.serverConfiguration ?? {};
-  if (configuration.minimumLogLevel !== undefined) {
-    setGlobalLogLevel(configuration.minimumLogLevel);
-  }
-  const { info, error } = createLogger({ scope: 'remote-state-server' });
-
-  const databasePath = configuration.persistDatabase
-    ? configuration.databaseFilename || 'games.db'
-    : ':memory:';
-  const orm = await initializeDatabase(databasePath).catch(err => {
-    throw new Error('Failed to initialize database', { cause: err });
-  });
-
-  const context: EngineContext = {
-    orm,
-    plugin,
-    withGameLock: createGameLock(),
-    publisher: noPublisher,
-  };
-  const app = createApp(context);
+  const logger = options.logger ?? consoleLogger();
+  const remote = await createRemoteState(plugin, { ...options, logger });
+  const app = express();
+  app.use(remote.router);
   const server = createServer(app);
-  const io =
-    configuration.socketIO?.enabled === false
-      ? null
-      : createSocketServer(server, context, configuration.socketIO);
-  if (io) context.publisher = createPublisher(io, plugin);
+  if (options.socket !== false) remote.attach(server);
+
+  const listeningPort = () => {
+    const address = server.address();
+    return address && typeof address === 'object' ? address.port : requestedPort;
+  };
 
   const startServer = () =>
-    new Promise<void>(resolve => {
-      server.listen(port, () => {
-        info(`Remote State server listening at http://localhost:${port}`);
-        resolve();
+    new Promise<number>((resolve, reject) => {
+      server.once('error', reject);
+      server.listen(requestedPort, () => {
+        server.off('error', reject);
+        logger.info(`Remote State server listening at http://localhost:${listeningPort()}`);
+        resolve(listeningPort());
       });
     });
 
-  const shutdown = async (andExit: boolean = true) => {
-    info('Shutting down server...');
-    try {
-      if (io) {
-        // Also closes the underlying HTTP server
-        await new Promise<void>(resolve => io.close(() => resolve()));
-      } else if (server.listening) {
-        await new Promise<void>((resolve, reject) =>
-          server.close(err => (err ? reject(err) : resolve()))
-        );
-      }
-      await orm.close();
-      if (andExit) process.exit(0);
-    } catch (err) {
-      error('Error during shutdown:', { error: err });
-      if (andExit) process.exit(1);
+  const close = async () => {
+    await remote.close();
+    if (server.listening) {
+      server.closeAllConnections();
+      await new Promise<void>((resolve, reject) =>
+        server.close(err => (err ? reject(err) : resolve()))
+      );
     }
   };
 
   return {
     app,
     server,
-    port,
-    createGame: initialState => createGame(orm, initialState),
-    admit: admission => admit(orm, admission),
+    get port() {
+      return listeningPort();
+    },
+    router: remote.router,
+    createGame: remote.createGame,
+    admit: remote.admit,
     startServer,
-    shutdown,
+    close,
   };
 };

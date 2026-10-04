@@ -1,29 +1,33 @@
 /**
- * Runs the tic-tac-toe example: the Remote State API, the example's lobby, and
- * the browser client served from ../public.
+ * Runs the example host: both games and the tic-tac-toe browser client from
+ * ../public, with games kept in the working directory. The host, not the library,
+ * decides when the process exits.
  */
 
-import { createLogger } from "@malte.muth/remote-state";
-import express from "express";
+import { consoleLogger } from "@malte.muth/remote-state";
 import path from "path";
 import process from "process";
 import { fileURLToPath } from "url";
-import { createTicTacToeServer } from "./host/servers.js";
+import { createExampleServer } from "./host/servers.js";
 
 const publicDirectory = path.join(
   path.dirname(fileURLToPath(import.meta.url)),
   "../public",
 );
-const port = Number(process.env.PORT ?? 3000);
-const { info } = createLogger({ scope: "example-server" });
+const logger = consoleLogger({ scope: "example" });
 
-const { app, startServer, shutdown } = await createTicTacToeServer(port, {
-  persistDatabase: true,
+const example = await createExampleServer({
+  databaseDirectory: process.cwd(),
+  logger,
+  publicDirectory,
 });
-app.use(express.static(publicDirectory));
 
-process.on("SIGINT", () => shutdown());
-process.on("SIGTERM", () => shutdown());
+const stop = async () => {
+  await example.close();
+  process.exit(0);
+};
+process.on("SIGINT", stop);
+process.on("SIGTERM", stop);
 
-await startServer();
-info(`Visit http://localhost:${port} to play`);
+const port = await example.listen(Number(process.env.PORT ?? 3000));
+logger.info(`Visit http://localhost:${port} to play tic-tac-toe`);

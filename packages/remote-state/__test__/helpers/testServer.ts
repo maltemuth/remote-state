@@ -7,7 +7,9 @@ import request from 'supertest';
 import {
   createRemoteStateServer,
   type GamePlugin,
+  type RemoteStateOptions,
   type RemoteStateServer,
+  silentLogger,
 } from '../../src/index.js';
 import {
   counterGame,
@@ -25,18 +27,19 @@ export interface TestPlayer {
 }
 
 export const startCounterServer = async (
-  plugin: GamePlugin<CounterState, CounterAction, CounterView> = counterGame()
+  plugin: GamePlugin<CounterState, CounterAction, CounterView> = counterGame(),
+  options: RemoteStateOptions = {}
 ): Promise<CounterServer> => {
-  const server = await createRemoteStateServer(plugin, 0);
+  const server = await createRemoteStateServer(plugin, {
+    port: 0,
+    logger: silentLogger,
+    ...options,
+  });
   await server.startServer();
   return server;
 };
 
-export const serverUrl = (server: CounterServer) => {
-  const address = server.server.address();
-  if (!address || typeof address === 'string') throw new Error('Server is not listening');
-  return `http://localhost:${address.port}`;
-};
+export const serverUrl = (server: CounterServer) => `http://localhost:${server.port}`;
 
 export const newGame = (server: CounterServer) => server.createGame(initialCounterState());
 

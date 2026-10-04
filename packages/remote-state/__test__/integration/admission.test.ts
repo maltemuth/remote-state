@@ -24,7 +24,7 @@ describe('admission', () => {
   beforeAll(async () => {
     server = await startCounterServer();
   });
-  afterAll(() => server.shutdown(false));
+  afterAll(() => server.close());
 
   it('has no public endpoints for creating or joining games', async () => {
     await request(server.app).post('/api/games').send({}).expect(404);

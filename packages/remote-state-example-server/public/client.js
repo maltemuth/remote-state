@@ -4,12 +4,14 @@
  * sends moves over HTTP.
  */
 
+// The example host serves tic-tac-toe under this prefix
+const base = "/tic-tac-toe";
 // Credentials are kept per tab, so two tabs can play against each other
 const storageKey = (gameId) => `tic-tac-toe:${gameId}`;
 const $ = (id) => document.getElementById(id);
 
 const request = async (method, path, body, token) => {
-  const response = await fetch(path, {
+  const response = await fetch(`${base}${path}`, {
     method,
     headers: {
       "Content-Type": "application/json",
@@ -65,7 +67,10 @@ class TicTacToeClient {
     const link = `${location.href.split("#")[0]}#${this.gameId}`;
     $("share-link").href = $("share-link").textContent = link;
 
-    const socket = io({ auth: { gameId: this.gameId, token: this.session.token } });
+    const socket = io({
+      path: `${base}/socket.io`,
+      auth: { gameId: this.gameId, token: this.session.token },
+    });
     socket.on("connect", () => this.setConnection("Connected", true));
     socket.on("disconnect", () => this.setConnection("Disconnected", false));
     socket.on("connect_error", (error) =>

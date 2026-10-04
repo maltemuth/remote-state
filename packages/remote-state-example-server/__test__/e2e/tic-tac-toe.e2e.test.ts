@@ -4,68 +4,61 @@
  */
 
 import { afterAll, beforeAll, describe, expect, it } from "@jest/globals";
-import {
-  LogLevel,
-  setGlobalLogLevel,
-  type StateEvent,
-} from "@malte.muth/remote-state";
-import request from "supertest";
+import { silentLogger, type StateEvent } from "@malte.muth/remote-state";
 import { io as connect, type Socket } from "socket.io-client";
-import { createTicTacToeServer } from "../../src/host/servers.js";
+import {
+  createExampleServer,
+  type ExampleServer,
+} from "../../src/host/servers.js";
 import type { TicTacToeState } from "../../src/games/tic-tac-toe/types.js";
-import { act, createGame, joinAs, stateFor } from "../helpers/client.js";
+import { clientFor } from "../helpers/client.js";
 
 describe("Tic-tac-toe E2E", () => {
-  let server: Awaited<ReturnType<typeof createTicTacToeServer>>;
+  let example: ExampleServer;
+  let client: ReturnType<typeof clientFor>;
+  let port: number;
   const sockets: Socket[] = [];
 
   beforeAll(async () => {
-    setGlobalLogLevel(LogLevel.error);
-    server = await createTicTacToeServer(0);
-    await server.startServer();
+    example = await createExampleServer({ logger: silentLogger });
+    port = await example.listen(0);
+    client = clientFor(example.app, "/tic-tac-toe");
   });
   afterAll(async () => {
     sockets.forEach((socket) => socket.disconnect());
-    await server.shutdown(false);
+    await example.close();
   });
 
   const place = (gameId: string, token: string, row: number, col: number) =>
-    act(server.app, gameId, token, { type: "place", row, col });
+    client.act(gameId, token, { type: "place", row, col });
 
   const seatedGame = async () => {
-    const gameId = await createGame(server.app);
-    const x = await joinAs(server.app, gameId, "Xena");
-    const o = await joinAs(server.app, gameId, "Otto");
+    const gameId = await client.createGame();
+    const x = await client.joinAs(gameId, "Xena");
+    const o = await client.joinAs(gameId, "Otto");
     return { gameId, x, o };
   };
 
   it("seats two players and refuses a third", async () => {
     const { gameId, x, o } = await seatedGame();
-    const state = await stateFor<TicTacToeState>(server.app, gameId, x.token);
+    const state = await client.stateFor<TicTacToeState>(gameId, x.token);
     expect(state.seats).toEqual({
       X: { playerId: x.playerId, name: "Xena" },
       O: { playerId: o.playerId, name: "Otto" },
     });
 
-    const { code } = (
-      await request(server.app)
-        .post(`/lobby/games/${gameId}/codes`)
-        .send({ name: "Third" })
-    ).body;
-    const refused = await request(server.app)
-      .post("/api/tokens")
-      .send({ code })
-      .expect(403);
+    const code = await client.codeFor(gameId, "Third");
+    const refused = await client.redeem(code).expect(403);
     expect(refused.body.error).toBe("Both seats are taken");
   });
 
   it("waits for an opponent and enforces turns and free cells", async () => {
-    const gameId = await createGame(server.app);
-    const x = await joinAs(server.app, gameId, "Xena");
+    const gameId = await client.createGame();
+    const x = await client.joinAs(gameId, "Xena");
     expect((await place(gameId, x.token, 0, 0).expect(400)).body.error).toBe(
       "Waiting for an opponent",
     );
-    const o = await joinAs(server.app, gameId, "Otto");
+    const o = await client.joinAs(gameId, "Otto");
     expect((await place(gameId, o.token, 0, 0).expect(400)).body.error).toBe(
       "It's not your turn",
     );
@@ -90,7 +83,7 @@ describe("Tic-tac-toe E2E", () => {
     for (const [seat, row, col] of moves)
       await place(gameId, seat.token, row, col).expect(201);
 
-    const won = await stateFor<TicTacToeState>(server.app, gameId, o.token);
+    const won = await client.stateFor<TicTacToeState>(gameId, o.token);
     expect(won.outcome).toEqual({
       winner: "X",
       line: [
@@ -103,8 +96,8 @@ describe("Tic-tac-toe E2E", () => {
       "The game is over",
     );
 
-    await act(server.app, gameId, o.token, { type: "rematch" }).expect(201);
-    const rematch = await stateFor<TicTacToeState>(server.app, gameId, x.token);
+    await client.act(gameId, o.token, { type: "rematch" }).expect(201);
+    const rematch = await client.stateFor<TicTacToeState>(gameId, x.token);
     expect(rematch).toMatchObject({ outcome: null, starter: "O", turn: "O" });
     expect(rematch.board.flat().every((cell) => cell === null)).toBe(true);
   });
@@ -125,14 +118,14 @@ describe("Tic-tac-toe E2E", () => {
     ];
     for (const [seat, row, col] of moves)
       await place(gameId, seat.token, row, col).expect(201);
-    const state = await stateFor<TicTacToeState>(server.app, gameId, x.token);
+    const state = await client.stateFor<TicTacToeState>(gameId, x.token);
     expect(state.outcome).toEqual({ winner: null, draw: true });
   });
 
   it("sends both players every move over the socket", async () => {
     const { gameId, x, o } = await seatedGame();
-    const address = server.server.address() as { port: number };
-    const socket = connect(`http://localhost:${address.port}`, {
+    const socket = connect(`http://localhost:${port}`, {
+      path: "/tic-tac-toe/socket.io",
       auth: { gameId, token: o.token },
       transports: ["websocket"],
       reconnection: false,

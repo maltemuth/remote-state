@@ -21,7 +21,7 @@ describe('actions', () => {
   beforeAll(async () => {
     server = await startCounterServer();
   });
-  afterAll(() => server.shutdown(false));
+  afterAll(() => server.close());
 
   it('needs the token in the Authorization header', async () => {
     const gameId = await newGame(server);
@@ -68,7 +68,7 @@ describe('actions', () => {
       const response = await sendAction(refusing, gameId, token, { type: 'increment' }).expect(400);
       expect(response.body.error).toBe('Not now');
     } finally {
-      await refusing.shutdown(false);
+      await refusing.close();
     }
   });
 

@@ -4,36 +4,33 @@
  */
 
 import { afterAll, beforeAll, describe, expect, it } from "@jest/globals";
-import { LogLevel, setGlobalLogLevel } from "@malte.muth/remote-state";
-import request from "supertest";
-import { createBattleshipServer } from "../../src/host/servers.js";
+import { silentLogger } from "@malte.muth/remote-state";
+import {
+  createExampleServer,
+  type ExampleServer,
+} from "../../src/host/servers.js";
 import type {
   BattleshipAction,
   BattleshipState,
 } from "../../src/games/battleship/types.js";
-import {
-  act as send,
-  createGame,
-  joinAs,
-  type Seat,
-  stateFor,
-} from "../helpers/client.js";
+import { clientFor, type Seat } from "../helpers/client.js";
 
 describe("Battleship E2E", () => {
-  let server: Awaited<ReturnType<typeof createBattleshipServer>>;
+  let example: ExampleServer;
+  let client: ReturnType<typeof clientFor>;
 
   beforeAll(async () => {
-    setGlobalLogLevel(LogLevel.error);
-    server = await createBattleshipServer(0);
+    example = await createExampleServer({ logger: silentLogger });
+    client = clientFor(example.app, "/battleship");
   });
-  afterAll(() => server.shutdown(false));
+  afterAll(() => example.close());
 
   const act = (gameId: string, token: string, action: BattleshipAction) =>
-    send(server.app, gameId, token, action);
+    client.act(gameId, token, action);
   const fire = (gameId: string, token: string, row: number, col: number) =>
     act(gameId, token, { type: "fire_shot", position: [row, col] });
   const view = (gameId: string, seat: Seat) =>
-    stateFor<BattleshipState>(server.app, gameId, seat.token);
+    client.stateFor<BattleshipState>(gameId, seat.token);
 
   /** Destroyer on row 0 (cols 0-2), battleship on row 1 (cols 0-3) */
   const placeFleet = async (gameId: string, token: string) => {
@@ -53,9 +50,9 @@ describe("Battleship E2E", () => {
 
   /** The first person admitted is player1, the second player2 */
   const seatedGame = async () => {
-    const gameId = await createGame(server.app);
-    const p1 = await joinAs(server.app, gameId, "Alice");
-    const p2 = await joinAs(server.app, gameId, "Bob");
+    const gameId = await client.createGame();
+    const p1 = await client.joinAs(gameId, "Alice");
+    const p2 = await client.joinAs(gameId, "Bob");
     return { gameId, p1, p2 };
   };
 
@@ -75,10 +72,7 @@ describe("Battleship E2E", () => {
     expect(
       (await act(gameId, p1.token, { type: "join" }).expect(400)).body.error,
     ).toBe("join isn't an action");
-    const { code } = (
-      await request(server.app).post(`/lobby/games/${gameId}/codes`).send({})
-    ).body;
-    await request(server.app).post("/api/tokens").send({ code }).expect(403);
+    await client.redeem(await client.codeFor(gameId, "Carol")).expect(403);
   });
 
   it("stays in setup until both fleets are placed", async () => {
