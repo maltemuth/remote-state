@@ -1,6 +1,6 @@
 # 0033. Clients wait for the server before showing an action's result
 
-Status: Accepted
+Status: Accepted; the action response carries the `sequence` again since [0034](0034-action-response-with-sequence.md)
 Date: 2026-10-04
 
 ## Context
@@ -14,7 +14,7 @@ Clients don't apply actions before the server confirms them. The store changes o
 ## Alternatives considered
 
 - **Running the game's rules on the client.** Instant, but only for games where every player sees everything the rules need.
-- **Predictions per action, provided by the game.** Instant for any game, but every game writes and maintains a second, client-side version of its rules, and the client must match predictions to server updates, which the action response didn't support at the time ([0032](0032-action-response-without-body.md)).
+- **Predictions per action, provided by the game.** Instant for any game, but every game writes and maintains a second, client-side version of its rules, and the client must match predictions to server updates, which the action response doesn't support ([0032](0032-action-response-without-body.md)).
 
 ## Consequences
 
