@@ -4,6 +4,8 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ## Unreleased
 
+## 0.2.0 - 2026-10-04
+
 ### Breaking
 
 - Battleship example: players claim a seat with a `join` action, and ships can only be placed during setup, one of each type. There are now two ship types, a destroyer (3) and a battleship (4). `validateActionSimple` and `executeActionSimple` were removed.
