@@ -26,11 +26,10 @@ export const act = (
     const previous = await latestState(context.orm.em.fork(), gameId);
     if (!previous) throw new Error(`Game ${gameId} has no state`);
 
-    const validation = await plugin.validateAction(previous.state, action, playerId);
-    if (validation !== true) return { rejected: validation };
-
     let result: unknown;
     try {
+      const validation = await plugin.validateAction(previous.state, action, playerId);
+      if (validation !== true) return { rejected: validation };
       result = await plugin.executeAction(previous.state, action, playerId);
     } catch (err) {
       if (err instanceof GameRefusal) return { rejected: err.message };

@@ -5,6 +5,8 @@
 
 import { afterAll, beforeAll, describe, expect, it } from '@jest/globals';
 import request from 'supertest';
+import { GameRefusal } from '../../src/index.js';
+import { counterGame } from '../helpers/counterGame.js';
 import {
   type CounterServer,
   getState,
@@ -50,6 +52,24 @@ describe('actions', () => {
       .set('Authorization', `Bearer ${token}`)
       .send({})
       .expect(400);
+  });
+
+  it('treats a refusal thrown by validateAction as a rejection', async () => {
+    const refusing = await startCounterServer(
+      counterGame({
+        validateAction: () => {
+          throw new GameRefusal('Not now');
+        },
+      })
+    );
+    try {
+      const gameId = await newGame(refusing);
+      const { token } = await join(refusing, gameId, 'alice');
+      const response = await sendAction(refusing, gameId, token, { type: 'increment' }).expect(400);
+      expect(response.body.error).toBe('Not now');
+    } finally {
+      await refusing.shutdown(false);
+    }
   });
 
   it('gives each audience its own view', async () => {

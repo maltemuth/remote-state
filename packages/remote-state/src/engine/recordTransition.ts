@@ -56,7 +56,7 @@ export const recordTransition = (
 
     if (joiningPlayer) {
       const audience = storedAfter.get(joiningPlayer.id) ?? null;
-      em.create(Player, { ...joiningPlayer, game: gameId, audience });
+      em.create(Player, { ...joiningPlayer, game: gameId, audience, lastActivityAt: new Date() });
       em.create(AudienceMembership, { player: joiningPlayer.id, sequence, audience });
     }
     for (const player of players) {
