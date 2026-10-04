@@ -2,6 +2,67 @@
 
 Results of the load test, as measured. For how to run it, see [Measure performance](../how-to/measure-performance.md).
 
+## 2026-10-04, persistence experiments on 0.6.0
+
+Same environment and scenario as for version 0.4.2, below. Every run was `--games 100 --pause 0`, 1700 actions, on version 0.6.0 with experimental switches that have since been removed; see [Throughput and persistence](../explanation/designs/throughput-and-persistence.md). Each line is one run, in the order they ran; the first set was run without `--runs`, the others with `--runs 3`.
+
+| Configuration       | What was different from 0.6.0                                                                                                                                                                                                                                                                                                               |
+| ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| WAL                 | `pragma journal_mode = WAL` and the given `synchronous` level, set when the database opens                                                                                                                                                                                                                                                  |
+| State cache         | Each game's latest state kept in memory after every recorded transition, instead of read from the database for every action                                                                                                                                                                                                                 |
+| Shared transactions | Transitions ready in the same turn of the event loop written in one transaction, flushed once; each request waits for its batch                                                                                                                                                                                                             |
+| Database in memory  | SQLite opened as `:memory:`, with no file at all                                                                                                                                                                                                                                                                                            |
+| Split               | Accept: the action is inserted into an action log table and answered with `201 { actionId }`. Execute: a worker per game runs it against a state in memory, broadcasts, sends `executed` or `rejected` to the submitter, then writes the transition. HTTP is the accept response; end to end is until the other player receives the update. |
+
+**Results** (latencies in milliseconds)
+
+| Configuration                                       | Actions/s | Duration | Errors | HTTP p50 | HTTP p95 | HTTP p99 | HTTP max | End-to-end p50 | End-to-end p95 | End-to-end p99 | End-to-end max |
+| --------------------------------------------------- | --------- | -------- | ------ | -------- | -------- | -------- | -------- | -------------- | -------------- | -------------- | -------------- |
+| As 0.6.0, rollback journal (SQLite's default)       | 94        | 18.1 s   | 0      | 88.7     | 3716.9   | 8679.3   | 9730.7   | 88.3           | 3716.7         | 8678.9         | 9730.5         |
+| As 0.6.0, rollback journal (SQLite's default)       | 97        | 17.5 s   | 0      | 83.4     | 3109.6   | 8394.0   | 9531.6   | 83.1           | 3109.3         | 8393.6         | 9530.2         |
+| As 0.6.0, rollback journal (SQLite's default)       | 104       | 16.3 s   | 0      | 88.2     | 2696.5   | 8093.0   | 9385.3   | 87.8           | 2696.3         | 8092.6         | 9384.9         |
+| WAL, `synchronous=NORMAL`                           | 148       | 11.5 s   | 0      | 81.8     | 153.2    | 177.6    | 216.0    | 81.5           | 153.0          | 177.3          | 215.8          |
+| WAL, `synchronous=NORMAL`                           | 147       | 11.6 s   | 0      | 82.1     | 158.0    | 184.4    | 220.8    | 81.9           | 157.7          | 183.9          | 220.6          |
+| WAL, `synchronous=NORMAL`                           | 147       | 11.6 s   | 0      | 82.3     | 158.7    | 187.4    | 1604.5   | 82.0           | 158.4          | 187.2          | 1604.2         |
+| WAL, `synchronous=NORMAL`                           | 143       | 11.9 s   | 0      | 76.8     | 154.7    | 3814.9   | 6880.8   | 76.5           | 154.4          | 3814.6         | 6880.6         |
+| WAL, `synchronous=NORMAL`                           | 148       | 11.5 s   | 0      | 83.5     | 163.6    | 187.2    | 7151.1   | 83.2           | 163.4          | 186.9          | 7150.8         |
+| WAL, `synchronous=NORMAL`                           | 150       | 11.3 s   | 0      | 81.8     | 154.0    | 185.0    | 213.8    | 81.6           | 153.7          | 184.7          | 213.5          |
+| WAL, `synchronous=OFF`                              | 150       | 11.3 s   | 0      | 81.1     | 152.2    | 182.5    | 218.2    | 80.8           | 151.9          | 182.3          | 218.0          |
+| WAL, `synchronous=OFF`                              | 152       | 11.2 s   | 0      | 80.5     | 152.4    | 176.0    | 195.7    | 80.2           | 152.1          | 175.3          | 195.4          |
+| WAL, `synchronous=OFF`                              | 152       | 11.2 s   | 0      | 80.2     | 150.8    | 180.4    | 1169.7   | 79.9           | 150.6          | 180.2          | 1169.5         |
+| WAL `NORMAL`, state cache                           | 160       | 10.6 s   | 0      | 74.3     | 142.6    | 168.7    | 214.2    | 74.0           | 142.4          | 168.4          | 214.0          |
+| WAL `NORMAL`, state cache                           | 159       | 10.7 s   | 0      | 76.0     | 142.0    | 169.9    | 210.8    | 75.6           | 141.5          | 169.7          | 210.6          |
+| WAL `NORMAL`, state cache                           | 157       | 10.8 s   | 0      | 76.4     | 145.2    | 175.1    | 6666.7   | 76.1           | 144.9          | 174.8          | 6666.5         |
+| WAL `NORMAL`, state cache, shared transactions      | 170       | 10.0 s   | 0      | 110.6    | 235.5    | 2701.9   | 4506.0   | 107.2          | 231.5          | 2697.7         | 4501.1         |
+| WAL `NORMAL`, state cache, shared transactions      | 188       | 9.0 s    | 0      | 112.3    | 144.2    | 168.5    | 3763.5   | 108.5          | 140.4          | 161.7          | 3759.5         |
+| WAL `NORMAL`, state cache, shared transactions      | 187       | 9.1 s    | 0      | 121.1    | 154.6    | 215.6    | 4088.3   | 117.1          | 150.8          | 210.6          | 4083.3         |
+| Rollback journal, state cache, shared transactions  | 149       | 11.4 s   | 0      | 104.8    | 1469.6   | 4344.8   | 4739.4   | 101.3          | 1465.2         | 4339.9         | 4733.7         |
+| Rollback journal, state cache, shared transactions  | 150       | 11.3 s   | 0      | 106.2    | 1488.4   | 4349.9   | 4743.9   | 103.2          | 1486.1         | 4339.5         | 4737.4         |
+| Rollback journal, state cache, shared transactions  | 149       | 11.4 s   | 0      | 106.5    | 1657.6   | 4433.4   | 4748.7   | 103.3          | 1649.0         | 4427.4         | 4743.0         |
+| Database in memory (`:memory:`)                     | 154       | 11.1 s   | 0      | 76.8     | 144.0    | 177.5    | 1973.8   | 76.5           | 143.8          | 177.3          | 1973.6         |
+| Database in memory (`:memory:`)                     | 160       | 10.7 s   | 0      | 77.6     | 143.8    | 170.0    | 218.6    | 77.3           | 143.7          | 169.7          | 218.5          |
+| Database in memory (`:memory:`)                     | 156       | 10.9 s   | 0      | 77.2     | 144.8    | 175.9    | 247.4    | 76.9           | 144.6          | 175.6          | 245.9          |
+| Split, rollback journal                             | 80        | 21.2 s   | 0      | 141.0    | 287.8    | 9141.9   | 10689.3  | 142.2          | 288.0          | 9143.4         | 10691.0        |
+| Split, rollback journal                             | 81        | 21.1 s   | 0      | 137.8    | 278.6    | 9235.3   | 10820.0  | 138.8          | 279.7          | 9236.8         | 10821.7        |
+| Split, rollback journal                             | 83        | 20.5 s   | 0      | 137.6    | 286.4    | 8913.5   | 10478.6  | 138.4          | 287.2          | 8915.3         | 10480.1        |
+| Split, WAL `NORMAL`                                 | 147       | 11.5 s   | 0      | 81.6     | 105.9    | 121.5    | 174.8    | 82.6           | 107.0          | 125.0          | 175.7          |
+| Split, WAL `NORMAL`                                 | 149       | 11.4 s   | 0      | 80.1     | 98.7     | 111.1    | 7036.0   | 81.2           | 100.2          | 111.7          | 7037.2         |
+| Split, WAL `NORMAL`                                 | 149       | 11.4 s   | 0      | 79.6     | 98.5     | 120.5    | 6893.5   | 80.8           | 100.0          | 121.9          | 6894.8         |
+| Split, WAL `NORMAL`, shared transactions for writes | 167       | 10.2 s   | 0      | 70.1     | 85.8     | 97.6     | 3829.8   | 71.4           | 87.2           | 98.8           | 3830.4         |
+| Split, WAL `NORMAL`, shared transactions for writes | 169       | 10.1 s   | 0      | 69.9     | 86.1     | 98.8     | 5010.0   | 71.0           | 87.4           | 99.8           | 5011.4         |
+| Split, WAL `NORMAL`, shared transactions for writes | 172       | 9.9 s    | 0      | 70.3     | 82.1     | 94.0     | 2517.4   | 71.4           | 83.1           | 94.8           | 2518.7         |
+
+**CPU profiles,** one run each with `--profile`, own time by package as reported by `npm run perf:profile`:
+
+| Configuration                            | Sampled | Top packages by own time                                                                                                               |
+| ---------------------------------------- | ------- | -------------------------------------------------------------------------------------------------------------------------------------- |
+| As 0.6.0                                 | 19.7 s  | kysely 30.5%, @mikro-orm/core 16.2%, rfc6902 12.0%, @mikro-orm/sql 10.0%, better-sqlite3 6.9%, node 5.1%, remote-state 2.6%, idle 2.1% |
+| WAL `NORMAL`, state cache                | 12.5 s  | rfc6902 19.0%, @mikro-orm/core 17.8%, @mikro-orm/sql 10.2%, kysely 10.1%, node 9.5%, better-sqlite3 8.9%, remote-state 3.4%, idle 1.8% |
+| Database in memory                       | 12.5 s  | @mikro-orm/core 21.8%, rfc6902 17.2%, @mikro-orm/sql 11.0%, better-sqlite3 10.2%, node 9.8%, kysely 5.4%, remote-state 4.3%, idle 1.7% |
+| Split, WAL `NORMAL`, shared transactions | 11.4 s  | rfc6902 20.0%, @mikro-orm/core 17.7%, kysely 11.8%, node 9.9%, @mikro-orm/sql 9.4%, better-sqlite3 7.0%, remote-state 4.3%, idle 2.6%  |
+
+In the 0.6.0 profile, committing transactions took 17% including calls; in the split profile, `toJson` took 2.4% own time and `structuredClone` 1.5%. A battleship state in these runs was at most 1,269 bytes of JSON, 1,164 on average.
+
 ## 2026-10-04, version 0.6.0
 
 Same environment and scenario as for version 0.4.2, below.
