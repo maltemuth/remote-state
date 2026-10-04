@@ -264,15 +264,16 @@ The questions are which of these exist, how the store's reducer applies them, an
 
 ### 6. What does the HTTP response to an action contain?
 
+Decided for now: 201 with no body ([0032](../decisions/0032-action-response-without-body.md)).
+
 - **A. The new player view,** as today. The acting client gets it twice, and must use `sequence` to ignore the second copy.
 - **B. Only an acknowledgement with the new `sequence`.** All state arrives through one channel, the socket, so every client applies updates the same way. The acting client depends on its socket connection to see its own action's result.
 
 ## Open questions
 
-- When a client asks for a patch format the game doesn't offer, should the server reject the request, or fall back to whole states? [0008](../decisions/0008-format-query-parameter.md) currently has it rejected.
-- When are minimal patches worth more than standard output: should `microdiff` replace `rfc6902` for games with board-like arrays?
+- When are minimal patches worth more than standard output: should `microdiff` replace `rfc6902` for games with board-like arrays? Not now.
 - What do clients need for rendering: to know which data changed, or what happened in game terms? Is keeping unchanged parts as the same objects on the client enough, or must the server send the change?
-- How large are the states of the games this is meant for, and how often do they change? This decides whether sending changes is worth the complexity.
-- Do clients need intermediate states, for example to animate each move, or only the latest one?
-- Should a player joining late see the game's earlier history?
+- How large are the states of the games this is meant for, and how often do they change? This decides whether sending changes is worth the complexity. Unknown so far.
+- Do clients need intermediate states, for example to animate each move, or only the latest one? Unknown; to be found out with the example games.
+- Should a player joining late see the game's earlier history? Leaning towards making it the game's decision, since a game's log is part of its logic.
 - Which state libraries must the middleware support first? See [Client package](client-package.md).
