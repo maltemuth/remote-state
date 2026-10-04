@@ -3,6 +3,7 @@
  * (decisions 0024, 0025).
  */
 
+import { toJson } from '../json.js';
 import { type AnyGamePlugin } from './types.js';
 
 /** The single default audience of games without a view filter */
@@ -17,10 +18,12 @@ export const effectiveAudience = (
   player: { id: string; audience: string | null }
 ): string => player.audience ?? (plugin.filterStateForAudience ? player.id : EVERYONE);
 
-/** What an audience sees of a full state */
+/** What an audience sees of a full state, as plain JSON like everything that's diffed or sent */
 export const viewFor = async (
   plugin: AnyGamePlugin,
   state: unknown,
   audience: string
 ): Promise<unknown> =>
-  plugin.filterStateForAudience ? await plugin.filterStateForAudience(state, audience) : state;
+  plugin.filterStateForAudience
+    ? toJson(await plugin.filterStateForAudience(state, audience))
+    : state;

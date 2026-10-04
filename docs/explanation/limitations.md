@@ -11,21 +11,19 @@ These are current properties of the library, not bugs in your game. Each one is 
 
 ## Protocol
 
-- **The `:cursor` in `GET /api/games/:gameId/state/:cursor` is ignored.** It always returns the latest state. There is no way to fetch a past state or the states since a given `sequence`.
-- **No replay of missed updates.** A reconnecting client can only fetch the latest state, so it sees the result but not the intermediate steps.
-- **`player-joined` means two things.** It's sent both when a player registers over HTTP and when a player's socket connects.
-- **Tokens are accepted in two places for actions** (body and bearer header) but only one for reads (bearer header).
+- **Catching up is one jump.** `GET …/updates?since=` returns a single patch to the current view, so a client can't see or animate the steps it missed ([0030](decisions/0030-updates-in-one-jump.md)).
+- **No presence.** Clients aren't told when other players connect or disconnect. The old `player-joined` and `player-left` events were removed; presence belongs to the [Game lifecycle](designs/game-lifecycle.md) proposal.
+- **Views rebuilt after an audience change use the game's current filter.** If the filter changed since the client's `since`, the patch may not fit what the client holds ([0035](decisions/0035-updates-across-audiences.md)).
 - **No versioning** of the API or of stored states.
 
 ## Security
 
-- **Tokens never expire** and can't be revoked or reissued.
-- **`POST /admin/log-level` is unauthenticated.** It's disabled only when `NODE_ENV=production`.
+- **Tokens never expire and can't be revoked** ([0018](decisions/0018-no-token-expiration-or-revocation.md)). A host replaces a lost token by admitting the same identity again, but the old one stays valid.
 - **HTTP CORS is open to every origin**, and it isn't configurable.
-- **No rate limiting** on any endpoint, including game creation.
-- **The `admin` role is recorded but grants nothing.**
+- **No rate limiting** on the library's endpoints, including `POST /api/tokens`. Hosts protect their own endpoints and can put middleware in front of the library's ([0016](decisions/0016-authentication-in-library-authorization-by-implementer.md)).
 
 ## Operations
 
 - **Process-wide log level.** `minimumLogLevel` changes the level for every logger in the process, including other servers in the same process.
-- **No game lifecycle.** Games are never closed, archived or deleted, and nothing uses `lastActivityAt`.
+- **No game lifecycle.** Games are never closed, archived or deleted, players can't leave, and nothing uses `lastActivityAt`.
+- **Admission codes are kept.** Used and expired codes are never deleted.
