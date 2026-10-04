@@ -14,6 +14,7 @@ These are current properties of the library, not bugs in your game. Each one is 
 - **Catching up is one jump.** `GET …/updates?since=` returns a single patch to the current view, so a client can't see or animate the steps it missed ([0030](decisions/0030-updates-in-one-jump.md)).
 - **No presence.** Clients aren't told when other players connect or disconnect. The old `player-joined` and `player-left` events were removed; presence belongs to the [Game lifecycle](designs/game-lifecycle.md) proposal.
 - **Views rebuilt after an audience change use the game's current filter.** If the filter changed since the client's `since`, the patch may not fit what the client holds ([0035](decisions/0035-updates-across-audiences.md)).
+- **Unhandled WebSocket upgrades stay open.** Sockets leave upgrade requests for other paths alone, so instances can share a server ([0038](decisions/0038-several-games-by-mounting-several-instances.md)). A request for a path nobody handles stays open until the client gives up, also on the standalone server.
 - **No versioning** of the API or of stored states.
 
 ## Security

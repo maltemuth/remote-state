@@ -2,11 +2,13 @@
 
 All endpoints accept and return JSON. Errors have the form `{ "error": "<message>" }`.
 
+Paths are relative to where the host mounts the library's router: at the root with [`createRemoteStateServer`](server-api.md#createremotestateserver), or under a prefix of the host's choosing with [`createRemoteState`](server-api.md#createremotestate). Under the prefix `/tic-tac-toe`, for example, `POST /api/tokens` is `POST /tic-tac-toe/api/tokens`.
+
 Routes under `/api` that don't exist return `404 { "error": "Endpoint not found" }`. Paths outside `/api` are left to the host application.
 
-A request body that isn't valid JSON is answered with 400 and the parser's message. Unexpected errors are answered with `500 { "error": "Internal server error" }`.
+Under `/api`, a request body that isn't valid JSON is answered with 400 and the parser's message, and unexpected errors are answered with `500 { "error": "Internal server error" }`.
 
-CORS is enabled for all origins.
+CORS applies to the routes under `/api` and allows all origins, unless the server's [`cors` option](server-api.md#options) says otherwise.
 
 There are no endpoints for creating or joining games. The host application does both in-process, with [`createGame` and `admit`](server-api.md#remotestateserver), and adds its own routes for them. See [Create games and admit players](../how-to/admit-players.md).
 
@@ -120,7 +122,7 @@ Returns one set of patches that turns the player's view at `since` into their cu
 | 500    | `Internal server error`                                                         |
 
 - **200:** `sequence` is the latest sequence. `patches` is empty when `since` is the latest sequence. Patches are in [Immer's format](socket-events.md#patch-format); apply them in order to the view at `since`. If the player changed audience after `since`, the patches lead from the old audience's view to the new one's.
-- **303:** no patch can be built, because a state the server needs is missing. Fetch the whole state instead.
+- **303:** no patch can be built, because a state the server needs is missing. Fetch the whole state instead. The `Location` is relative, so it leads to the state endpoint under any prefix.
 - **404:** `since` is after the latest sequence, or before the player joined. The first sequence a player can use is the one their join produced.
 
 ## GET /health

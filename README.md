@@ -7,9 +7,10 @@ A TypeScript library for server-authoritative multiplayer games. Clients dispatc
 - a stored history of every state
 - live, per-player updates over Socket.IO, as whole states or as patches
 - catch-up over HTTP from an earlier `sequence`, in one patch
+- a standalone server, or a router and socket to mount in your own Express app and HTTP server
 
 ```ts
-const server = await createRemoteStateServer(myGame, 3000);
+const server = await createRemoteStateServer(myGame, { port: 3000 });
 
 // In your own routes, after your own checks:
 const gameId = await server.createGame(newGame());
@@ -24,12 +25,12 @@ await server.startServer();
 
 ## Repository layout
 
-| Path                                                                         | Contents                                                                             |
-| ---------------------------------------------------------------------------- | ------------------------------------------------------------------------------------ |
-| [packages/remote-state](packages/remote-state)                               | The library                                                                          |
-| [packages/remote-state-example-server](packages/remote-state-example-server) | A host with a lobby, tic-tac-toe with a browser client, and a battleship game plugin |
-| [docs](docs/README.md)                                                       | Documentation                                                                        |
-| [BACKLOG.md](BACKLOG.md)                                                     | Planned work that doesn't depend on open designs                                     |
+| Path                                                                         | Contents                                                                                          |
+| ---------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------- |
+| [packages/remote-state](packages/remote-state)                               | The library                                                                                       |
+| [packages/remote-state-example-server](packages/remote-state-example-server) | A host serving tic-tac-toe, with a browser client, and battleship side by side, each with a lobby |
+| [docs](docs/README.md)                                                       | Documentation                                                                                     |
+| [BACKLOG.md](BACKLOG.md)                                                     | Planned work that doesn't depend on open designs                                                  |
 
 ## Quick start
 
@@ -38,7 +39,7 @@ Requires Node.js 24 or newer. With [nvm](https://github.com/nvm-sh/nvm), `nvm us
 ```sh
 nvm use
 npm install
-npm run start:example   # builds, then serves tic-tac-toe on http://localhost:3000
+npm run start:example   # builds, then serves the tic-tac-toe client on http://localhost:3000
 npm test                # all tests: library, e2e and example game engines
 ```
 

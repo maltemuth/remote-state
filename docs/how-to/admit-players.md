@@ -16,7 +16,7 @@ import {
   UnknownGameError,
 } from "@malte.muth/remote-state";
 
-const server = await createRemoteStateServer(myGame, 3000);
+const server = await createRemoteStateServer(myGame, { port: 3000 });
 
 server.app.post("/games", async (req, res) => {
   const user = await currentUser(req);
@@ -54,9 +54,9 @@ server.app.post("/games/:gameId/codes", async (req, res) => {
 await server.startServer();
 ```
 
-`currentUser` and `mayJoin` stand for your own login and rules. Use any paths outside `/api`, which the library reserves.
+`currentUser` and `mayJoin` stand for your own login and rules. Use any paths outside `/api`, which the library reserves. If you [embed the library in your own app](embed-in-an-existing-app.md), add the same routes there, and call `createGame` and `admit` on what `createRemoteState` returns.
 
-The library's error handler is registered before your routes, so it doesn't see their errors. Errors you don't handle get Express's default response, an HTML page with status 500. Add your own error handler after your routes if clients need JSON.
+The library's JSON body parser and error handler apply only to `/api`. If your routes read a JSON body, add `express.json()` to them. Errors you don't handle get Express's default response, an HTML page with status 500. Add your own error handler after your routes if clients need JSON.
 
 ## Create a game
 

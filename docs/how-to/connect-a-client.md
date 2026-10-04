@@ -2,9 +2,11 @@
 
 This guide shows how to connect a web page to a Remote State game: getting a token, receiving the state, and sending actions. [public/client.js](../../packages/remote-state-example-server/public/client.js) in the example server is a complete working version of the same steps.
 
+The paths here assume the library's routes are at the root of your server, as with `createRemoteStateServer`. If your host mounts them under a prefix, put it in front of every path, and connect the socket at its path (see step 3). The example server serves tic-tac-toe under `/tic-tac-toe`, so its client sends requests to `/tic-tac-toe/api/…`.
+
 ## 1. Get a code from your host
 
-The library has no endpoint for creating or joining games. Your host app has its own, which return an admission code; see [Create games and admit players](admit-players.md). With the example server's lobby:
+The library has no endpoint for creating or joining games. Your host app has its own, which return an admission code; see [Create games and admit players](admit-players.md). With a lobby like the example server's, which it serves at `/tic-tac-toe/lobby` for tic-tac-toe:
 
 ```js
 const { gameId } = await post("/lobby/games"); // only to create a new game
@@ -58,6 +60,8 @@ const socket = io({ auth: { gameId, token: session.token } });
 socket.on("state", (event) => render(event.state));
 socket.on("connect_error", (error) => showError(error.message));
 ```
+
+If the server sets another socket path, such as `/tic-tac-toe/socket.io` in the example, load the script from that path and pass it to `io`: `io({ path: "/tic-tac-toe/socket.io", auth })`.
 
 The socket sends the player's whole view as soon as it connects, and again after every reconnect, then a `state` event for every change. There's no separate catch-up step.
 
@@ -127,4 +131,4 @@ See [Serve a web client](serve-a-web-client.md).
 
 ## Clients on another origin
 
-HTTP CORS is open to all origins. For Socket.IO, set `serverConfiguration.socketIO.cors` (see [Server API](../reference/server-api.md#remotestateserverconfiguration)) and connect with the full URL: `io("https://games.example.com", { auth })`.
+By default, the library's API and socket allow requests from any origin. To limit them, set the server's [`cors` option](../reference/server-api.md#options), such as `{ origin: "https://my-game.example.com" }`. Your own routes, such as a lobby, need their own CORS. Use full URLs in the client, and connect with `io("https://games.example.com", { auth })`.

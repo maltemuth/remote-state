@@ -3,17 +3,12 @@
 By default, games live in an in-memory SQLite database and are lost when the process stops, along with every player and token. To keep them, store them in a file:
 
 ```ts
-const server = await createRemoteStateServer(
-  {
-    ...myGame,
-    serverConfiguration: {
-      persistDatabase: true,
-      databaseFilename: "/var/lib/my-game/games.db", // default: games.db in the working directory
-    },
-  },
-  3000,
-);
+const server = await createRemoteStateServer(myGame, {
+  database: "/var/lib/my-game/games.db", // relative paths start from the working directory
+});
 ```
+
+`createRemoteState` takes the same option. When one process serves several games, give each its own file; the database doesn't record which game a stored game belongs to.
 
 The directory must already exist. The tables are created by migrations on first start.
 

@@ -1,6 +1,6 @@
 # GamePlugin
 
-A game is defined by a `GamePlugin` object passed to [`createRemoteStateServer`](server-api.md#createremotestateserver).
+A game is defined by a `GamePlugin` object passed to [`createRemoteStateServer`](server-api.md#createremotestateserver) or [`createRemoteState`](server-api.md#createremotestate). Deployment settings, such as the database, aren't part of the game; they're [options](server-api.md#options) of those functions.
 
 ```ts
 import type { GamePlugin } from "@malte.muth/remote-state";
@@ -25,7 +25,6 @@ interface GamePlugin<StateType, ActionType, ViewType = StateType> {
     audience: string,
   ) => Awaitable<ViewType>;
   gameConfig?: { name: string; description?: string };
-  serverConfiguration?: RemoteStateServerConfiguration;
 }
 
 type Awaitable<T> = T | Promise<T>;
@@ -101,10 +100,6 @@ The filter is called once per audience with members on every transition, for the
 ### gameConfig
 
 `name` is reported by `GET /health`. `description` is not used.
-
-### serverConfiguration
-
-See [Server API: configuration](server-api.md#remotestateserverconfiguration).
 
 ## Helpers
 

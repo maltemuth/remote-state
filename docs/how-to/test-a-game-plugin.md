@@ -2,7 +2,7 @@
 
 A plugin is a set of plain functions, so you can test the rules without a server. Add a few end-to-end tests through the HTTP API to cover what the server adds: admission, authentication, filtering, and state history.
 
-The examples use the rock-paper-scissors game from the [tutorial](../tutorials/build-your-first-game.md), with the plugin and `newGame` exported from their own module.
+The examples use the rock-paper-scissors game from the [tutorial](../tutorials/build-your-first-game.md), with the plugin, `newGame` and the `RpsState` type exported from their own module.
 
 ## Unit-test the rules
 
@@ -36,28 +36,28 @@ Test `validateAction` and `executeAction` separately. The server never calls `ex
 
 ## Test through the API
 
-Create a server on port `0` with an in-memory database, and drive it with [supertest](https://github.com/ladjs/supertest). You don't need to call `startServer()`, because supertest calls the Express app directly.
+Create a server with an in-memory database, the default, and drive it with [supertest](https://github.com/ladjs/supertest). You don't need to call `startServer()`, because supertest calls the Express app directly.
 
 Your tests act as the host: they create games and admit players by calling the server directly, then use the HTTP API as a client would.
 
 ```ts
 import request from "supertest";
-import { createRemoteStateServer, LogLevel } from "@malte.muth/remote-state";
-import { newGame, rockPaperScissors } from "../src/rps.js";
+import {
+  createRemoteStateServer,
+  type RemoteStateServer,
+  silentLogger,
+} from "@malte.muth/remote-state";
+import { newGame, rockPaperScissors, type RpsState } from "../src/rps.js";
 
-let server;
+let server: RemoteStateServer<RpsState>;
 
 beforeAll(async () => {
-  server = await createRemoteStateServer(
-    {
-      ...rockPaperScissors,
-      serverConfiguration: { minimumLogLevel: LogLevel.error },
-    },
-    0,
-  );
+  server = await createRemoteStateServer(rockPaperScissors, {
+    logger: silentLogger,
+  });
 });
 
-afterAll(() => server.shutdown(false)); // false: don't exit the test process
+afterAll(() => server.close());
 
 // What a host and its client do together: admit someone and redeem the code
 const join = async (gameId, name) => {
@@ -87,13 +87,13 @@ it("hides the opponent's choice", async () => {
 });
 ```
 
-Pass `false` to `shutdown`, otherwise it calls `process.exit` and ends the test run.
+`silentLogger` keeps the server's output out of the test report. To see only errors, pass `consoleLogger({ level: LogLevel.error })` instead.
 
 If your host adds its own routes, as the example's lobby does, test through those instead of calling `admit` directly.
 
 ## Test socket updates
 
-Call `startServer()`, read the port from `server.server.address().port`, and connect with `socket.io-client`. [socket.test.ts](../../packages/remote-state/__test__/integration/socket.test.ts) has complete examples, including how to wait for events and how to apply patches with Immer.
+Create the server with `port: 0`, call `startServer()`, which resolves to the port it picked, and connect with `socket.io-client`. [socket.test.ts](../../packages/remote-state/__test__/integration/socket.test.ts) has complete examples, including how to wait for events and how to apply patches with Immer.
 
 ## Examples in this repository
 

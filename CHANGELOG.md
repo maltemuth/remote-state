@@ -23,7 +23,7 @@ The library becomes embeddable, and deployment settings move out of the game (de
 ### Changed
 
 - Sockets no longer destroy upgrade requests for other paths, so several instances and the host's own WebSockets can share one HTTP server.
-- The library's JSON parsing and error handler apply to its `/api` routes only.
+- The library's JSON parsing and error handler apply to its `/api` routes only, and CORS to `/api` and `/health`.
 
 ## 0.3.0 - 2026-10-04
 

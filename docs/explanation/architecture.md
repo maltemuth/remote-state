@@ -29,6 +29,8 @@ The library handles transport, storage, identity and fan-out. A game supplies on
 
 Everything runs in one Node.js process, and that assumption shapes several decisions below.
 
+The library runs inside the host. Either it's a standalone server whose Express app the host adds its routes to, or the host mounts the library's router in its own app and attaches its socket to its own HTTP server ([0037](decisions/0037-embeddable-core-and-server-options.md)). Either way, one instance serves one game, with its own database. A host that serves several games creates one instance per game, each under its own path ([0038](decisions/0038-several-games-by-mounting-several-instances.md)). Deployment settings such as the database, CORS and logging are passed by the host when it creates an instance, not defined by the game, so the same game can be deployed in different ways.
+
 ## Why actions go over HTTP and updates over sockets
 
 Actions need a reply: accepted or rejected with a reason. A request/response protocol gives that reply, with status codes and ordinary tooling (curl, supertest, retries), without building acknowledgements on top of Socket.IO.

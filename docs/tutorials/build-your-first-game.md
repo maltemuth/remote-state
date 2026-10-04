@@ -31,6 +31,7 @@ Create `packages/remote-state-example-server/src/rps-server.ts` and start with t
 
 ```ts
 import { randomUUID } from "crypto";
+import express from "express";
 import {
   createRemoteStateServer,
   GameRefusal,
@@ -147,7 +148,7 @@ const rockPaperScissors: GamePlugin<RpsState, RpsAction, RpsView> = {
 Add the rest of the file:
 
 ```ts
-const server = await createRemoteStateServer(rockPaperScissors, 3001);
+const server = await createRemoteStateServer(rockPaperScissors, { port: 3001 });
 
 // Host routes: anyone may create a game and get a code to join it
 server.app.post("/lobby/games", async (_req, res) => {
@@ -155,24 +156,30 @@ server.app.post("/lobby/games", async (_req, res) => {
   res.status(201).json({ gameId });
 });
 
-server.app.post("/lobby/games/:gameId/codes", async (req, res) => {
-  const name = typeof req.body?.name === "string" ? req.body.name : "";
-  try {
-    const code = await server.admit({
-      gameId: req.params.gameId,
-      identity: { id: randomUUID(), name },
-    });
-    res.status(201).json({ code });
-  } catch (err) {
-    if (!(err instanceof UnknownGameError)) throw err;
-    res.status(404).json({ error: err.message });
-  }
-});
+server.app.post(
+  "/lobby/games/:gameId/codes",
+  express.json(),
+  async (req, res) => {
+    const name = typeof req.body?.name === "string" ? req.body.name : "";
+    try {
+      const code = await server.admit({
+        gameId: req.params.gameId,
+        identity: { id: randomUUID(), name },
+      });
+      res.status(201).json({ code });
+    } catch (err) {
+      if (!(err instanceof UnknownGameError)) throw err;
+      res.status(404).json({ error: err.message });
+    }
+  },
+);
 
 await server.startServer();
 ```
 
 These two routes are your host. `createGame` stores a new game with the state you pass it. `admit` returns a single-use code that lets one person into a game. The `identity` says who that person is: an `id` of your choosing, and any details for the game. This host has no login, so every request gets a new ID and counts as a new person. A real app would check its own users here.
+
+The library only parses JSON for its own routes, under `/api`, so the second route adds `express.json()` to read the name.
 
 Build and run it:
 
@@ -181,10 +188,10 @@ npm run build
 node packages/remote-state-example-server/dist/rps-server.js
 ```
 
-The log ends with:
+It logs:
 
 ```
-info  remote-state-server Remote State server listening at http://localhost:3001
+[2026-…] info  Remote State server listening at http://localhost:3001
 ```
 
 Leave it running and open a second terminal for the rest of the tutorial.

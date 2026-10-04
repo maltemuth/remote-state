@@ -1,6 +1,6 @@
 # Socket.IO events
 
-The Socket.IO server shares the HTTP server's port and uses the default `/socket.io` path. It's enabled unless `serverConfiguration.socketIO.enabled` is `false`.
+The Socket.IO server shares the HTTP server's port. Its path is `/socket.io` unless set with the server's [`socket` option](server-api.md#options), and it's enabled unless that option is `false`. With [`createRemoteState`](server-api.md#createremotestate), it's served once the host calls `attach`. CORS for the handshake follows the `cors` option.
 
 A socket belongs to exactly one player in one game. Clients only receive events; the server doesn't handle any events sent by clients.
 
@@ -24,6 +24,7 @@ Choose the update format with the `format` query parameter:
 const socket = io("http://localhost:3000", {
   auth: { gameId, token },
   query: { format: "immer" }, // optional
+  path: "/tic-tac-toe/socket.io", // only if the server sets another path
 });
 ```
 

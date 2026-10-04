@@ -17,7 +17,8 @@ export const createRouter = (context: EngineContext, corsOptions: CorsOptions) =
   const router = Router();
   const player = requirePlayer(context.orm);
 
-  router.use('/api', cors(corsOptions), express.json());
+  router.use(['/api', '/health'], cors(corsOptions));
+  router.use('/api', express.json());
   router.post('/api/tokens', postToken(context));
   router.post('/api/games/:gameId/actions', player, postAction(context));
   router.get('/api/games/:gameId/state', player, getState(context));

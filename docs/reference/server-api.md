@@ -7,13 +7,13 @@ Exports of `@malte.muth/remote-state`.
 ```ts
 createRemoteStateServer<StateType, ActionType, ViewType>(
   plugin: GamePlugin<StateType, ActionType, ViewType>,
-  port?: number // default 3000; 0 picks a free port
+  options?: RemoteStateServerOptions,
 ): Promise<RemoteStateServer<StateType>>
 ```
 
-Initializes the database, creates the Express app with the [HTTP API](http-api.md), and attaches Socket.IO unless it's disabled. It doesn't start listening; call `startServer()` for that.
+A standalone server for one game. It opens the database, creates an Express app with the [HTTP API](http-api.md) and an HTTP server for it, and attaches Socket.IO unless `socket` is `false`. It doesn't start listening; call `startServer()` for that.
 
-If `serverConfiguration.minimumLogLevel` is set, it's applied as the global log level for the whole process.
+To serve a game from an Express app and HTTP server you already have, use [`createRemoteState`](#createremotestate) instead.
 
 Rejects with `Error("Failed to initialize database", { cause })` if the database can't be opened.
 
@@ -23,30 +23,37 @@ Rejects with `Error("Failed to initialize database", { cause })` if the database
 interface RemoteStateServer<StateType> {
   app: Express;
   server: http.Server;
-  port: number;
+  readonly port: number;
+  router: Router;
   createGame: (initialState: StateType) => Promise<string>;
   admit: (admission: Admission) => Promise<string>;
-  startServer: () => Promise<void>;
-  shutdown: (andExit?: boolean) => Promise<void>;
+  startServer: () => Promise<number>;
+  close: () => Promise<void>;
 }
 ```
 
 | Member                        | Description                                                                                                                                            |
 | ----------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `app`                         | The Express app. Routes added outside `/api` are reachable; this is where a host adds its own.                                                         |
-| `server`                      | The HTTP server. After `startServer()`, `server.address().port` is the actual port.                                                                    |
-| `port`                        | The port passed in                                                                                                                                     |
+| `app`                         | The Express app, with `router` mounted at the root. This is where a host adds its own routes, outside `/api`.                                          |
+| `server`                      | The HTTP server                                                                                                                                        |
+| `port`                        | The port listened on once started, also when `0` was requested. Before that, the requested port.                                                       |
+| `router`                      | The library's routes, as in [`RemoteState`](#remotestate)                                                                                              |
 | `createGame(initialState)`    | Stores a new game with `initialState` as sequence 0, and resolves to the game's ID. The game has no players. Rejects if `initialState` is `undefined`. |
 | `admit({ gameId, identity })` | Resolves to a single-use admission code for `identity` in the game. See below.                                                                         |
-| `startServer()`               | Starts listening on `port`                                                                                                                             |
-| `shutdown(andExit = true)`    | Closes Socket.IO, the HTTP server and the database. Unless `andExit` is `false`, it then calls `process.exit` (code 0, or 1 if shutdown failed).       |
+| `startServer()`               | Starts listening on the requested port, and resolves to the actual port. Rejects if it can't listen, for example because the port is in use.           |
+| `close()`                     | Disconnects socket clients, closes the database, and stops the HTTP server, closing its open connections                                               |
+
+`app` has no JSON body parser or error handler for the host's routes; the library's apply only to `/api`. Add `express.json()` to routes that read a JSON body.
 
 `createGame` and `admit` are called by the host in the same process ([0021](../explanation/decisions/0021-games-created-with-creategame.md), [0023](../explanation/decisions/0023-no-server-to-server-admit.md)). See [Create games and admit players](../how-to/admit-players.md).
 
-The library doesn't register signal handlers. To shut down on Ctrl-C, add them yourself:
+The library never exits the process and doesn't register signal handlers. To shut down on Ctrl-C, add them yourself:
 
 ```ts
-process.on("SIGINT", () => server.shutdown());
+process.on("SIGINT", async () => {
+  await server.close();
+  process.exit(0);
+});
 ```
 
 ### admit
@@ -82,36 +89,91 @@ class UnknownGameError extends Error {} // name "UnknownGameError", message "Gam
 
 Thrown by `admit`, so that hosts can tell an unknown game apart from other errors, for example to answer 404.
 
-## RemoteStateServerConfiguration
+## createRemoteState
 
-Set as `plugin.serverConfiguration`.
+```ts
+createRemoteState<StateType, ActionType, ViewType>(
+  plugin: GamePlugin<StateType, ActionType, ViewType>,
+  options?: RemoteStateOptions,
+): Promise<RemoteState<StateType>>
+```
 
-| Field              | Type                  | Default                                     | Description                                                                     |
-| ------------------ | --------------------- | ------------------------------------------- | ------------------------------------------------------------------------------- |
-| `minimumLogLevel`  | `LogLevel`            | global level (`debug`)                      | Sets the process-wide log level                                                 |
-| `persistDatabase`  | `boolean`             | `false`                                     | Store games in a SQLite file instead of memory                                  |
-| `databaseFilename` | `string`              | `games.db`                                  | File path, relative to the working directory. Only used with `persistDatabase`. |
-| `socketIO.enabled` | `boolean`             | `true`                                      | `false` disables Socket.IO and all push events                                  |
-| `socketIO.cors`    | `{ origin, methods }` | `{ origin: "*", methods: ["GET", "POST"] }` | Socket.IO CORS settings                                                         |
+The embeddable core for one game, for a host that has its own Express app and HTTP server. It opens the database and creates the router. It doesn't create a server, listen on a port or attach a socket ([0037](../explanation/decisions/0037-embeddable-core-and-server-options.md)). See [Embed in an existing app](../how-to/embed-in-an-existing-app.md).
+
+Rejects with `Error("Failed to initialize database", { cause })` if the database can't be opened.
+
+## RemoteState
+
+```ts
+interface RemoteState<StateType> {
+  router: Router;
+  attach: (httpServer: http.Server) => void;
+  createGame: (initialState: StateType) => Promise<string>;
+  admit: (admission: Admission) => Promise<string>;
+  close: () => Promise<void>;
+}
+```
+
+| Member                        | Description                                                                                                                                                   |
+| ----------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `router`                      | An Express router with the [HTTP API](http-api.md) (`/api/…`) and `/health`. Mount it in the host's app, at the root or under a prefix.                       |
+| `attach(httpServer)`          | Serves the socket on the host's HTTP server, at the socket path. Until it's called, no updates are pushed. Throws if called twice, or if `socket` is `false`. |
+| `createGame(initialState)`    | As in [`RemoteStateServer`](#remotestateserver)                                                                                                               |
+| `admit({ gameId, identity })` | As in [`RemoteStateServer`](#remotestateserver)                                                                                                               |
+| `close()`                     | Disconnects socket clients, stops accepting new ones, and closes the database. The host's HTTP server keeps running.                                          |
+
+The router's JSON body parser, CORS and error handler apply only to its `/api` routes. Routes the host adds need their own.
+
+Under a prefix, every path in the [HTTP API](http-api.md) gets that prefix, for example `/tic-tac-toe/api/tokens`. The socket path doesn't follow the prefix; set it with the `socket` option.
+
+The socket leaves upgrade requests for other paths alone, so several instances, or the host's own WebSockets, can share one HTTP server ([0038](../explanation/decisions/0038-several-games-by-mounting-several-instances.md)).
+
+## Options
+
+`createRemoteState` takes `RemoteStateOptions`. `createRemoteStateServer` takes `RemoteStateServerOptions`, which adds `port`. These are deployment settings, separate from the game, so the same game can be deployed in different ways ([0037](../explanation/decisions/0037-embeddable-core-and-server-options.md)).
+
+| Option     | Type                           | Default           | Description                                                                                                                                    |
+| ---------- | ------------------------------ | ----------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
+| `database` | `string`                       | `":memory:"`      | SQLite file to keep games in, relative to the working directory. Its directory must exist. `:memory:` keeps games only while the process runs. |
+| `logger`   | `Logger`                       | `consoleLogger()` | Where the library logs, including MikroORM's output. See [Logging](#logging).                                                                  |
+| `cors`     | `CorsOptions`                  | `{ origin: "*" }` | Options of the [`cors`](https://github.com/expressjs/cors#configuration-options) package, applied to the `/api` routes and the socket          |
+| `socket`   | `false` or `{ path?: string }` | `{}`              | `false` disables Socket.IO and all push events. `path` is where the socket is served, `/socket.io` by default.                                 |
+| `port`     | `number`                       | `3000`            | `RemoteStateServerOptions` only. The port `startServer()` listens on; `0` picks a free one.                                                    |
 
 ## Logging
 
 ```ts
+interface Logger {
+  debug: LogFunction;
+  info: LogFunction;
+  warn: LogFunction;
+  error: LogFunction;
+}
+type LogFunction = (message: string, meta?: unknown) => void;
+
 enum LogLevel { debug = 0, info = 1, warn = 2, error = 3 }
 
-setGlobalLogLevel(level: LogLevel): void
-getGlobalLogLevel(): LogLevel
-createLogger(options?: { scope?: string; logLevel?: LogLevel }): Logger
-// Logger: { debug, info, warn, error }, each (message: string, meta?: unknown) => void
+consoleLogger(options?: ConsoleLoggerOptions): Logger
+interface ConsoleLoggerOptions {
+  level?: LogLevel; // the lowest level printed; default info
+  scope?: string; // printed with every message
+}
+
+const silentLogger: Logger;
 ```
 
-- Loggers without a `logLevel` follow the global level, including changes made after they were created.
+Each server logs through its `logger` option. There's no global logger or log level, so servers in one process can log differently. To use your own logger, pass an object with the four methods.
+
+The library logs errors from requests and sockets at `error`, socket connections and the "listening" message at `info`, and everything MikroORM reports, including the migrations it applies, at `debug`.
+
+`consoleLogger` prints messages at `level` and above:
+
 - Output goes to `console.log`, or `console.error` for the `error` level.
-- The format is `[ISO timestamp] level scope message | JSON meta`, with `Error` objects in `meta` serialized as `{ name, message, stack }`.
+- The format is `[ISO timestamp] level scope message | JSON meta`, without the scope if none is set and without the meta if there is none. `Error` objects in `meta` are serialized as `{ name, message, stack }`.
 
-The package also exports ready-made `debug`, `info`, `warn` and `error` functions without a scope.
+`silentLogger` discards everything, for example in tests.
 
-The library has no endpoint for changing the log level at runtime ([0028](../explanation/decisions/0028-no-operational-endpoints.md)). A host that wants one can add it and call `setGlobalLogLevel`.
+The library has no endpoint for changing the log level at runtime ([0028](../explanation/decisions/0028-no-operational-endpoints.md)). A host that wants one can add it, and pass a logger whose level it controls.
 
 ## Types
 
@@ -119,7 +181,9 @@ Also exported:
 
 - [GamePlugin](game-plugin.md): `GamePlugin`, `ActionValidationResult`, `Awaitable`, `JoiningPlayer`, `StateResult`, `Transition`, `AudienceChanges`, and the values `withAudiences`, `GameRefusal` and `EVERYONE`
 - [Socket events](socket-events.md#types): `StateEvent`, `PatchesEvent`, `Patch`, `Format`
-- `RemoteStateServerConfiguration`, `SocketIOServerConfiguration`, `Admission`, `Identity`, `CODE_LIFETIME_MS`
+- [Options](#options): `RemoteStateOptions`, `RemoteStateServerOptions`
+- [Logging](#logging): `Logger`, `LogFunction`, `ConsoleLoggerOptions`
+- `Admission`, `Identity`, `CODE_LIFETIME_MS`
 
 ## Database schema
 

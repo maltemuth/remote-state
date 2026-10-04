@@ -7,25 +7,32 @@ import express from "express";
 import process from "process";
 import { createRemoteStateServer } from "@malte.muth/remote-state";
 
-const port = Number(process.env.PORT ?? 3000);
-const server = await createRemoteStateServer(myGame, port);
+const server = await createRemoteStateServer(myGame, {
+  port: Number(process.env.PORT ?? 3000),
+});
 
 server.app.use(express.static("public"));
 server.app.get("/rules", (_req, res) =>
   res.send("First to three in a row wins."),
 );
 
-process.on("SIGINT", () => server.shutdown());
-process.on("SIGTERM", () => server.shutdown());
+const stop = async () => {
+  await server.close();
+  process.exit(0);
+};
+process.on("SIGINT", stop);
+process.on("SIGTERM", stop);
 
 await server.startServer();
 ```
 
-The page can then load Socket.IO from `/socket.io/socket.io.js` and use relative API URLs. See [Connect a browser client](connect-a-client.md).
+The page can then load Socket.IO from `/socket.io/socket.io.js`, or from `socket.io.js` under the path set with the [`socket` option](../reference/server-api.md#options), and use relative API URLs. See [Connect a browser client](connect-a-client.md).
 
 The client also needs a way to create and join games, which your host provides with its own routes on the same app. See [Create games and admit players](admit-players.md).
 
-The example server is this setup with a full tic-tac-toe client and a lobby. Run it from the repository root:
+To serve the client and the game from an Express app you already have, see [Embed in an existing app](embed-in-an-existing-app.md).
+
+The example server does the same from its own app, with a full tic-tac-toe client and the game under `/tic-tac-toe`. Run it from the repository root:
 
 ```sh
 npm run start:example

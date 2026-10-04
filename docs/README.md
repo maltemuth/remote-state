@@ -11,6 +11,7 @@ All documentation for this project, including designs and decisions, is organize
 - [Create games and admit players](how-to/admit-players.md)
 - [Connect a browser client](how-to/connect-a-client.md)
 - [Serve a web client from the game server](how-to/serve-a-web-client.md)
+- [Embed in an existing app](how-to/embed-in-an-existing-app.md), also with several games on one server
 - [Hide information from players](how-to/hide-information-from-players.md)
 - [Persist games across restarts](how-to/persist-games.md)
 - [Test a game plugin](how-to/test-a-game-plugin.md)
@@ -21,7 +22,7 @@ All documentation for this project, including designs and decisions, is organize
 - [GamePlugin](reference/game-plugin.md): the interface a game implements
 - [HTTP API](reference/http-api.md)
 - [Socket.IO events](reference/socket-events.md)
-- [Server API](reference/server-api.md): `createRemoteStateServer`, configuration, logging, database schema
+- [Server API](reference/server-api.md): `createRemoteStateServer`, `createRemoteState`, options, logging, database schema
 
 ## Explanation: understand the design
 

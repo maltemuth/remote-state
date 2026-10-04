@@ -62,11 +62,13 @@ export const createExampleServer = async ({
   if (publicDirectory) app.use(express.static(publicDirectory));
 
   const listen = (port: number) =>
-    new Promise<number>((resolve) =>
-      server.listen(port, () =>
-        resolve((server.address() as { port: number }).port),
-      ),
-    );
+    new Promise<number>((resolve, reject) => {
+      server.once("error", reject);
+      server.listen(port, () => {
+        server.off("error", reject);
+        resolve((server.address() as { port: number }).port);
+      });
+    });
 
   const close = async () => {
     await Promise.all([ticTacToe.close(), battleship.close()]);
