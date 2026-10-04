@@ -8,61 +8,87 @@ A socket belongs to exactly one player in one game. Clients only receive events;
 
 Pass credentials in the handshake `auth` object:
 
-| Field | Required | Description |
-|---|---|---|
-| `gameId` | yes | Game to connect to |
-| `token` | yes | The player's token for that game |
-| `playerId` | no | If present, it must match the token's player |
+| Field    | Required | Description                                                                             |
+| -------- | -------- | --------------------------------------------------------------------------------------- |
+| `gameId` | yes      | Game to connect to                                                                      |
+| `token`  | yes      | The player's token for that game, from [`POST /api/tokens`](http-api.md#post-apitokens) |
+
+Choose the update format with the `format` query parameter:
+
+| `format`          | Updates are sent as                         |
+| ----------------- | ------------------------------------------- |
+| `state` (default) | [`state`](#state) events: the whole view    |
+| `immer`           | [`patches`](#patches) events: Immer patches |
 
 ```js
-const socket = io("http://localhost:3000", { auth: { gameId, token } });
+const socket = io("http://localhost:3000", {
+  auth: { gameId, token },
+  query: { format: "immer" }, // optional
+});
 ```
 
-If authentication fails, the connection is refused and the client receives `connect_error` with one of these messages:
+If the handshake fails, the connection is refused and the client receives `connect_error` with one of these messages:
 
-| `error.message` | Cause |
-|---|---|
-| `Invalid player or game` | Unknown token, token from another game, or mismatched `playerId` |
-| `Failed to authenticate` | Error while checking credentials |
+| `error.message`                           | Cause                                                 |
+| ----------------------------------------- | ----------------------------------------------------- |
+| `Unknown format; use one of state, immer` | Any other `format` value                              |
+| `Invalid token or game`                   | Missing or unknown token, or a token for another game |
+| `Failed to authenticate`                  | Error while checking credentials                      |
 
-A player may have several sockets open at once, for example in several tabs. Each receives all events for that player.
+A player may have several sockets open at once, for example in several tabs or with several tokens. Each receives all events for that player.
+
+## On connect
+
+Right after connecting, and after every reconnect, the server sends the player's current view as a [`state`](#state) event, in either format ([0031](../explanation/decisions/0031-socket-sends-state-on-connect.md)). Updates follow from the next sequence on, with none missed or repeated in between.
+
+Updates are only sent while a socket is connected; they aren't replayed. A reconnecting client gets the current view again, so it doesn't need to catch up separately.
 
 ## Server events
 
-### game-state-update
+After every state transition of the game, each connected socket receives one event for it, in the socket's format. Transitions are accepted actions and players joining. Each player receives the view of their own audience.
 
-Sent to every connected player of a game after an action is accepted. Each player receives their own filtered view.
+Events arrive in `sequence` order.
+
+### state
 
 ```ts
-{
+interface StateEvent<ViewType = unknown> {
   gameId: string;
-  stateId: string;
-  sequence: number;       // same meaning as in GET state
-  state: PlayerStateType; // filterStateForPlayer(newState, playerId), or the full state
+  sequence: number; // as in GET …/state
+  state: ViewType; // the player's whole view at this sequence
 }
 ```
 
-Updates are only sent to sockets that are connected at the time. A client that reconnects should fetch `GET /api/games/:gameId/state/current` to catch up. Comparing `sequence` with the last one seen tells a client whether it missed any updates.
+Sent on connect in both formats, and for each transition when `format` is `state`.
 
-### player-joined
-
-```ts
-{ playerId: string; playerName: string }
-```
-
-This event is sent in two situations:
-
-- to all sockets of the game when a player registers through `POST /api/games/:gameId/players`
-- to the other sockets of the game when a player's socket connects
-
-### player-left
+### patches
 
 ```ts
-{ playerId: string }
+interface PatchesEvent {
+  gameId: string;
+  sequence: number;
+  patches: Patch[]; // turn the view at sequence - 1 into the view at sequence
+}
 ```
 
-Sent to the other sockets of the game when one of a player's sockets disconnects.
+Sent for each transition when `format` is `immer`. Apply the patches to the view at `sequence - 1`.
 
-### Custom events
+When a transition moves the player to another audience, the patches lead from the old audience's view to the new one's ([0035](../explanation/decisions/0035-updates-across-audiences.md)). Patches may be empty when the player's view didn't change.
 
-The server application can send its own events through `server.socketIOManager`. See [Server API](server-api.md#socketmanager).
+## Patch format
+
+Patches are [Immer](https://immerjs.github.io/immer/patches) patches, so a client can apply them with `applyPatches` ([0014](../explanation/decisions/0014-immer-patches-only-external-format.md)):
+
+```ts
+interface Patch {
+  op: "add" | "remove" | "replace";
+  path: (string | number)[]; // object keys as strings, array indices as numbers
+  value?: unknown; // for add and replace
+}
+```
+
+The same format is used by [`GET …/updates`](http-api.md#get-apigamesgameidupdates).
+
+## Types
+
+`StateEvent`, `PatchesEvent`, `Patch` and `Format` (`"state" | "immer"`) are exported by `@malte.muth/remote-state`.

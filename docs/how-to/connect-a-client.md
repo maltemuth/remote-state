@@ -1,43 +1,50 @@
 # Connect a browser client
 
-This guide shows how to connect a web page to a Remote State game: registering a player, sending actions, and staying in sync. [public/index.html](../../packages/remote-state-example-server/public/index.html) in the example server is a complete working version of the same steps.
+This guide shows how to connect a web page to a Remote State game: getting a token, receiving the state, and sending actions. [public/client.js](../../packages/remote-state-example-server/public/client.js) in the example server is a complete working version of the same steps.
 
-## 1. Get a token
+## 1. Get a code from your host
 
-The player who creates the game uses `POST /api/games`. Everyone else registers with `POST /api/games/:gameId/players`. Both responses contain `token` and `playerId`. Store them for the rest of the session:
+The library has no endpoint for creating or joining games. Your host app has its own, which return an admission code; see [Create games and admit players](admit-players.md). With the example server's lobby:
 
 ```js
-const registration = await fetch(`/api/games/${gameId}/players`, {
-  method: "POST",
-  headers: { "Content-Type": "application/json" },
-  body: JSON.stringify({ playerName }),
-}).then((response) => response.json());
-
-sessionStorage.setItem(`game:${gameId}`, JSON.stringify(registration));
+const { gameId } = await post("/lobby/games"); // only to create a new game
+const { code } = await post(`/lobby/games/${gameId}/codes`, { name });
 ```
 
-`sessionStorage` keeps one identity per tab, which lets you play both sides in two tabs while testing. Use `localStorage` to survive browser restarts instead.
-
-The token is the only credential, and it can't be reissued. If it's lost, the player has to register again as a new player.
-
-## 2. Send actions over HTTP
+`post` here is a small helper:
 
 ```js
-async function sendAction(action) {
-  const response = await fetch(`/api/games/${gameId}/actions`, {
+async function post(path, body, token) {
+  const response = await fetch(path, {
     method: "POST",
-    headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-    body: JSON.stringify({ action }),
+    headers: {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: body && JSON.stringify(body),
   });
-  const body = await response.json();
-  if (!response.ok) throw new Error(body.error); // e.g. the validateAction message
-  return body; // the new state, as this player sees it
+  const data = await response.json();
+  if (!response.ok) throw new Error(data.error);
+  return data;
 }
 ```
 
-Render the returned state straight away. The same state also arrives over the socket, so rendering has to be idempotent.
+## 2. Exchange the code for a token
 
-## 3. Receive updates over Socket.IO
+Exchange the code right away; it's valid for one minute and works once:
+
+```js
+const session = await post("/api/tokens", { code }); // { gameId, playerId, token }
+sessionStorage.setItem(`game:${gameId}`, JSON.stringify(session));
+```
+
+If the game refuses the player, for example because it's full, this fails with status 403 and the game's reason as `error`. A used or expired code fails with 401.
+
+`sessionStorage` keeps one identity per tab, which lets you play both sides in two tabs while testing. Use `localStorage` to survive browser restarts instead.
+
+The token is the player's credential. The library can't hand it out again. Whether a player can get a new token depends on the host: if it admits the same identity again, the player gets their player back with a new token.
+
+## 3. Receive the state over Socket.IO
 
 The server serves the client library at `/socket.io/socket.io.js`:
 
@@ -46,26 +53,73 @@ The server serves the client library at `/socket.io/socket.io.js`:
 ```
 
 ```js
-const socket = io({ auth: { gameId, token } });
+const socket = io({ auth: { gameId, token: session.token } });
 
-socket.on("game-state-update", (update) => render(update.state));
+socket.on("state", (event) => render(event.state));
 socket.on("connect_error", (error) => showError(error.message));
 ```
 
-## 4. Catch up after connecting
+The socket sends the player's whole view as soon as it connects, and again after every reconnect, then a `state` event for every change. There's no separate catch-up step.
 
-Updates sent while a client is disconnected are not replayed. Fetch the current state whenever the socket connects, which includes reconnects:
+Each event carries a `sequence`. To ignore anything older than what you've rendered, keep the highest one you've seen.
+
+## 4. Send actions over HTTP
 
 ```js
-socket.on("connect", async () => {
-  const current = await fetch(`/api/games/${gameId}/state/current`, {
-    headers: { Authorization: `Bearer ${token}` },
-  }).then((response) => response.json());
-  render(current.state);
+async function sendAction(action) {
+  const { sequence } = await post(
+    `/api/games/${gameId}/actions`,
+    { action },
+    session.token,
+  );
+  return sequence; // the state this action produced
+}
+```
+
+An accepted action answers 201 with the `sequence` of the state it produced. The state itself arrives over the socket, as for every other player. Wait for it before showing the result ([0033](../explanation/decisions/0033-no-optimistic-updates.md)).
+
+A rejected action fails with 400, and `error` is the game's message, such as `"It's not your turn"`.
+
+## Receive patches instead of whole states
+
+To receive only what changed, connect with `format: "immer"` and apply the patches with [Immer](https://immerjs.github.io/immer/patches):
+
+```js
+import { applyPatches, enablePatches } from "immer";
+
+enablePatches();
+
+let view = null;
+const socket = io({
+  auth: { gameId, token: session.token },
+  query: { format: "immer" },
+});
+
+// Sent on every (re)connect, also in this format
+socket.on("state", (event) => {
+  view = event.state;
+  render(view);
+});
+socket.on("patches", (event) => {
+  view = applyPatches(view, event.patches);
+  render(view);
 });
 ```
 
-To ignore late or duplicate updates, keep the highest `sequence` you've rendered and skip anything older.
+Each `patches` event applies to the view at the `sequence` before it. Events arrive in order, and every reconnect starts again with a whole `state`.
+
+## Catch up without a socket
+
+A client that isn't connected, or polls, can ask what changed since the `sequence` it has:
+
+```js
+const response = await fetch(`/api/games/${gameId}/updates?since=${sequence}`, {
+  headers: { Authorization: `Bearer ${session.token}` },
+});
+const { sequence: latest, patches } = await response.json();
+```
+
+The response is one set of patches up to the latest state. When no patch can be built, the server redirects to `GET …/state`, and `fetch` follows the redirect, so the body is a whole state instead: check for `state` in it. A `since` the player can't have had answers 404. See [HTTP API](../reference/http-api.md#get-apigamesgameidupdates).
 
 ## Serving the client from the game server
 

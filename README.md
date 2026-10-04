@@ -1,25 +1,35 @@
 # Remote State
 
-A TypeScript library for server-authoritative multiplayer games. Clients dispatch actions, and a server runs the game rules and sends back state updates. The goal is for clients to use that state in their own state library, such as Redux or an alternative, through a middleware; see [Goals](docs/explanation/goals.md). You write the rules of the game: validate an action, apply it, and decide what each player may see. Remote State provides:
+A TypeScript library for server-authoritative multiplayer games. Clients dispatch actions, and a server runs the game rules and sends back state updates. The goal is for clients to use that state in their own state library, such as Redux or an alternative, through a middleware; see [Goals](docs/explanation/goals.md). You write the rules of the game: who may join, whether an action is legal, what it does, and what each player may see. Your app, the host, decides who may create and join games. Remote State provides:
 
-- an HTTP API for creating games, registering players and submitting actions
-- per-player tokens
+- single-use admission codes, exchanged for per-player tokens
+- an HTTP API for submitting actions and reading state
 - a stored history of every state
-- live, per-player updates over Socket.IO
+- live, per-player updates over Socket.IO, as whole states or as patches
+- catch-up over HTTP from an earlier `sequence`, in one patch
 
 ```ts
 const server = await createRemoteStateServer(myGame, 3000);
+
+// In your own routes, after your own checks:
+const gameId = await server.createGame(newGame());
+const code = await server.admit({
+  gameId,
+  identity: { id: user.id, name: user.name },
+});
+// The client exchanges the code at POST /api/tokens
+
 await server.startServer();
 ```
 
 ## Repository layout
 
-| Path | Contents |
-|---|---|
-| [packages/remote-state](packages/remote-state) | The library |
-| [packages/remote-state-example-server](packages/remote-state-example-server) | Tic-tac-toe with a browser client, and a battleship game plugin |
-| [docs](docs/README.md) | Documentation |
-| [BACKLOG.md](BACKLOG.md) | Planned work that doesn't depend on open designs |
+| Path                                                                         | Contents                                                                             |
+| ---------------------------------------------------------------------------- | ------------------------------------------------------------------------------------ |
+| [packages/remote-state](packages/remote-state)                               | The library                                                                          |
+| [packages/remote-state-example-server](packages/remote-state-example-server) | A host with a lobby, tic-tac-toe with a browser client, and a battleship game plugin |
+| [docs](docs/README.md)                                                       | Documentation                                                                        |
+| [BACKLOG.md](BACKLOG.md)                                                     | Planned work that doesn't depend on open designs                                     |
 
 ## Quick start
 
