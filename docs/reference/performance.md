@@ -2,6 +2,20 @@
 
 Results of the load test, as measured. For how to run it, see [Measure performance](../how-to/measure-performance.md).
 
+## 2026-10-04, version 0.6.0
+
+Same environment and scenario as for version 0.4.2, below.
+
+| Command                      | Actions | Duration | Actions/s | Errors | HTTP p50 | HTTP p95 | HTTP p99 | HTTP max | End-to-end p50 | End-to-end p95 | End-to-end p99 | End-to-end max |
+| ---------------------------- | ------- | -------- | --------- | ------ | -------- | -------- | -------- | -------- | -------------- | -------------- | -------------- | -------------- |
+| `--games 1`                  | 17      | 0.4 s    | 48        | 0      | 10.4     | 15.7     | 15.7     | 15.7     | 9.8            | 14.9           | 14.9           | 14.9           |
+| `--games 100`                | 1700    | 17.6 s   | 97        | 0      | 85.9     | 3345.2   | 8022.1   | 9525.2   | 85.4           | 3344.9         | 8021.5         | 9524.9         |
+| `--games 100 --format immer` | 1700    | 16.7 s   | 102       | 0      | 81.7     | 3505.2   | 8084.0   | 9118.7   | 81.4           | 3504.8         | 8083.8         | 9118.4         |
+| `--games 100 --pause 500`    | 1700    | 17.8 s   | 96        | 0      | 154.3    | 364.3    | 1108.2   | 2212.9   | 154.0          | 364.0          | 1107.9         | 2212.2         |
+| `--games 100 --pause 2000`   | 1700    | 44.5 s   | 38        | 0      | 12.4     | 22.6     | 32.7     | 72.0     | 12.1           | 22.3           | 32.2           | 71.7           |
+
+Each command was run once, as for version 0.4.2.
+
 ## 2026-10-04, version 0.4.2
 
 **Environment**
