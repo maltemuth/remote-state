@@ -4,6 +4,8 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ## Unreleased
 
+## 0.4.0 - 2026-10-04
+
 The library becomes embeddable, and deployment settings move out of the game (decisions 0037, 0038).
 
 ### Breaking
