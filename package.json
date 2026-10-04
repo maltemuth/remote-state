@@ -11,6 +11,7 @@
   },
   "workspaces": [
     "packages/remote-state",
+    "packages/remote-state-client",
     "packages/remote-state-example-server"
   ],
   "scripts": {

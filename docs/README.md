@@ -24,6 +24,7 @@ All documentation for this project, including designs and decisions, is organize
 - [GamePlugin](reference/game-plugin.md): the interface a game implements
 - [HTTP API](reference/http-api.md)
 - [Socket.IO events](reference/socket-events.md)
+- [Client API](reference/client-api.md): `@malte.muth/remote-state-client`, for browsers and Node.js
 - [Performance measurements](reference/performance.md): load test results, as measured
 - [Server API](reference/server-api.md): `createRemoteStateServer`, `createRemoteState`, options, logging, database schema
 

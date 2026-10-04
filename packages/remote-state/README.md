@@ -55,7 +55,7 @@ server.app.post('/games/:gameId/codes', async (req, res) => {
 await server.startServer();
 ```
 
-The client exchanges the code at `POST /api/tokens` for a token, sends actions to `POST /api/games/:gameId/actions` with `Authorization: Bearer <token>`, and receives updates on the socket with `auth: { gameId, token }`.
+In the browser, [`@malte.muth/remote-state-client`](https://www.npmjs.com/package/@malte.muth/remote-state-client) exchanges the code for a session, keeps the player's view in step, and sends actions. Clients can also talk to the HTTP API and the socket directly: the code is exchanged at `POST /api/tokens` for a token, actions go to `POST /api/games/:gameId/actions` with `Authorization: Bearer <token>`, and updates arrive on the socket with `auth: { gameId, token }`.
 
 ## Documentation
 

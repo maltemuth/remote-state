@@ -1,8 +1,8 @@
 # Publish a release
 
-This guide is for maintainers releasing `@malte.muth/remote-state` to npm. Only the library package is published. The example server and the repository root aren't.
+This guide is for maintainers releasing `@malte.muth/remote-state` and `@malte.muth/remote-state-client` to npm, with the same version. The example server and the repository root aren't published.
 
-The library hasn't been published yet. Before the first release, the remaining items under "Before the first release" in [BACKLOG.md](../../BACKLOG.md) must be done.
+Neither package has been published yet. Before the first release, the remaining items under "Before the first release" in [BACKLOG.md](../../BACKLOG.md) must be done.
 
 ## 1. Start from a clean state
 
@@ -29,9 +29,10 @@ All four must pass, and `npm audit` must report `found 0 vulnerabilities` ([0003
 
 ```sh
 npm pack --dry-run -w packages/remote-state
+npm pack --dry-run -w packages/remote-state-client
 ```
 
-The listed files must be exactly:
+For each package, the listed files must be exactly:
 
 - `package.json`
 - `README.md`
@@ -42,22 +43,23 @@ No sources, tests or config files. Packing runs the `prepack` script, which rebu
 
 ## 4. Test the packed package as a user would
 
-Pack the library and install it in an empty project outside the repository:
+Pack the library and the client, and install them in an empty project outside the repository:
 
 ```sh
-npm pack -w packages/remote-state --pack-destination /tmp
+npm pack -w packages/remote-state -w packages/remote-state-client --pack-destination /tmp
 mkdir /tmp/remote-state-check && cd /tmp/remote-state-check
 npm init -y && npm install /tmp/malte.muth-remote-state-*.tgz
 node --input-type=module -e "import { createRemoteStateServer } from '@malte.muth/remote-state'; console.log(typeof createRemoteStateServer)"
 node -e "console.log(typeof require('@malte.muth/remote-state').createRemoteStateServer)"
+node --input-type=module -e "import { createClient } from '@malte.muth/remote-state-client'; console.log(typeof createClient)"
 ```
 
-Both commands must print `function`: the first loads the library as ESM, the second through `require()` from CommonJS.
+Each command must print `function`. The first two load the library as ESM and through `require()` from CommonJS; the last loads the client.
 
 ## 5. Update the changelog and version
 
 1. In `CHANGELOG.md`, rename `## Unreleased` to `## <version> - <date>`, and add a new empty `## Unreleased` section above it.
-2. Set the new version in the root, library and example `package.json` files. Before 1.0, breaking changes raise the minor version.
+2. Set the new version in the root, library, client and example `package.json` files. Before 1.0, breaking changes raise the minor version.
 3. Run `npm install` to update the lockfile.
 4. Commit, and tag the commit:
 
@@ -69,7 +71,7 @@ git tag -a v<version> -m "<version>"
 ## 6. Publish
 
 ```sh
-npm publish -w packages/remote-state
+npm publish -w packages/remote-state -w packages/remote-state-client
 git push && git push --tags
 ```
 

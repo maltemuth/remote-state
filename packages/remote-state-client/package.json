@@ -1,0 +1,60 @@
+{
+  "name": "@malte.muth/remote-state-client",
+  "version": "0.6.0",
+  "description": "Client for Remote State games: keeps a player's view in step with the server and sends actions",
+  "license": "MIT",
+  "author": "Malte Muth",
+  "keywords": [
+    "multiplayer",
+    "game",
+    "client",
+    "state",
+    "socket.io",
+    "immer",
+    "patches"
+  ],
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "build": "npm run clean && tsc",
+    "pretest": "npm run build --prefix ../remote-state",
+    "test": "npm run typecheck && NODE_OPTIONS=--experimental-vm-modules jest",
+    "typecheck": "tsc -p tsconfig.test.json",
+    "lint": "eslint src __test__",
+    "lint:fix": "eslint src __test__ --fix",
+    "format": "prettier --write src __test__",
+    "format:check": "prettier --check src __test__",
+    "clean": "rm -rf dist",
+    "prepack": "npm run build"
+  },
+  "dependencies": {
+    "immer": "^11.1.21",
+    "socket.io-client": "^4.8.4"
+  },
+  "devDependencies": {
+    "@jest/globals": "^30.5.2",
+    "@malte.muth/remote-state": "file:../remote-state",
+    "@types/express": "^5.0.6",
+    "@types/node": "^24.19.0",
+    "express": "^5.2.1",
+    "jest": "^30.5.2",
+    "ts-jest": "^29.4.14",
+    "typescript": "^6.0.3"
+  }
+}

@@ -8,4 +8,4 @@ Remove an item when it's done; the changelog records what changed.
 
 Needed before the library is first published ([Publish a release](docs/how-to/publish-a-release.md)).
 
-- [ ] Add `repository`, `homepage` and `bugs` to the library's `package.json`, once the repository has a public URL.
+- [ ] Add `repository`, `homepage` and `bugs` to the library's and the client's `package.json`, once the repository has a public URL.

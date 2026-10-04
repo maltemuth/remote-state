@@ -14,7 +14,7 @@ The server exists today; see [Architecture](architecture.md).
 
 On the client, game state should arrive in whatever state-management library the application already uses, such as Redux or one of its alternatives, through a custom middleware. For the application, a game action is dispatched like any other action. The middleware sends it to the server, and puts the server's updates into the store.
 
-The client side doesn't exist yet. Today every client talks to the HTTP API and Socket.IO directly; see [Connect a browser client](../how-to/connect-a-client.md) and the [Client package](designs/client-package.md) proposal.
+The client package, `@malte.muth/remote-state-client`, provides the core: it keeps a player's view in step with the server, which any state library can subscribe to, and sends actions ([Client API](../reference/client-api.md)). Adapters for particular state libraries, such as Redux middleware, don't exist yet; see the [Client package](designs/client-package.md) design.
 
 ## What follows from these goals
 
