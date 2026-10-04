@@ -10,7 +10,7 @@ const server = await createRemoteStateServer(myGame, {
 
 `createRemoteState` takes the same option. When one process serves several games, give each its own file; the database doesn't record which game a stored game belongs to.
 
-The directory must already exist. The tables are created by migrations on first start.
+The directory must already exist. The tables are created on first start.
 
 ## What a restart keeps
 
@@ -24,9 +24,21 @@ Stored states are used as-is. If you change the shape of `StateType`, games save
 
 ## After upgrading the library
 
-Schema changes ship as migrations and are applied automatically on startup, so existing database files keep working. Back up the file before upgrading. Migrations only move forward; there is no automatic downgrade.
+Before 1.0, databases aren't upgraded ([0048](../explanation/decisions/0048-no-database-upgrades-before-1-0.md)). If the new version's schema differs, the server refuses to start with an `UnsupportedDatabaseError`, which says so. Delete the file, and with it every stored game, player and token, or go back to the version that created it.
 
-Databases created by version 0.2.0 or earlier have a different schema and can't be migrated. Delete them.
+To start over automatically, catch the error and delete the file:
+
+```ts
+import { rmSync } from "fs";
+import { UnsupportedDatabaseError } from "@malte.muth/remote-state";
+
+const start = () => createRemoteStateServer(myGame, { database });
+const server = await start().catch((err) => {
+  if (!(err instanceof UnsupportedDatabaseError)) throw err;
+  rmSync(database);
+  return start();
+});
+```
 
 ## Back up
 

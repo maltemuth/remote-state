@@ -10,7 +10,7 @@ Records aren't edited after the fact, except to update their status. A decision 
 | [0002](0002-node-24.md)                                                | Require Node.js 24                                                             | Accepted                                                              |
 | [0003](0003-no-known-vulnerabilities.md)                               | Ship with no known dependency vulnerabilities                                  | Accepted                                                              |
 | [0004](0004-esm-with-jest.md)                                          | ESM throughout, tested with Jest                                               | Accepted                                                              |
-| [0005](0005-mikro-orm.md)                                              | MikroORM with standard decorators for the data layer                           | Accepted                                                              |
+| [0005](0005-mikro-orm.md)                                              | MikroORM with standard decorators for the data layer                           | Accepted; migrations dropped by 0048                                  |
 | [0006](0006-single-process.md)                                         | Run as a single process for now                                                | Accepted                                                              |
 | [0007](0007-client-chosen-update-format.md)                            | Clients choose the format of state updates                                     | Accepted, refined by 0009 and 0014                                    |
 | [0008](0008-format-query-parameter.md)                                 | The update format is chosen with a `format` query parameter                    | Accepted for the socket (values per 0014), superseded for GET by 0009 |
@@ -53,6 +53,7 @@ Records aren't edited after the fact, except to update their status. A decision 
 | [0045](0045-client-generic-over-game-types.md)                         | The client is generic over the game's types                                    | Accepted                                                              |
 | [0046](0046-reserved-keys-documented.md)                               | Reserved keys in states are documented, not handled                            | Superseded by 0047                                                    |
 | [0047](0047-reserved-keys-dropped-with-warning.md)                     | Reserved keys are dropped from states, with a warning                          | Accepted                                                              |
+| [0048](0048-no-database-upgrades-before-1-0.md)                        | No database upgrades before 1.0                                                | Accepted                                                              |
 
 ## Writing a record
 

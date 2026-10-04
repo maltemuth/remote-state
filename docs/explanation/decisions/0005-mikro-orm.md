@@ -1,6 +1,6 @@
 # 0005. MikroORM with standard decorators for the data layer
 
-Status: Accepted
+Status: Accepted; migrations dropped until 1.0 by [0048](0048-no-database-upgrades-before-1-0.md)
 Date: 2026-09-29
 
 ## Context

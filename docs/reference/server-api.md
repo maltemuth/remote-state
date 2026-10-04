@@ -113,6 +113,14 @@ class UnknownGameError extends Error {} // name "UnknownGameError", message "Gam
 
 Thrown by `admit` and `act`, so that hosts can tell an unknown game apart from other errors, for example to answer 404.
 
+### UnsupportedDatabaseError
+
+```ts
+class UnsupportedDatabaseError extends Error {} // name "UnsupportedDatabaseError"
+```
+
+Thrown by `createRemoteStateServer` and `createRemoteState` when the `database` file was created by a version of the library with another schema. Databases aren't upgraded before 1.0; delete the file, or use the version that created it. See [Persist games across restarts](../how-to/persist-games.md#after-upgrading-the-library).
+
 ## createRemoteState
 
 ```ts
@@ -194,7 +202,7 @@ The library logs:
 
 - at `error`: errors from requests, sockets and due timers
 - at `info`: socket connections, the "listening" message, timer actions the game rejected, and every recorded state ([0039](../explanation/decisions/0039-actions-recorded-with-authors-audience.md))
-- at `debug`: everything MikroORM reports, including the migrations it applies
+- at `debug`: everything MikroORM reports, and creating the schema in a new database
 
 A recorded state is logged once its transaction has committed, as `<actionType> by <author> in game <gameId>, now at <sequence>`. The author is `<audience>:<playerId>`, with the player's audience when they acted or the audience they joined into, for example `place by everyone:4f1c… in game 9a2e…, now at 5`, or `system` for actions of the system.
 
@@ -216,10 +224,11 @@ Also exported:
 - [Options](#options): `RemoteStateOptions`, `RemoteStateServerOptions`
 - [Logging](#logging): `Logger`, `LogFunction`, `ConsoleLoggerOptions`
 - `Admission`, `Identity`, `CODE_LIFETIME_MS`, `ActResult`
+- Errors: `UnknownGameError`, `UnsupportedDatabaseError`
 
 ## Database schema
 
-SQLite through [MikroORM](https://mikro-orm.io), using the `better-sqlite3` driver. On startup, the server applies any pending migrations. Applied migrations are recorded in the `mikro_orm_migrations` table, so each runs once.
+SQLite through [MikroORM](https://mikro-orm.io), using the `better-sqlite3` driver. A new database gets the tables below, and the schema's version as SQLite's `user_version`. A database with another version, or with tables but no version, is refused with an `UnsupportedDatabaseError`: databases aren't upgraded before 1.0 ([0048](../explanation/decisions/0048-no-database-upgrades-before-1-0.md)).
 
 All IDs are UUID strings. Tokens and codes are stored only as SHA-256 hashes ([0017](../explanation/decisions/0017-hashed-tokens-in-header-and-handshake.md)).
 

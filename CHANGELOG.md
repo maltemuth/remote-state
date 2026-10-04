@@ -4,6 +4,16 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ## Unreleased
 
+Databases from earlier versions have to be deleted (decision 0048).
+
+### Added
+
+- `UnsupportedDatabaseError`, thrown by `createRemoteState` and `createRemoteStateServer` for a database created by another version of the library.
+
+### Removed
+
+- Database migrations, and the dependency on `@mikro-orm/migrations`. Databases aren't upgraded before 1.0: a new database gets the schema generated from the entities, with its version in SQLite's `user_version`, and a database from another version is refused.
+
 ### Fixed
 
 - Clients reconnect after the server is closed and restarted. `close()` used to end their sockets with a Socket.IO disconnect, which clients don't retry; it now closes the connections underneath, which they do.

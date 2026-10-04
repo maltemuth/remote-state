@@ -80,7 +80,7 @@ const logger: Logger = {
 const remote = await createRemoteState(myGame, { logger });
 ```
 
-`appLogger` stands for your app's logger. The library passes errors as `meta`. Everything MikroORM reports, including the migrations it applies, arrives at `debug`.
+`appLogger` stands for your app's logger. The library passes errors as `meta`. Everything MikroORM reports arrives at `debug`.
 
 To keep the console output but change its level or label it, pass `consoleLogger({ level: LogLevel.warn, scope: "my-game" })`. See [Logging](../reference/server-api.md#logging).
 

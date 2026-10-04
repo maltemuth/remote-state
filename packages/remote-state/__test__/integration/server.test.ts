@@ -47,13 +47,13 @@ describe('standalone server', () => {
     }
   });
 
-  it('logs through the given logger, including the migrator', async () => {
+  it('logs through the given logger, including the database setup', async () => {
     const messages: string[] = [];
     const record = (message: string) => void messages.push(message);
     const logger: Logger = { debug: record, info: record, warn: record, error: record };
     const server = await startCounterServer(counterGame(), { logger });
     await server.close();
-    expect(messages.some(message => message.includes('migrator'))).toBe(true);
+    expect(messages.some(message => message.includes('Created the schema'))).toBe(true);
     expect(messages.some(message => message.includes('listening'))).toBe(true);
   });
 });

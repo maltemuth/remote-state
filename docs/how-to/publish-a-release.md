@@ -58,10 +58,11 @@ Each command must print `function`. The first two load the library as ESM and th
 
 ## 5. Update the changelog and version
 
+1. If the entities' tables changed since the last release, raise `SCHEMA_VERSION` in `packages/remote-state/src/database/orm.ts`, and say in the changelog that databases have to be deleted.
 1. In `CHANGELOG.md`, rename `## Unreleased` to `## <version> - <date>`, and add a new empty `## Unreleased` section above it.
-2. Set the new version in the root, library, client and example `package.json` files. Before 1.0, breaking changes raise the minor version.
-3. Run `npm install` to update the lockfile.
-4. Commit, and tag the commit:
+1. Set the new version in the root, library, client and example `package.json` files. Before 1.0, breaking changes raise the minor version.
+1. Run `npm install` to update the lockfile.
+1. Commit, and tag the commit:
 
 ```sh
 git commit -am "Release <version>"

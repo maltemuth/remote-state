@@ -49,7 +49,6 @@
   "dependencies": {
     "@mikro-orm/core": "^7.2.2",
     "@mikro-orm/decorators": "^7.2.2",
-    "@mikro-orm/migrations": "^7.2.2",
     "@mikro-orm/sqlite": "^7.2.2",
     "cors": "^2.8.6",
     "express": "^5.2.1",

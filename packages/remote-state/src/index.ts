@@ -7,6 +7,7 @@ export { createRemoteStateServer, type RemoteStateServer } from './server/create
 export { createRemoteState, type RemoteState } from './server/createRemoteState.js';
 export { type RemoteStateOptions, type RemoteStateServerOptions } from './server/options.js';
 export { UnknownGameError } from './server/errors.js';
+export { UnsupportedDatabaseError } from './database/orm.js';
 export { CODE_LIFETIME_MS, type Admission, type Identity } from './server/host.js';
 export {
   type ActionValidationResult,
