@@ -1,6 +1,6 @@
 # 0032. Accepted actions are answered with 201 and no body
 
-Status: Accepted for now
+Status: Superseded by [0034](0034-action-response-with-sequence.md)
 Date: 2026-10-04
 
 ## Context

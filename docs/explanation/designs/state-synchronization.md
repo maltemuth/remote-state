@@ -266,7 +266,7 @@ Decided: **A**, no ([0033](../decisions/0033-no-optimistic-updates.md)).
 
 ### 6. What does the HTTP response to an action contain?
 
-Decided for now: 201 with no body ([0032](../decisions/0032-action-response-without-body.md)).
+Decided: **B**, 201 with the new `sequence` ([0034](../decisions/0034-action-response-with-sequence.md)), after briefly no body at all ([0032](../decisions/0032-action-response-without-body.md)).
 
 - **A. The new player view,** as today. The acting client gets it twice, and must use `sequence` to ignore the second copy.
 - **B. Only an acknowledgement with the new `sequence`.** All state arrives through one channel, the socket, so every client applies updates the same way. The acting client depends on its socket connection to see its own action's result.

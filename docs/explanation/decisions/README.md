@@ -37,8 +37,9 @@ Records aren't edited after the fact, except to update their status. A decision 
 | [0029](0029-sequence-is-the-cursor.md) | The `sequence` is the client's cursor | Accepted |
 | [0030](0030-updates-in-one-jump.md) | `GET …/updates` answers in one jump, from any `since` | Accepted |
 | [0031](0031-socket-sends-state-on-connect.md) | The socket sends the current state on connect | Accepted |
-| [0032](0032-action-response-without-body.md) | Accepted actions are answered with 201 and no body | Accepted for now |
+| [0032](0032-action-response-without-body.md) | Accepted actions are answered with 201 and no body | Superseded by 0034 |
 | [0033](0033-no-optimistic-updates.md) | Clients wait for the server before showing an action's result | Accepted |
+| [0034](0034-action-response-with-sequence.md) | Accepted actions are answered with 201 and their `sequence` | Accepted |
 
 ## Writing a record
 
