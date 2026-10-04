@@ -26,7 +26,7 @@ process.on("SIGTERM", stop);
 await server.startServer();
 ```
 
-The page can then load Socket.IO from `/socket.io/socket.io.js`, or from `socket.io.js` under the path set with the [`socket` option](../reference/server-api.md#options), and use relative API URLs. See [Connect a browser client](connect-a-client.md).
+The page can then use the client package with relative URLs. Serve the package with your bundle, or as ES modules next to the page; see [Connect a browser client](connect-a-client.md).
 
 The client also needs a way to create and join games, which your host provides with its own routes on the same app. See [Create games and admit players](admit-players.md).
 

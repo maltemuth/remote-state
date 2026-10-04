@@ -1,23 +1,27 @@
 /*
  * The tic-tac-toe example client. It gets a code from the example's lobby (the
- * host), exchanges it for a token, then receives whole states over the socket and
- * sends moves over HTTP.
+ * host), and leaves the rest to the Remote State client: exchanging the code for a
+ * session, keeping the player's view in step, and sending moves.
  */
 
+import {
+  ActionRejectedError,
+  createClient,
+  redeemCode,
+} from "@malte.muth/remote-state-client";
+
 // The example host serves tic-tac-toe under this prefix
-const base = "/tic-tac-toe";
-// Credentials are kept per tab, so two tabs can play against each other
+const baseUrl = "/tic-tac-toe";
+// Sessions are kept per tab, so two tabs can play against each other
 const storageKey = (gameId) => `tic-tac-toe:${gameId}`;
 const $ = (id) => document.getElementById(id);
 
-const request = async (method, path, body, token) => {
-  const response = await fetch(`${base}${path}`, {
-    method,
-    headers: {
-      "Content-Type": "application/json",
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-    },
-    body: body && JSON.stringify(body),
+// The lobby is the host's own API, not the library's
+const lobby = async (path, body) => {
+  const response = await fetch(`${baseUrl}/lobby${path}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body ?? {}),
   });
   const data = await response.json();
   if (!response.ok) throw new Error(data.error || response.statusText);
@@ -54,16 +58,9 @@ class TicTacToeClient {
     const name = $("player-name").value.trim();
     if (!name) return this.showError("Please enter your name", "lobby-error");
     try {
-      this.gameId ??= (await request("POST", "/lobby/games")).gameId;
-      const { code } = await request(
-        "POST",
-        `/lobby/games/${this.gameId}/codes`,
-        { name },
-      );
-      const { playerId, token } = await request("POST", "/api/tokens", {
-        code,
-      });
-      this.session = { playerId, token };
+      this.gameId ??= (await lobby("/games")).gameId;
+      const { code } = await lobby(`/games/${this.gameId}/codes`, { name });
+      this.session = await redeemCode(code, { baseUrl });
       sessionStorage.setItem(
         storageKey(this.gameId),
         JSON.stringify(this.session),
@@ -75,37 +72,29 @@ class TicTacToeClient {
     }
   }
 
-  // The socket sends the current state on every (re)connect, then each update
+  // The client receives the player's view and every change to it
   connect() {
     $("lobby").hidden = true;
     $("game").hidden = false;
     const link = `${location.href.split("#")[0]}#${this.gameId}`;
     $("share-link").href = $("share-link").textContent = link;
 
-    const socket = io({
-      path: `${base}/socket.io`,
-      auth: { gameId: this.gameId, token: this.session.token },
-    });
-    socket.on("connect", () => this.setConnection("Connected", true));
-    socket.on("disconnect", () => this.setConnection("Disconnected", false));
-    socket.on("connect_error", (error) =>
-      this.setConnection(`Connection refused: ${error.message}`, false),
-    );
-    socket.on("state", ({ state }) => this.render(state));
+    this.client = createClient({ session: this.session, baseUrl });
+    this.client.onConnection((connection) => this.showConnection(connection));
+    this.client.subscribe(({ view }) => this.render(view));
   }
 
   async send(action) {
-    if (!this.session) return;
+    if (!this.client) return;
     try {
       this.showError("");
-      await request(
-        "POST",
-        `/api/games/${this.gameId}/actions`,
-        { action },
-        this.session.token,
-      );
+      await this.client.send(action);
     } catch (error) {
-      this.showError(error.message);
+      this.showError(
+        error instanceof ActionRejectedError
+          ? error.message
+          : `Couldn't send the move: ${error.message}`,
+      );
     }
   }
 
@@ -155,10 +144,16 @@ class TicTacToeClient {
             : `Waiting for ${state.seats[state.turn].name}${limit}`;
   }
 
-  setConnection(message, connected) {
-    $("connection-status").textContent = message;
+  showConnection(connection) {
+    const messages = {
+      connecting: "Connecting…",
+      connected: "Connected",
+      disconnected: "Disconnected, reconnecting…",
+      refused: `Connection refused: ${connection.error}`,
+    };
+    $("connection-status").textContent = messages[connection.status];
     $("connection-status").className =
-      `connection-status ${connected ? "connected" : "disconnected"}`;
+      `connection-status ${connection.status === "connected" ? "connected" : "disconnected"}`;
   }
 
   showError(message, element = "error") {

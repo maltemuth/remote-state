@@ -14,7 +14,7 @@
   "scripts": {
     "start": "node dist/server.js",
     "build": "tsc",
-    "pretest": "npm run build --prefix ../remote-state",
+    "pretest": "npm run build --prefix ../remote-state && npm run build --prefix ../remote-state-client",
     "test": "npm run typecheck && NODE_OPTIONS=--experimental-vm-modules jest",
     "typecheck": "tsc -p tsconfig.test.json",
     "lint": "eslint src",
@@ -27,16 +27,17 @@
   },
   "dependencies": {
     "@malte.muth/remote-state": "file:../remote-state",
-    "express": "^5.2.1"
+    "@malte.muth/remote-state-client": "file:../remote-state-client",
+    "express": "^5.2.1",
+    "immer": "^11.1.21",
+    "socket.io-client": "^4.8.4"
   },
   "devDependencies": {
     "@jest/globals": "^30.5.2",
     "@types/express": "^5.0.6",
     "@types/node": "^24.19.0",
     "@types/supertest": "^7.2.1",
-    "immer": "^11.1.21",
     "jest": "^30.5.2",
-    "socket.io-client": "^4.8.4",
     "supertest": "^7.3.0",
     "ts-jest": "^29.4.14",
     "typescript": "^6.0.3"

@@ -4,9 +4,16 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ## Unreleased
 
+The client package (decisions 0043–0045).
+
 ### Added
 
+- `@malte.muth/remote-state-client`, a client for browsers and Node.js. `redeemCode` exchanges an admission code for a session. `createClient` keeps the player's view in step with the server: it receives Immer patches by default, applies them, ignores stale updates, and catches up through `GET …/updates` after gaps or patches that don't apply. Anything can subscribe to the view, which is frozen and keeps unchanged parts as the same objects. `send` sends actions and throws an `ActionRejectedError` with the game's reason. It's generic over the game's view and action types.
 - Load test: `--runs` repeats a run against a freshly started server each time, and `--profile` has the server write a CPU profile per run. `npm run perf:profile` summarizes a profile by package and function.
+
+### Changed
+
+- The example's tic-tac-toe browser client uses the client package. The example server serves the package and its dependencies as ES modules under `/modules`, for the page's import map.
 
 ## 0.6.0 - 2026-10-04
 

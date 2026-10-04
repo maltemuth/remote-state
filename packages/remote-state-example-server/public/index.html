@@ -6,6 +6,16 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Tic-Tac-Toe</title>
     <link rel="stylesheet" href="style.css" />
+    <!-- Served by the example host from the installed packages (src/host/browserModules.ts) -->
+    <script type="importmap">
+      {
+        "imports": {
+          "@malte.muth/remote-state-client": "/modules/remote-state-client/index.js",
+          "immer": "/modules/immer.mjs",
+          "socket.io-client": "/modules/socket.io-client.mjs"
+        }
+      }
+    </script>
   </head>
   <body>
     <div class="game-container">
@@ -49,7 +59,6 @@
       </div>
     </div>
 
-    <script src="/tic-tac-toe/socket.io/socket.io.js"></script>
-    <script src="client.js"></script>
+    <script type="module" src="client.js"></script>
   </body>
 </html>

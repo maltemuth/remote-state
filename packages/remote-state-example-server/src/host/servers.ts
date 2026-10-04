@@ -15,6 +15,7 @@ import type { BattleshipState } from "../games/battleship/types.js";
 import { newTicTacToeGame } from "../games/tic-tac-toe/rules.js";
 import { ticTacToePlugin } from "../games/tic-tac-toe/plugin.js";
 import type { TicTacToeState } from "../games/tic-tac-toe/types.js";
+import { serveBrowserModules } from "./browserModules.js";
 import { type MountedGame, mountGame } from "./mountGame.js";
 
 /** Seconds per tic-tac-toe move before the player to move loses */
@@ -65,7 +66,10 @@ export const createExampleServer = async ({
     { plugin: battleshipPlugin, newGame: newBattleshipGame },
     { database: database("battleship"), logger },
   );
-  if (publicDirectory) app.use(express.static(publicDirectory));
+  if (publicDirectory) {
+    app.use(express.static(publicDirectory));
+    app.use(serveBrowserModules());
+  }
 
   const listen = (port: number) =>
     new Promise<number>((resolve, reject) => {
