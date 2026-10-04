@@ -1,6 +1,6 @@
 {
   "name": "@malte.muth/remote-state-example-server",
-  "version": "0.4.2",
+  "version": "0.5.0",
   "private": true,
   "description": "Example server implementation using the Remote State library",
   "license": "MIT",

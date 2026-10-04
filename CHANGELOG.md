@@ -4,9 +4,12 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ## Unreleased
 
+## 0.5.0 - 2026-10-04
+
 ### Added
 
 - A load test, `npm run perf`: many battleship games at once against the example server in its own process, reporting throughput and latency until the other player receives each update.
+- Measured results of the load test, in `docs/reference/performance.md`.
 
 ## 0.4.2 - 2026-10-04
 
