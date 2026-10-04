@@ -4,6 +4,8 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ## Unreleased
 
+## 0.6.0 - 2026-10-04
+
 Server-initiated actions (decisions 0039–0042).
 
 ### Added
