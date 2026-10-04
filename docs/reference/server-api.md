@@ -33,17 +33,17 @@ interface RemoteStateServer<StateType> {
 }
 ```
 
-| Member                        | Description                                                                                                                                            |
-| ----------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `app`                         | The Express app, with `router` mounted at the root. This is where a host adds its own routes, outside `/api`.                                          |
-| `server`                      | The HTTP server                                                                                                                                        |
-| `port`                        | The port listened on once started, also when `0` was requested. Before that, the requested port.                                                       |
-| `router`                      | The library's routes, as in [`RemoteState`](#remotestate)                                                                                              |
-| `createGame(initialState)`    | Stores a new game with `initialState` as sequence 0, and resolves to the game's ID. The game has no players. Rejects if `initialState` is `undefined`. |
-| `admit({ gameId, identity })` | Resolves to a single-use admission code for `identity` in the game. See below.                                                                         |
-| `act(gameId, action)`         | Runs `action` in the game as the system. See below.                                                                                                    |
-| `startServer()`               | Starts listening on the requested port, and resolves to the actual port. Rejects if it can't listen, for example because the port is in use.           |
-| `close()`                     | Drops pending timers, disconnects socket clients, closes the database, and stops the HTTP server, closing its open connections                         |
+| Member                        | Description                                                                                                                                                                                   |
+| ----------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `app`                         | The Express app, with `router` mounted at the root. This is where a host adds its own routes, outside `/api`.                                                                                 |
+| `server`                      | The HTTP server                                                                                                                                                                               |
+| `port`                        | The port listened on once started, also when `0` was requested. Before that, the requested port.                                                                                              |
+| `router`                      | The library's routes, as in [`RemoteState`](#remotestate)                                                                                                                                     |
+| `createGame(initialState)`    | Stores a new game with `initialState` as sequence 0, and resolves to the game's ID. The game has no players. Rejects if `initialState` is `undefined`.                                        |
+| `admit({ gameId, identity })` | Resolves to a single-use admission code for `identity` in the game. See below.                                                                                                                |
+| `act(gameId, action)`         | Runs `action` in the game as the system. See below.                                                                                                                                           |
+| `startServer()`               | Starts listening on the requested port, and resolves to the actual port. Rejects if it can't listen, for example because the port is in use.                                                  |
+| `close()`                     | Drops pending timers, closes socket clients' connections, closes the database, and stops the HTTP server, closing its open connections. Clients reconnect by themselves once a server is back |
 
 `app` has no JSON body parser or error handler for the host's routes; the library's apply only to `/api`. Add `express.json()` to routes that read a JSON body.
 
@@ -139,14 +139,14 @@ interface RemoteState<StateType> {
 }
 ```
 
-| Member                        | Description                                                                                                                                                   |
-| ----------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `router`                      | An Express router with the [HTTP API](http-api.md) (`/api/…`) and `/health`. Mount it in the host's app, at the root or under a prefix.                       |
-| `attach(httpServer)`          | Serves the socket on the host's HTTP server, at the socket path. Until it's called, no updates are pushed. Throws if called twice, or if `socket` is `false`. |
-| `createGame(initialState)`    | As in [`RemoteStateServer`](#remotestateserver)                                                                                                               |
-| `admit({ gameId, identity })` | As in [`RemoteStateServer`](#remotestateserver)                                                                                                               |
-| `act(gameId, action)`         | As in [`RemoteStateServer`](#act)                                                                                                                             |
-| `close()`                     | Drops pending timers, disconnects socket clients, stops accepting new ones, and closes the database. The host's HTTP server keeps running.                    |
+| Member                        | Description                                                                                                                                                                                                                         |
+| ----------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `router`                      | An Express router with the [HTTP API](http-api.md) (`/api/…`) and `/health`. Mount it in the host's app, at the root or under a prefix.                                                                                             |
+| `attach(httpServer)`          | Serves the socket on the host's HTTP server, at the socket path. Until it's called, no updates are pushed. Throws if called twice, or if `socket` is `false`.                                                                       |
+| `createGame(initialState)`    | As in [`RemoteStateServer`](#remotestateserver)                                                                                                                                                                                     |
+| `admit({ gameId, identity })` | As in [`RemoteStateServer`](#remotestateserver)                                                                                                                                                                                     |
+| `act(gameId, action)`         | As in [`RemoteStateServer`](#act)                                                                                                                                                                                                   |
+| `close()`                     | Drops pending timers, closes socket clients' connections, stops accepting new ones, and closes the database. The host's HTTP server keeps running. Clients keep trying to reconnect, until a server handles the socket's path again |
 
 The router's JSON body parser, CORS and error handler apply only to its `/api` routes. Routes the host adds need their own.
 

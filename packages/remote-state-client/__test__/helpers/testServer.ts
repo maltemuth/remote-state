@@ -9,9 +9,16 @@ import { type AddressInfo } from 'net';
 import { createRemoteState, silentLogger } from '@malte.muth/remote-state';
 import { newNotesGame, notesGame } from './notesGame.js';
 
-export const startNotesServer = async () => {
+export interface NotesServerOptions {
+  /** SQLite file, to restart on the same games; in memory by default */
+  database?: string;
+  /** 0, the default, picks a free port */
+  port?: number;
+}
+
+export const startNotesServer = async ({ database, port = 0 }: NotesServerOptions = {}) => {
   const remote = await createRemoteState(notesGame, {
-    database: ':memory:',
+    database: database ?? ':memory:',
     logger: silentLogger,
     socket: { path: '/notes/socket.io' },
   });
@@ -19,11 +26,13 @@ export const startNotesServer = async () => {
   app.use('/notes', remote.router);
   const server = createServer(app);
   remote.attach(server);
-  await new Promise<void>(resolve => server.listen(0, resolve));
-  const baseUrl = `http://localhost:${(server.address() as AddressInfo).port}/notes`;
+  await new Promise<void>(resolve => server.listen(port, resolve));
+  const listening = (server.address() as AddressInfo).port;
+  const baseUrl = `http://localhost:${listening}/notes`;
 
   return {
     baseUrl,
+    port: listening,
     newGame: () => remote.createGame(newNotesGame()),
     admit: (gameId: string, id: string) => remote.admit({ gameId, identity: { id } }),
     close: async () => {

@@ -7,7 +7,7 @@ import request from 'supertest';
 import {
   createRemoteStateServer,
   type GamePlugin,
-  type RemoteStateOptions,
+  type RemoteStateServerOptions,
   type RemoteStateServer,
   silentLogger,
 } from '../../src/index.js';
@@ -28,7 +28,7 @@ export interface TestPlayer {
 
 export const startCounterServer = async (
   plugin: GamePlugin<CounterState, CounterAction, CounterView> = counterGame(),
-  options: RemoteStateOptions = {}
+  options: RemoteStateServerOptions = {}
 ): Promise<CounterServer> => {
   const server = await createRemoteStateServer(plugin, {
     port: 0,

@@ -12,6 +12,12 @@ const server = await createRemoteStateServer(myGame, {
 
 The directory must already exist. The tables are created by migrations on first start.
 
+## What a restart keeps
+
+After a restart on the same file, everything stored carries on: games and their history, players, tokens, and admission codes that haven't expired. Sequences continue where they stopped, and clients can catch up with `GET …/updates` from before the restart.
+
+Stop the server with `close()`. Connected clients see a lost connection and reconnect by themselves once the server is back, and get the latest view on connect. Pending timers are lost, though: a game waiting for a timeout waits until something else happens in it ([0042](../explanation/decisions/0042-timer-restarts-open.md)).
+
 ## After changing your state type
 
 Stored states are used as-is. If you change the shape of `StateType`, games saved before the change will reach your plugin's functions in the old shape. That includes `filterStateForAudience`, which also runs on old states when a client catches up. Either handle both shapes, or delete the database file.

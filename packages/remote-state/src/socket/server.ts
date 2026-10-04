@@ -69,8 +69,12 @@ export const createSocketServer = (
   return io;
 };
 
-/** Disconnect every client and stop accepting new ones, leaving the HTTP server running */
+/**
+ * Close every client's connection and stop accepting new ones, leaving the HTTP
+ * server running. Connections are closed underneath Socket.IO, so clients see a lost
+ * connection and reconnect by themselves, for example to the restarted server; a
+ * Socket.IO disconnect would tell them not to.
+ */
 export const closeSocketServer = (io: SocketServer) => {
-  io.disconnectSockets(true);
   io.engine.close();
 };

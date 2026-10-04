@@ -4,6 +4,10 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ## Unreleased
 
+### Fixed
+
+- Clients reconnect after the server is closed and restarted. `close()` used to end their sockets with a Socket.IO disconnect, which clients don't retry; it now closes the connections underneath, which they do.
+
 ### Changed
 
 - States and views drop keys named `__proto__` and `constructor` at any depth, so clients can apply every patch with Immer. A stored state that had them is logged as a warning (decision 0047).
