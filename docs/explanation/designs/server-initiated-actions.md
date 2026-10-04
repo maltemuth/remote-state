@@ -1,10 +1,10 @@
 # Server-initiated actions
 
-Status: Decided in [0040](../decisions/0040-server-initiated-actions.md) and [0041](../decisions/0041-named-timers.md)
+Status: Mostly decided in [0040](../decisions/0040-server-initiated-actions.md) and [0041](../decisions/0041-named-timers.md); restarts are open ([0042](../decisions/0042-timer-restarts-open.md))
 
 ## Outcome
 
-Games schedule named timers, returned along with a new state, and hosts can run actions as the system through `act` (options A and C). Scheduling a name again replaces the timer, actions can cancel timers, and due timers run as the player `"system"` through the usual validation. Pending timers are stored, and start over with their full duration when the server restarts. A seeded random number generator is left for later.
+Games schedule named timers, returned along with a new state, and hosts can run actions as the system through `act` (options A and C). Scheduling a name again replaces the timer, actions can cancel timers, and due timers run as the player `"system"` through the usual validation. Timers are kept in memory for now; what happens to them on a restart is still open ([0042](../decisions/0042-timer-restarts-open.md)). A seeded random number generator is left for later.
 
 ## Problem
 
@@ -45,6 +45,8 @@ The library offers `server.submitSystemAction(gameId, action)`, and the host app
 - Every user has to build scheduling and restart safety themselves.
 
 ## Open questions
+
+- **Timers and restarts:** should pending timers be stored, and when the server restarts, run right away, start over with their full duration, or resume with their remaining time? Possibly differently per timer, for example a turn timeout versus a game clock.
 
 - How precise must timing be for the games this is meant for?
 - How is the system recorded as the author of a state? The history currently needs a player.

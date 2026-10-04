@@ -10,7 +10,7 @@ Proposals for open design questions. A proposal explains a problem and the optio
 | [Player information](player-information.md) | Letting game logic see who has registered | Decided |
 | [Game options](game-options.md) | Creating a game with settings | Decided |
 | [Game lifecycle](game-lifecycle.md) | Joining, leaving, disconnecting, and the end of a game | Open |
-| [Server-initiated actions](server-initiated-actions.md) | Timers, computer players, scheduled events | Decided |
+| [Server-initiated actions](server-initiated-actions.md) | Timers, computer players, scheduled events | Mostly decided; restarts open |
 | [Client package](client-package.md) | A library for game clients | Deferred |
 
 Further open questions are listed in [Known limitations](../limitations.md).

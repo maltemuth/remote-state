@@ -1,6 +1,6 @@
 # 0041. Timers are named, stored, and restart with the server
 
-Status: Accepted
+Status: Accepted, except storing timers and their restart behavior, which [0042](0042-timer-restarts-open.md) reopens
 Date: 2026-10-04
 
 ## Context

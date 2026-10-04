@@ -46,7 +46,8 @@ Records aren't edited after the fact, except to update their status. A decision 
 | [0038](0038-several-games-by-mounting-several-instances.md) | Several games share a server by mounting several instances | Accepted |
 | [0039](0039-actions-recorded-with-authors-audience.md) | Actions are logged and recorded with their author's audience | Accepted |
 | [0040](0040-server-initiated-actions.md) | Games schedule actions, and hosts can act as the system | Accepted |
-| [0041](0041-named-timers.md) | Timers are named, stored, and restart with the server | Accepted |
+| [0041](0041-named-timers.md) | Timers are named, stored, and restart with the server | Accepted in part; restarts reopened by 0042 |
+| [0042](0042-timer-restarts-open.md) | What happens to timers on a restart is still open | Accepted |
 
 ## Writing a record
 
