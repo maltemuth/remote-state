@@ -51,6 +51,7 @@ Records aren't edited after the fact, except to update their status. A decision 
 | [0043](0043-client-core-without-state-library.md)                      | The client package starts as a core without a state library                    | Accepted                                                              |
 | [0044](0044-client-hands-out-whole-views.md)                           | The client hands out whole views and catches up by sequence                    | Accepted                                                              |
 | [0045](0045-client-generic-over-game-types.md)                         | The client is generic over the game's types                                    | Accepted                                                              |
+| [0046](0046-reserved-keys-documented.md)                               | Reserved keys in states are documented, not handled                            | Accepted                                                              |
 
 ## Writing a record
 

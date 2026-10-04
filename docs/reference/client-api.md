@@ -87,7 +87,7 @@ interface Snapshot<View> {
 - **Views are frozen.** Copy a view before changing it.
 - **Unchanged parts keep their identity** from one snapshot to the next, so stores and components that compare by identity see only what changed ([0044](../explanation/decisions/0044-client-hands-out-whole-views.md)).
 - **Sequences only increase.** Updates at or before the current sequence are ignored.
-- **After a gap,** or patches that don't apply, the client catches up with [`GET …/updates`](http-api.md#get-apigamesgameidupdates), or with the whole state when the server can't build a patch. Updates that arrive meanwhile are applied afterwards. If catching up fails, the error goes to `onError`, and the next update or reconnect tries again.
+- **After a gap,** or patches that don't apply, the client catches up with [`GET …/updates`](http-api.md#get-apigamesgameidupdates), or with the whole state when the server can't build a patch. Updates that arrive meanwhile are applied afterwards. If catching up fails, the error goes to `onError`, and the next update or reconnect tries again. An added key named `__proto__` is lost when patches are applied; use `format: "state"` for games whose states can have one ([0046](../explanation/decisions/0046-reserved-keys-documented.md)).
 
 ### send
 

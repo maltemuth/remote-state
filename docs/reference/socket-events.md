@@ -90,6 +90,8 @@ interface Patch {
 
 The same format is used by [`GET …/updates`](http-api.md#get-apigamesgameidupdates).
 
+Patches can touch keys named `__proto__`, `constructor` or `prototype` if the game's state has them. Immer's `applyPatches` refuses a patch whose path goes through `__proto__` or `constructor`, and drops an own `__proto__` key from the values it adds, so the view no longer matches the server's. Whole views (`format=state`) carry such keys intact ([0046](../explanation/decisions/0046-reserved-keys-documented.md)).
+
 ## Types
 
 `StateEvent`, `PatchesEvent`, `Patch` and `Format` (`"state" | "immer"`) are exported by `@malte.muth/remote-state`.
