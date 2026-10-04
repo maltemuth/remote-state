@@ -1,38 +1,39 @@
+/**
+ * Battleship end to end, through the example's lobby and the library's API:
+ * seating on admission, setup, hidden fleets per player, turns, and a win.
+ */
+
+import { afterAll, beforeAll, describe, expect, it } from "@jest/globals";
+import { LogLevel, setGlobalLogLevel } from "@malte.muth/remote-state";
 import request from "supertest";
-import { describe, beforeAll, afterAll, it, expect } from "@jest/globals";
-import {
-  createRemoteStateServer,
-  LogLevel,
-  type RemoteStateServer,
-} from "@malte.muth/remote-state";
-import { battleshipPlugin } from "../../src/games/battleship/plugin.js";
-import {
+import { createBattleshipServer } from "../../src/host/servers.js";
+import type {
   BattleshipAction,
   BattleshipState,
 } from "../../src/games/battleship/types.js";
+import {
+  act as send,
+  createGame,
+  joinAs,
+  type Seat,
+  stateFor,
+} from "../helpers/client.js";
 
 describe("Battleship E2E", () => {
-  let server: RemoteStateServer<
-    BattleshipState,
-    BattleshipAction,
-    BattleshipState
-  >;
+  let server: Awaited<ReturnType<typeof createBattleshipServer>>;
+
+  beforeAll(async () => {
+    setGlobalLogLevel(LogLevel.error);
+    server = await createBattleshipServer(0);
+  });
+  afterAll(() => server.shutdown(false));
 
   const act = (gameId: string, token: string, action: BattleshipAction) =>
-    request(server.app)
-      .post(`/api/games/${gameId}/actions`)
-      .send({ action, token });
-
+    send(server.app, gameId, token, action);
   const fire = (gameId: string, token: string, row: number, col: number) =>
     act(gameId, token, { type: "fire_shot", position: [row, col] });
-
-  const stateFor = async (gameId: string, token: string) =>
-    (
-      await request(server.app)
-        .get(`/api/games/${gameId}/state/current`)
-        .set("Authorization", `Bearer ${token}`)
-        .expect(200)
-    ).body.state as BattleshipState;
+  const view = (gameId: string, seat: Seat) =>
+    stateFor<BattleshipState>(server.app, gameId, seat.token);
 
   /** Destroyer on row 0 (cols 0-2), battleship on row 1 (cols 0-3) */
   const placeFleet = async (gameId: string, token: string) => {
@@ -42,7 +43,7 @@ describe("Battleship E2E", () => {
       position: [0, 0],
       orientation: "horizontal",
     }).expect(201);
-    return act(gameId, token, {
+    await act(gameId, token, {
       type: "place_ship",
       shipType: "battleship",
       position: [1, 0],
@@ -50,29 +51,12 @@ describe("Battleship E2E", () => {
     }).expect(201);
   };
 
-  /** Create a game, register a second player, and seat both (owner as player1) */
+  /** The first person admitted is player1, the second player2 */
   const seatedGame = async () => {
-    const owner = await request(server.app)
-      .post("/api/games")
-      .send({ playerName: "Alice", gameName: "E2E battleship" })
-      .expect(201);
-    const { gameId } = owner.body;
-    const joiner = await request(server.app)
-      .post(`/api/games/${gameId}/players`)
-      .send({ playerName: "Bob" })
-      .expect(201);
-
-    const p1 = {
-      id: owner.body.playerId as string,
-      token: owner.body.token as string,
-    };
-    const p2 = {
-      id: joiner.body.playerId as string,
-      token: joiner.body.token as string,
-    };
-    await act(gameId, p1.token, { type: "join" }).expect(201);
-    await act(gameId, p2.token, { type: "join" }).expect(201);
-    return { gameId: gameId as string, p1, p2 };
+    const gameId = await createGame(server.app);
+    const p1 = await joinAs(server.app, gameId, "Alice");
+    const p2 = await joinAs(server.app, gameId, "Bob");
+    return { gameId, p1, p2 };
   };
 
   const startedGame = async () => {
@@ -82,74 +66,69 @@ describe("Battleship E2E", () => {
     return game;
   };
 
-  beforeAll(async () => {
-    server = await createRemoteStateServer(
-      {
-        ...battleshipPlugin,
-        serverConfiguration: { minimumLogLevel: LogLevel.error },
-      },
-      0,
-    );
-  });
-
-  afterAll(async () => {
-    await server.shutdown(false);
+  it("seats players on admission and refuses a third", async () => {
+    const { gameId, p1 } = await seatedGame();
+    expect((await view(gameId, p1)).players).toEqual({
+      player1: p1.playerId,
+      player2: "opponent",
+    });
+    expect(
+      (await act(gameId, p1.token, { type: "join" }).expect(400)).body.error,
+    ).toBe("join isn't an action");
+    const { code } = (
+      await request(server.app).post(`/lobby/games/${gameId}/codes`).send({})
+    ).body;
+    await request(server.app).post("/api/tokens").send({ code }).expect(403);
   });
 
   it("stays in setup until both fleets are placed", async () => {
     const { gameId, p1, p2 } = await seatedGame();
-
-    const afterP1 = await placeFleet(gameId, p1.token);
-    expect(afterP1.body.status).toBe("setup");
+    await placeFleet(gameId, p1.token);
+    expect((await view(gameId, p1)).status).toBe("setup");
     expect((await fire(gameId, p1.token, 0, 0).expect(400)).body.error).toBe(
       "Game is not in playing state",
     );
-
-    const afterP2 = await placeFleet(gameId, p2.token);
-    expect(afterP2.body.status).toBe("playing");
-    expect(afterP2.body.currentPlayer).toBe("player1");
+    await placeFleet(gameId, p2.token);
+    expect(await view(gameId, p1)).toMatchObject({
+      status: "playing",
+      currentPlayer: "player1",
+    });
   });
 
   it("rejects overlapping and out-of-bounds ships", async () => {
     const { gameId, p1 } = await seatedGame();
-    await act(gameId, p1.token, {
-      type: "place_ship",
-      shipType: "destroyer",
-      position: [0, 0],
-      orientation: "horizontal",
-    }).expect(201);
-
-    const overlapping = await act(gameId, p1.token, {
-      type: "place_ship",
-      shipType: "battleship",
-      position: [0, 1],
-      orientation: "vertical",
-    }).expect(400);
-    expect(overlapping.body.error).toBe("Invalid ship placement");
-
-    const tooLong = await act(gameId, p1.token, {
-      type: "place_ship",
-      shipType: "battleship",
-      position: [4, 2],
-      orientation: "horizontal",
-    }).expect(400);
-    expect(tooLong.body.error).toBe("Invalid ship placement");
+    const place = (
+      shipType: "destroyer" | "battleship",
+      position: [number, number],
+      vertical = false,
+    ) =>
+      act(gameId, p1.token, {
+        type: "place_ship",
+        shipType,
+        position,
+        orientation: vertical ? "vertical" : "horizontal",
+      });
+    await place("destroyer", [0, 0]).expect(201);
+    expect(
+      (await place("battleship", [0, 1], true).expect(400)).body.error,
+    ).toBe("Invalid ship placement");
+    expect((await place("battleship", [4, 2]).expect(400)).body.error).toBe(
+      "Invalid ship placement",
+    );
   });
 
   it("hides the opponent's ships but shows shots", async () => {
     const { gameId, p1, p2 } = await startedGame();
+    await fire(gameId, p1.token, 0, 0).expect(201);
 
-    const shot = await fire(gameId, p1.token, 0, 0).expect(201);
-    expect(shot.body.lastMove.result).toBe("hit");
-    expect(shot.body.currentPlayer).toBe("player2");
-
-    const p1View = await stateFor(gameId, p1.token);
+    const p1View = await view(gameId, p1);
+    expect(p1View.lastMove.result).toBe("hit");
+    expect(p1View.currentPlayer).toBe("player2");
     expect(p1View.boards.player2[0][0]).toBe("hit");
     expect(p1View.boards.player2.flat()).not.toContain("ship");
     expect(p1View.ships.player2).toEqual([]);
-    expect(p1View.players).toEqual({ player1: p1.id, player2: "opponent" });
 
-    const p2View = await stateFor(gameId, p2.token);
+    const p2View = await view(gameId, p2);
     expect(p2View.boards.player2[0][0]).toBe("hit");
     expect(p2View.boards.player2[0][1]).toBe("ship");
     expect(p2View.ships.player2).toHaveLength(2);
@@ -157,9 +136,8 @@ describe("Battleship E2E", () => {
 
   it("enforces turns and rejects repeat shots", async () => {
     const { gameId, p1, p2 } = await startedGame();
-
     expect((await fire(gameId, p2.token, 0, 0).expect(400)).body.error).toBe(
-      `It's not ${p2.id}'s turn`,
+      `It's not ${p2.playerId}'s turn`,
     );
     await fire(gameId, p1.token, 0, 0).expect(201);
     await fire(gameId, p2.token, 4, 4).expect(201);
@@ -187,21 +165,15 @@ describe("Battleship E2E", () => {
       [4, 4],
       [3, 0],
     ];
-
-    let last;
     for (const [index, [row, col]] of p1Targets.entries()) {
-      last = await fire(gameId, p1.token, row, col).expect(201);
-      if (index < p2Misses.length) {
+      await fire(gameId, p1.token, row, col).expect(201);
+      if (index < p2Misses.length)
         await fire(gameId, p2.token, ...p2Misses[index]).expect(201);
-      }
     }
 
-    expect(last!.body.status).toBe("finished");
-    expect(last!.body.winner).toBe("player1");
-    expect(last!.body.lastMove.result).toBe("sunk");
-
-    const p2View = await stateFor(gameId, p2.token);
-    expect(p2View.winner).toBe("player1");
+    const p2View = await view(gameId, p2);
+    expect(p2View).toMatchObject({ status: "finished", winner: "player1" });
+    expect(p2View.lastMove.result).toBe("sunk");
     expect(p2View.boards.player2[1]).toEqual([
       "sunk",
       "sunk",
@@ -209,7 +181,6 @@ describe("Battleship E2E", () => {
       "sunk",
       "empty",
     ]);
-
     expect((await fire(gameId, p2.token, 3, 1).expect(400)).body.error).toBe(
       "Game is already finished",
     );

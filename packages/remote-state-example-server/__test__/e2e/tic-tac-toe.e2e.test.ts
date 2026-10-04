@@ -1,163 +1,154 @@
-import request from "supertest";
-import { describe, beforeAll, afterAll, it, expect } from "@jest/globals";
+/**
+ * Tic-tac-toe end to end, through the example's lobby and the library's API:
+ * seating, turns, wins, draws, rematches, and live updates on the socket.
+ */
+
+import { afterAll, beforeAll, describe, expect, it } from "@jest/globals";
 import {
-  createRemoteStateServer,
   LogLevel,
-  type RemoteStateServer,
+  setGlobalLogLevel,
+  type StateEvent,
 } from "@malte.muth/remote-state";
-import { ticTacToePlugin } from "../../src/games/tic-tac-toe/plugin.js";
-import {
-  TicTacToeAction,
-  TicTacToeState,
-} from "../../src/games/tic-tac-toe/types.js";
+import request from "supertest";
+import { io as connect, type Socket } from "socket.io-client";
+import { createTicTacToeServer } from "../../src/host/servers.js";
+import type { TicTacToeState } from "../../src/games/tic-tac-toe/types.js";
+import { act, createGame, joinAs, stateFor } from "../helpers/client.js";
 
-describe("Tic-Tac-Toe E2E", () => {
-  let server: RemoteStateServer<
-    TicTacToeState,
-    TicTacToeAction,
-    TicTacToeState
-  >;
-
-  const act = (gameId: string, token: string, action: TicTacToeAction) =>
-    request(server.app)
-      .post(`/api/games/${gameId}/actions`)
-      .send({ action, token });
-
-  const move = (gameId: string, token: string, row: number, col: number) =>
-    act(gameId, token, { type: "move", position: [row, col] });
-
-  const stateFor = async (gameId: string, token: string) =>
-    (
-      await request(server.app)
-        .get(`/api/games/${gameId}/state/current`)
-        .set("Authorization", `Bearer ${token}`)
-        .expect(200)
-    ).body.state as TicTacToeState;
-
-  /** Create a game, register a second player, and seat both (owner as X) */
-  const startGame = async () => {
-    const owner = await request(server.app)
-      .post("/api/games")
-      .send({ playerName: "Xavier", gameName: "E2E game" })
-      .expect(201);
-    const { gameId } = owner.body;
-    const joiner = await request(server.app)
-      .post(`/api/games/${gameId}/players`)
-      .send({ playerName: "Olivia" })
-      .expect(201);
-
-    const x = {
-      id: owner.body.playerId as string,
-      token: owner.body.token as string,
-    };
-    const o = {
-      id: joiner.body.playerId as string,
-      token: joiner.body.token as string,
-    };
-    await act(gameId, x.token, { type: "join" }).expect(201);
-    await act(gameId, o.token, { type: "join" }).expect(201);
-    return { gameId: gameId as string, x, o };
-  };
+describe("Tic-tac-toe E2E", () => {
+  let server: Awaited<ReturnType<typeof createTicTacToeServer>>;
+  const sockets: Socket[] = [];
 
   beforeAll(async () => {
-    server = await createRemoteStateServer(
-      {
-        ...ticTacToePlugin,
-        serverConfiguration: { minimumLogLevel: LogLevel.error },
-      },
-      0,
-    );
+    setGlobalLogLevel(LogLevel.error);
+    server = await createTicTacToeServer(0);
+    await server.startServer();
   });
-
   afterAll(async () => {
+    sockets.forEach((socket) => socket.disconnect());
     await server.shutdown(false);
   });
 
-  it("waits for two seated players before accepting moves", async () => {
-    const owner = await request(server.app)
-      .post("/api/games")
-      .send({ playerName: "Xavier", gameName: "E2E game" })
-      .expect(201);
-    const { gameId, token } = owner.body;
+  const place = (gameId: string, token: string, row: number, col: number) =>
+    act(server.app, gameId, token, { type: "place", row, col });
 
-    const joined = await act(gameId, token, { type: "join" }).expect(201);
-    expect(joined.body.players.X).toBe(owner.body.playerId);
-    expect(joined.body.status).toBe("waiting");
+  const seatedGame = async () => {
+    const gameId = await createGame(server.app);
+    const x = await joinAs(server.app, gameId, "Xena");
+    const o = await joinAs(server.app, gameId, "Otto");
+    return { gameId, x, o };
+  };
 
-    const early = await move(gameId, token, 0, 0).expect(400);
-    expect(early.body.error).toBe("Waiting for a second player");
-  });
-
-  it("seats the second player as O and starts the game", async () => {
-    const { gameId, x, o } = await startGame();
-    const state = await stateFor(gameId, x.token);
-    expect(state.status).toBe("playing");
-    expect(state.players).toEqual({ X: x.id, O: "opponent" });
-    expect((await stateFor(gameId, o.token)).players).toEqual({
-      X: "opponent",
-      O: o.id,
+  it("seats two players and refuses a third", async () => {
+    const { gameId, x, o } = await seatedGame();
+    const state = await stateFor<TicTacToeState>(server.app, gameId, x.token);
+    expect(state.seats).toEqual({
+      X: { playerId: x.playerId, name: "Xena" },
+      O: { playerId: o.playerId, name: "Otto" },
     });
+
+    const { code } = (
+      await request(server.app)
+        .post(`/lobby/games/${gameId}/codes`)
+        .send({ name: "Third" })
+    ).body;
+    const refused = await request(server.app)
+      .post("/api/tokens")
+      .send({ code })
+      .expect(403);
+    expect(refused.body.error).toBe("Both seats are taken");
   });
 
-  it("rejects a third player", async () => {
-    const { gameId } = await startGame();
-    const third = await request(server.app)
-      .post(`/api/games/${gameId}/players`)
-      .send({ playerName: "Third" })
-      .expect(201);
-    const response = await act(gameId, third.body.token, {
-      type: "join",
-    }).expect(400);
-    expect(response.body.error).toBe("Both seats are taken");
-  });
-
-  it("enforces turn order and empty cells", async () => {
-    const { gameId, x, o } = await startGame();
-
-    expect((await move(gameId, o.token, 0, 0).expect(400)).body.error).toBe(
-      "It's X's turn",
+  it("waits for an opponent and enforces turns and free cells", async () => {
+    const gameId = await createGame(server.app);
+    const x = await joinAs(server.app, gameId, "Xena");
+    expect((await place(gameId, x.token, 0, 0).expect(400)).body.error).toBe(
+      "Waiting for an opponent",
     );
-    await move(gameId, x.token, 0, 0).expect(201);
-    expect((await move(gameId, o.token, 0, 0).expect(400)).body.error).toBe(
-      "Position is already occupied",
+    const o = await joinAs(server.app, gameId, "Otto");
+    expect((await place(gameId, o.token, 0, 0).expect(400)).body.error).toBe(
+      "It's not your turn",
     );
-    expect((await move(gameId, o.token, 3, 0).expect(400)).body.error).toBe(
-      "Position must be [row, col] between 0-2",
+    await place(gameId, x.token, 0, 0).expect(201);
+    expect((await place(gameId, o.token, 0, 0).expect(400)).body.error).toBe(
+      "That cell is taken",
+    );
+    expect((await place(gameId, o.token, 3, 0).expect(400)).body.error).toBe(
+      "That's not a cell",
     );
   });
 
-  it("plays to a win and then rejects further moves", async () => {
-    const { gameId, x, o } = await startGame();
+  it("plays to a win, then a rematch started by O", async () => {
+    const { gameId, x, o } = await seatedGame();
+    const moves: [typeof x, number, number][] = [
+      [x, 0, 0],
+      [o, 1, 0],
+      [x, 0, 1],
+      [o, 1, 1],
+      [x, 0, 2],
+    ];
+    for (const [seat, row, col] of moves)
+      await place(gameId, seat.token, row, col).expect(201);
 
-    await move(gameId, x.token, 0, 0).expect(201);
-    await move(gameId, o.token, 1, 0).expect(201);
-    await move(gameId, x.token, 0, 1).expect(201);
-    await move(gameId, o.token, 1, 1).expect(201);
-    const winning = await move(gameId, x.token, 0, 2).expect(201);
+    const won = await stateFor<TicTacToeState>(server.app, gameId, o.token);
+    expect(won.outcome).toEqual({
+      winner: "X",
+      line: [
+        [0, 0],
+        [0, 1],
+        [0, 2],
+      ],
+    });
+    expect((await place(gameId, o.token, 2, 2).expect(400)).body.error).toBe(
+      "The game is over",
+    );
 
-    expect(winning.body.winner).toBe("X");
-    expect(winning.body.status).toBe("finished");
-    expect(winning.body.winLine.type).toBe("row");
-
-    const final = await stateFor(gameId, o.token);
-    expect(final.board[0]).toEqual(["X", "X", "X"]);
-    expect(final.winner).toBe("X");
-
-    const late = await move(gameId, o.token, 2, 2).expect(400);
-    expect(late.body.error).toBe("Game is already finished");
+    await act(server.app, gameId, o.token, { type: "rematch" }).expect(201);
+    const rematch = await stateFor<TicTacToeState>(server.app, gameId, x.token);
+    expect(rematch).toMatchObject({ outcome: null, starter: "O", turn: "O" });
+    expect(rematch.board.flat().every((cell) => cell === null)).toBe(true);
   });
 
-  it("restarts with the same seats", async () => {
-    const { gameId, x, o } = await startGame();
-    await move(gameId, x.token, 1, 1).expect(201);
+  it("detects a draw", async () => {
+    const { gameId, x, o } = await seatedGame();
+    // X O X / X O O / O X X
+    const moves: [typeof x, number, number][] = [
+      [x, 0, 0],
+      [o, 0, 1],
+      [x, 0, 2],
+      [o, 1, 1],
+      [x, 1, 0],
+      [o, 1, 2],
+      [x, 2, 1],
+      [o, 2, 0],
+      [x, 2, 2],
+    ];
+    for (const [seat, row, col] of moves)
+      await place(gameId, seat.token, row, col).expect(201);
+    const state = await stateFor<TicTacToeState>(server.app, gameId, x.token);
+    expect(state.outcome).toEqual({ winner: null, draw: true });
+  });
 
-    const restarted = await act(gameId, o.token, { type: "restart" }).expect(
-      201,
-    );
-    expect(
-      restarted.body.board.flat().every((cell: string | null) => cell === null),
-    ).toBe(true);
-    expect(restarted.body.status).toBe("playing");
-    expect(restarted.body.currentPlayer).toBe("X");
+  it("sends both players every move over the socket", async () => {
+    const { gameId, x, o } = await seatedGame();
+    const address = server.server.address() as { port: number };
+    const socket = connect(`http://localhost:${address.port}`, {
+      auth: { gameId, token: o.token },
+      transports: ["websocket"],
+      reconnection: false,
+    });
+    sockets.push(socket);
+    const next = () =>
+      new Promise<StateEvent<TicTacToeState>>((resolve) =>
+        socket.once("state", resolve),
+      );
+
+    expect((await next()).sequence).toBe(2);
+    const update = next();
+    await place(gameId, x.token, 1, 1).expect(201);
+    const { sequence, state } = await update;
+    expect(sequence).toBe(3);
+    expect(state.board[1][1]).toBe("X");
+    expect(state.turn).toBe("O");
   });
 });
