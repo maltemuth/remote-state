@@ -42,6 +42,8 @@ Records aren't edited after the fact, except to update their status. A decision 
 | [0034](0034-action-response-with-sequence.md) | Accepted actions are answered with 201 and their `sequence` | Accepted |
 | [0035](0035-updates-across-audiences.md) | Updates across audience changes are computed; otherwise 303 to the whole state | Accepted |
 | [0036](0036-hosts-pass-the-initial-state.md) | Hosts pass the initial state; the library knows no game options | Accepted |
+| [0037](0037-embeddable-core-and-server-options.md) | The library is an embeddable core; deployment settings are server options | Accepted |
+| [0038](0038-several-games-by-mounting-several-instances.md) | Several games share a server by mounting several instances | Accepted |
 
 ## Writing a record
 

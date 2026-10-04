@@ -4,6 +4,27 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ## Unreleased
 
+The library becomes embeddable, and deployment settings move out of the game (decisions 0037, 0038).
+
+### Breaking
+
+- `plugin.serverConfiguration` is gone. Settings are options: `createRemoteStateServer(plugin, { port, database, logger, cors, socket })`. `database` is a SQLite path (`:memory:` by default) and replaces `persistDatabase` and `databaseFilename`; `cors` applies to the HTTP API and the socket; `socket: false` disables the socket, and `socket.path` sets its path.
+- `shutdown(andExit)` is replaced by `close()`, which never exits the process.
+- `startServer()` resolves with the port, and `port` reports the port actually listened on, also when 0 was requested.
+- Logging has no global state anymore. `createLogger`, `setGlobalLogLevel`, `getGlobalLogLevel`, the top-level `debug`/`info`/`warn`/`error` functions and `minimumLogLevel` are removed. Pass a `Logger` as the `logger` option; `consoleLogger({ level, scope })` and `silentLogger` are provided.
+- The standalone server's app no longer parses JSON for routes the host adds; add `express.json()` to them.
+- Example: one host serves both games, tic-tac-toe under `/tic-tac-toe` and battleship under `/battleship`, each with its lobby, socket path and database file (`tic-tac-toe.db`, `battleship.db`). `createTicTacToeServer`, `createBattleshipServer` and `addLobby` are replaced by `createExampleServer`, `mountGame` and `createLobby`.
+
+### Added
+
+- `createRemoteState(plugin, options)`: the embeddable core, with a `router` to mount in the host's Express app, `attach(httpServer)` for the socket, `createGame`, `admit` and `close()`. Closing it leaves the host's HTTP server running.
+- MikroORM's output, including the migrator's, goes to the server's logger at debug level instead of the console.
+
+### Changed
+
+- Sockets no longer destroy upgrade requests for other paths, so several instances and the host's own WebSockets can share one HTTP server.
+- The library's JSON parsing and error handler apply to its `/api` routes only.
+
 ## 0.3.0 - 2026-10-04
 
 The library is rebuilt around the decisions in `docs/explanation/decisions/` 0015–0036: hosts create games and admit players, views are computed per audience, and clients receive patches.

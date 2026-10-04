@@ -19,11 +19,10 @@ These are current properties of the library, not bugs in your game. Each one is 
 ## Security
 
 - **Tokens never expire and can't be revoked** ([0018](decisions/0018-no-token-expiration-or-revocation.md)). A host replaces a lost token by admitting the same identity again, but the old one stays valid.
-- **HTTP CORS is open to every origin**, and it isn't configurable.
+- **CORS allows every origin by default.** Set the `cors` option to restrict it.
 - **No rate limiting** on the library's endpoints, including `POST /api/tokens`. Hosts protect their own endpoints and can put middleware in front of the library's ([0016](decisions/0016-authentication-in-library-authorization-by-implementer.md)).
 
 ## Operations
 
-- **Process-wide log level.** `minimumLogLevel` changes the level for every logger in the process, including other servers in the same process.
 - **No game lifecycle.** Games are never closed, archived or deleted, players can't leave, and nothing uses `lastActivityAt`.
 - **Admission codes are kept.** Used and expired codes are never deleted.

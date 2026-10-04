@@ -8,14 +8,7 @@ Remove an item when it's done; the changelog records what changed.
 
 The library should behave like a library: its host application stays in control of the process, configuration and logging.
 
-- [ ] **Separate deployment settings from the game.** Port, database, logging, CORS and Socket.IO settings currently live in `plugin.serverConfiguration`, with the port as a separate argument. Move them into a server options argument, so the same game definition can be deployed with different settings.
-- [ ] **Never exit the host process.** `shutdown()` calls `process.exit()` unless it's passed `false`. It should only release resources, and leave exiting to the host.
-- [ ] **Per-server logging.** `minimumLogLevel` sets a process-wide log level, and output always goes to the console. Make the level per server instance, and accept a logger from the host. MikroORM's own output needs routing through it too: the migrator currently prints `[migrator] …` lines to the console regardless of the log level.
-- [ ] **Configurable HTTP CORS.** HTTP allows every origin (`cors()`), while Socket.IO's CORS is already configurable.
-- [ ] **Allow embedding.** The library creates its own Express app and HTTP server. Allow mounting it into an existing app or attaching it to an existing server.
-- [ ] **Report the actual port.** `server.port` returns the requested port, so with port `0` it doesn't show the port actually used.
 - [ ] **Clean up admission codes.** Used and expired codes stay in `admission_codes` for good. Delete them, for example when a new code is issued.
-- [ ] **More than one game type per server.** Each server hosts exactly one game plugin. This is larger than the other items, and may need a design proposal.
 
 ## Before the first release
 
