@@ -4,6 +4,8 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ## Unreleased
 
+## 0.7.0 - 2026-10-04
+
 The client package (decisions 0043–0045).
 
 ### Added
