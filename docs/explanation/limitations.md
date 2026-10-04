@@ -25,6 +25,8 @@ These are current properties of the library, not bugs in your game. Each one is 
 
 ## Operations
 
+- **Hosts aren't told about state changes.** A computer player run by the host through `act` has to poll to find out it's its turn ([Server-initiated actions](designs/server-initiated-actions.md)).
+
 - **Timers are lost on restart.** Pending timers are kept in memory only, so a restart drops them, and a game waiting for a timeout waits until a player acts. How timers should behave across restarts is still open ([0042](decisions/0042-timer-restarts-open.md)).
 
 - **No game lifecycle.** Games are never closed, archived or deleted, players can't leave, and nothing uses `lastActivityAt`.

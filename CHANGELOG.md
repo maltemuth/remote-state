@@ -12,6 +12,7 @@ Server-initiated actions (decisions 0039–0042).
 - `SYSTEM` (`"system"`): the player ID of actions from timers and from the host.
 - `act(gameId, action)` on the server: the host runs an action as the system, for example for computer players or outside events. It resolves with `{ sequence }` or `{ rejected }`, and throws `UnknownGameError` for an unknown game.
 - Every recorded state is logged at `info` with its author as `<audience>:<playerId>`, or `system`, and stores the author's audience in a new `audience` column of `game_states` (0039). The column is added by a migration.
+- How-to guide: Schedule actions and time limits.
 - Tic-tac-toe example: an optional time limit per move, `newTicTacToeGame({ turnSeconds })`. When it runs out, the player to move loses. The example host uses 60 seconds.
 
 ### Changed

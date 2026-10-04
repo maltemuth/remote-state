@@ -7,6 +7,7 @@ A TypeScript library for server-authoritative multiplayer games. Clients dispatc
 - a stored history of every state
 - live, per-player updates over Socket.IO, as whole states or as patches
 - catch-up over HTTP from an earlier `sequence`, in one patch
+- named timers that run actions as the system, such as a turn timeout, and actions from the host
 - a standalone server, or a router and socket to mount in your own Express app and HTTP server
 
 ```ts

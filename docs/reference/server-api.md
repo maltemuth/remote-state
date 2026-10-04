@@ -27,6 +27,7 @@ interface RemoteStateServer<StateType> {
   router: Router;
   createGame: (initialState: StateType) => Promise<string>;
   admit: (admission: Admission) => Promise<string>;
+  act: (gameId: string, action: unknown) => Promise<ActResult>;
   startServer: () => Promise<number>;
   close: () => Promise<void>;
 }
@@ -40,12 +41,13 @@ interface RemoteStateServer<StateType> {
 | `router`                      | The library's routes, as in [`RemoteState`](#remotestate)                                                                                              |
 | `createGame(initialState)`    | Stores a new game with `initialState` as sequence 0, and resolves to the game's ID. The game has no players. Rejects if `initialState` is `undefined`. |
 | `admit({ gameId, identity })` | Resolves to a single-use admission code for `identity` in the game. See below.                                                                         |
+| `act(gameId, action)`         | Runs `action` in the game as the system. See below.                                                                                                    |
 | `startServer()`               | Starts listening on the requested port, and resolves to the actual port. Rejects if it can't listen, for example because the port is in use.           |
-| `close()`                     | Disconnects socket clients, closes the database, and stops the HTTP server, closing its open connections                                               |
+| `close()`                     | Drops pending timers, disconnects socket clients, closes the database, and stops the HTTP server, closing its open connections                         |
 
 `app` has no JSON body parser or error handler for the host's routes; the library's apply only to `/api`. Add `express.json()` to routes that read a JSON body.
 
-`createGame` and `admit` are called by the host in the same process ([0021](../explanation/decisions/0021-games-created-with-creategame.md), [0023](../explanation/decisions/0023-no-server-to-server-admit.md)). See [Create games and admit players](../how-to/admit-players.md).
+`createGame`, `admit` and `act` are called by the host in the same process ([0021](../explanation/decisions/0021-games-created-with-creategame.md), [0023](../explanation/decisions/0023-no-server-to-server-admit.md)). See [Create games and admit players](../how-to/admit-players.md).
 
 The library never exits the process and doesn't register signal handlers. To shut down on Ctrl-C, add them yourself:
 
@@ -81,13 +83,35 @@ Each `identity.id` maps to at most one player per game. The first code redeemed 
 | `UnknownGameError` | No game has this `gameId`                        |
 | `Error`            | `identity.id` is missing, not a string, or empty |
 
+### act
+
+```ts
+type ActResult = { sequence: number } | { rejected: string };
+```
+
+Runs `action` in the game as the system, with [`SYSTEM`](game-plugin.md#system) as the player ID ([0040](../explanation/decisions/0040-server-initiated-actions.md)). Use it for actions that come from the host rather than a player, such as a computer player's moves or events from outside the game. A host can't act as one of the game's players.
+
+The action runs like a player's: under the game's lock, through [`validateAction`](game-plugin.md#validateaction) and [`executeAction`](game-plugin.md#executeaction), and, if accepted, recorded with the next `sequence` and sent to connected clients. Timers it returns are applied as for any action.
+
+| Resolves to            | When                                                                                                                    |
+| ---------------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| `{ sequence }`         | The action was accepted; `sequence` is the state it produced                                                            |
+| `{ rejected: reason }` | `validateAction` returned `reason`, or `executeAction` threw a `GameRefusal` with it as its message. Nothing is stored. |
+
+| Rejects with       | When                                                                                     |
+| ------------------ | ---------------------------------------------------------------------------------------- |
+| `UnknownGameError` | No game has this `gameId`                                                                |
+| any other error    | The game threw another error, or the transition couldn't be recorded. Nothing is stored. |
+
+See [Schedule actions and time limits](../how-to/schedule-actions.md#act-from-the-host).
+
 ### UnknownGameError
 
 ```ts
 class UnknownGameError extends Error {} // name "UnknownGameError", message "Game <gameId> not found"
 ```
 
-Thrown by `admit`, so that hosts can tell an unknown game apart from other errors, for example to answer 404.
+Thrown by `admit` and `act`, so that hosts can tell an unknown game apart from other errors, for example to answer 404.
 
 ## createRemoteState
 
@@ -110,6 +134,7 @@ interface RemoteState<StateType> {
   attach: (httpServer: http.Server) => void;
   createGame: (initialState: StateType) => Promise<string>;
   admit: (admission: Admission) => Promise<string>;
+  act: (gameId: string, action: unknown) => Promise<ActResult>;
   close: () => Promise<void>;
 }
 ```
@@ -120,7 +145,8 @@ interface RemoteState<StateType> {
 | `attach(httpServer)`          | Serves the socket on the host's HTTP server, at the socket path. Until it's called, no updates are pushed. Throws if called twice, or if `socket` is `false`. |
 | `createGame(initialState)`    | As in [`RemoteStateServer`](#remotestateserver)                                                                                                               |
 | `admit({ gameId, identity })` | As in [`RemoteStateServer`](#remotestateserver)                                                                                                               |
-| `close()`                     | Disconnects socket clients, stops accepting new ones, and closes the database. The host's HTTP server keeps running.                                          |
+| `act(gameId, action)`         | As in [`RemoteStateServer`](#act)                                                                                                                             |
+| `close()`                     | Drops pending timers, disconnects socket clients, stops accepting new ones, and closes the database. The host's HTTP server keeps running.                    |
 
 The router's JSON body parser, CORS and error handler apply only to its `/api` routes. Routes the host adds need their own.
 
@@ -164,7 +190,13 @@ const silentLogger: Logger;
 
 Each server logs through its `logger` option. There's no global logger or log level, so servers in one process can log differently. To use your own logger, pass an object with the four methods.
 
-The library logs errors from requests and sockets at `error`, socket connections and the "listening" message at `info`, and everything MikroORM reports, including the migrations it applies, at `debug`.
+The library logs:
+
+- at `error`: errors from requests, sockets and due timers
+- at `info`: socket connections, the "listening" message, timer actions the game rejected, and every recorded state ([0039](../explanation/decisions/0039-actions-recorded-with-authors-audience.md))
+- at `debug`: everything MikroORM reports, including the migrations it applies
+
+A recorded state is logged once its transaction has committed, as `<actionType> by <author> in game <gameId>, now at <sequence>`. The author is `<audience>:<playerId>`, with the player's audience when they acted or the audience they joined into, for example `place by everyone:4f1c… in game 9a2e…, now at 5`, or `system` for actions of the system.
 
 `consoleLogger` prints messages at `level` and above:
 
@@ -179,11 +211,11 @@ The library has no endpoint for changing the log level at runtime ([0028](../exp
 
 Also exported:
 
-- [GamePlugin](game-plugin.md): `GamePlugin`, `ActionValidationResult`, `Awaitable`, `JoiningPlayer`, `StateResult`, `Transition`, `AudienceChanges`, and the values `withAudiences`, `GameRefusal` and `EVERYONE`
+- [GamePlugin](game-plugin.md): `GamePlugin`, `ActionValidationResult`, `Awaitable`, `JoiningPlayer`, `StateResult`, `Transition`, `TransitionChanges`, `TimerRequest`, `AudienceChanges`, and the values `transition`, `withAudiences`, `GameRefusal`, `SYSTEM` and `EVERYONE`
 - [Socket events](socket-events.md#types): `StateEvent`, `PatchesEvent`, `Patch`, `Format`
 - [Options](#options): `RemoteStateOptions`, `RemoteStateServerOptions`
 - [Logging](#logging): `Logger`, `LogFunction`, `ConsoleLoggerOptions`
-- `Admission`, `Identity`, `CODE_LIFETIME_MS`
+- `Admission`, `Identity`, `CODE_LIFETIME_MS`, `ActResult`
 
 ## Database schema
 
@@ -232,17 +264,18 @@ All IDs are UUID strings. Tokens and codes are stored only as SHA-256 hashes ([0
 
 **game_states**: one row per state; the row with the highest `sequence` is the current state. Unique per `(game_id, sequence)`.
 
-| Column        | Type                               | Notes                                                                                   |
-| ------------- | ---------------------------------- | --------------------------------------------------------------------------------------- |
-| `id`          | primary key                        |                                                                                         |
-| `game_id`     | foreign key to `games`             |                                                                                         |
-| `sequence`    | integer                            | 0 for the initial state                                                                 |
-| `state`       | JSON                               | Full, unfiltered state                                                                  |
-| `full_diff`   | JSON, nullable                     | Immer patches from the previous full state; null for sequence 0. Never sent to clients. |
-| `player_id`   | foreign key to `players`, nullable | Who caused this state; null for the initial state                                       |
-| `action_type` | string                             | `initial`, `join`, or the action's `type`                                               |
-| `action_data` | JSON, nullable                     | The action as the client sent it; null for `initial` and `join`                         |
-| `created_at`  | datetime                           |                                                                                         |
+| Column        | Type                               | Notes                                                                                                                                                                                                                             |
+| ------------- | ---------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `id`          | primary key                        |                                                                                                                                                                                                                                   |
+| `game_id`     | foreign key to `games`             |                                                                                                                                                                                                                                   |
+| `sequence`    | integer                            | 0 for the initial state                                                                                                                                                                                                           |
+| `state`       | JSON                               | Full, unfiltered state                                                                                                                                                                                                            |
+| `full_diff`   | JSON, nullable                     | Immer patches from the previous full state; null for sequence 0. Never sent to clients.                                                                                                                                           |
+| `player_id`   | foreign key to `players`, nullable | Who caused this state; null for the initial state and actions of the system                                                                                                                                                       |
+| `audience`    | string, nullable                   | The author's audience when they acted, or the audience they joined into, including a default audience such as `everyone`; null without a player ([0039](../explanation/decisions/0039-actions-recorded-with-authors-audience.md)) |
+| `action_type` | string                             | `initial`, `join`, or the action's `type`                                                                                                                                                                                         |
+| `action_data` | JSON, nullable                     | The action as sent by the client or the system; null for `initial` and `join`                                                                                                                                                     |
+| `created_at`  | datetime                           |                                                                                                                                                                                                                                   |
 
 **audience_diffs**: what each audience's view changed by, per state. Unique per `(game_id, audience, sequence)`.
 

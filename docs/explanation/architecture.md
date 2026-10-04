@@ -70,16 +70,22 @@ When `POST /api/games/:gameId/actions` arrives:
 2. **Lock.** All following steps run inside a per-game lock, so two transitions on the same game can't interleave. Different games run in parallel.
 3. **Load** the latest state (highest `sequence`).
 4. **Validate.** If `validateAction` returns a string, the request ends with 400 and nothing changes.
-5. **Execute.** `executeAction` returns the next state, and possibly audience changes. A `GameRefusal` ends the request with 400.
-6. **Record**, in one transaction: the new state with `sequence + 1`, a diff of the full state, the diff of each audience's view, and any audience changes.
+5. **Execute.** `executeAction` returns the next state, and possibly audience changes and timers to schedule or cancel. A `GameRefusal` ends the request with 400.
+6. **Record**, in one transaction: the new state with `sequence + 1`, a diff of the full state, the diff of each audience's view, and any audience changes. Once that's committed, the action's timers take effect.
 7. **Publish.** Each connected socket of the game receives its audience's new view, as a whole state or as patches.
 8. **Unlock**, and respond with 201 and the `sequence`.
 
 Without the lock, two actions could both read state _n_, both be validated against it, and both try to write state _n + 1_. The unique `(gameId, sequence)` index would reject the second write, but only after its validation had already passed against stale state. The lock keeps each validation in step with the state it's validated against, and keeps socket events in `sequence` order.
 
+## Actions from the server
+
+Not every transition starts with a client's request. A game can schedule actions along with a new state, such as a turn timeout, and the host can run actions with `act`, such as an admin ending a game ([0040](decisions/0040-server-initiated-actions.md)). Both act as the system, with the player ID `"system"`. They take the same path as a player's action from step 2 on: the lock, validation, execution, recording and publishing. A game's rules therefore decide what the system may do, and the history shows each system action, recorded without a player.
+
+Timers are named per game, so a turn timeout is one timer that every move replaces and the end of the game cancels ([0041](decisions/0041-named-timers.md)). A due timer runs only if it's still pending, and its action is validated against the state at that time, so an outdated timeout is rejected rather than applied. Timers are kept in memory only: a restart loses them, and how they should survive one is still open ([0042](decisions/0042-timer-restarts-open.md)).
+
 ## State as an append-only log
 
-The server never overwrites a state. Each transition appends a full snapshot, together with the action that produced it and who sent it. The current state is simply the newest row.
+The server never overwrites a state. Each transition appends a full snapshot, together with the action that produced it, who sent it and from which audience ([0039](decisions/0039-actions-recorded-with-authors-audience.md)). The current state is simply the newest row.
 
 This gives you:
 

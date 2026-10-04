@@ -5,6 +5,7 @@ Server-authoritative state for multiplayer games. You write the game's rules as 
 - **Actions over HTTP, updates over Socket.IO.** Clients send actions; every connected player receives the new state, filtered for what they may see.
 - **Hidden information built in.** A view filter decides what each audience sees, such as each player their own hand and spectators neither.
 - **Your app stays in charge.** Mount the library in your Express app, or run it standalone. Your app decides who may create and join games, and admits players with single-use codes.
+- **Time limits and actions from the server.** A game can schedule actions, such as a turn timeout, and your app can act in a game as the system.
 - **Patches for state libraries.** Updates can be Immer patches, which keep unchanged parts of the client's state as the same objects.
 
 Requires Node.js 24 or newer.
@@ -58,7 +59,7 @@ The client exchanges the code at `POST /api/tokens` for a token, sends actions t
 
 ## Documentation
 
-The repository's `docs/` folder has a tutorial, how-to guides (connecting clients, embedding in an app, hiding information, persisting and testing games), the full reference, and the design decisions behind the library.
+The repository's `docs/` folder has a tutorial, how-to guides (connecting clients, embedding in an app, hiding information, scheduling actions, persisting and testing games), the full reference, and the design decisions behind the library.
 
 ## License
 

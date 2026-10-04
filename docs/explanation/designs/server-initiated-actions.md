@@ -46,6 +46,8 @@ The library offers `server.submitSystemAction(gameId, action)`, and the host app
 
 ## Open questions
 
+- **Telling the host about changes:** a computer player run by the host through `act` can't learn that it's its turn without polling. Should the host be able to subscribe to a game's transitions?
+
 - **Timers and restarts:** should pending timers be stored, and when the server restarts, run right away, start over with their full duration, or resume with their remaining time? Possibly differently per timer, for example a turn timeout versus a game clock.
 
 - How precise must timing be for the games this is meant for?
