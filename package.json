@@ -17,7 +17,8 @@
     "build": "npm run build --workspaces",
     "test": "npm test --workspaces",
     "lint": "npm run lint --workspaces",
-    "start:example": "npm run build && npm start --workspace packages/remote-state-example-server"
+    "start:example": "npm run build && npm start --workspace packages/remote-state-example-server",
+    "perf": "npm run perf --workspace packages/remote-state-example-server --"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",

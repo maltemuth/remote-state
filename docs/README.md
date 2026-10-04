@@ -15,6 +15,7 @@ All documentation for this project, including designs and decisions, is organize
 - [Hide information from players](how-to/hide-information-from-players.md)
 - [Persist games across restarts](how-to/persist-games.md)
 - [Test a game plugin](how-to/test-a-game-plugin.md)
+- [Measure performance](how-to/measure-performance.md)
 - [Publish a release](how-to/publish-a-release.md) (for maintainers)
 
 ## Reference: look up exact behavior

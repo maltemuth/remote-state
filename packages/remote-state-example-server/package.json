@@ -21,7 +21,8 @@
     "lint:fix": "eslint src --fix",
     "format": "prettier --write src",
     "format:check": "prettier --check src",
-    "clean": "rm -rf dist"
+    "clean": "rm -rf dist",
+    "perf": "npm run build --prefix ../remote-state && npm run build && node dist/perf/run.js"
   },
   "dependencies": {
     "@malte.muth/remote-state": "file:../remote-state",
