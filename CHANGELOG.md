@@ -4,6 +4,21 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ## Unreleased
 
+Server-initiated actions (decisions 0039–0042).
+
+### Added
+
+- Timers: the join hook and `executeAction` can return `transition(state, { audiences, schedule, cancel })`. A scheduled timer has a name, a duration (`in`, in milliseconds) and an action; scheduling a pending name again replaces it, and `cancel` drops timers by name. When a timer is due, its action runs as the system, under the game's lock and through `validateAction` like any other action. Timers are kept in memory only and are lost when the server restarts; how they should behave across restarts is still open (0042).
+- `SYSTEM` (`"system"`): the player ID of actions from timers and from the host.
+- `act(gameId, action)` on the server: the host runs an action as the system, for example for computer players or outside events. It resolves with `{ sequence }` or `{ rejected }`, and throws `UnknownGameError` for an unknown game.
+- Every recorded state is logged at `info` with its author as `<audience>:<playerId>`, or `system`, and stores the author's audience in a new `audience` column of `game_states` (0039). The column is added by a migration.
+- Tic-tac-toe example: an optional time limit per move, `newTicTacToeGame({ turnSeconds })`. When it runs out, the player to move loses. The example host uses 60 seconds.
+
+### Changed
+
+- `withAudiences(state, audiences)` is now a shorthand for `transition(state, { audiences })`.
+- System actions are recorded without a player (`game_states.player_id` is null).
+
 ## 0.5.0 - 2026-10-04
 
 ### Added
