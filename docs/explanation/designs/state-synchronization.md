@@ -258,6 +258,8 @@ The questions are which of these exist, how the store's reducer applies them, an
 
 ### 5. Should actions apply before the server confirms them?
 
+Decided: **A**, no ([0033](../decisions/0033-no-optimistic-updates.md)).
+
 - **A. No.** The client waits for the server. It's always correct, but each action takes a round trip before the player sees it.
 - **B. Yes, using the game's own rules on the client.** Instant, but only possible when the client can see everything the rules need, so it doesn't work for games with hidden information.
 - **C. Yes, using a separate prediction per action** that the game provides for its clients. The prediction is rolled back when the server's version arrives or the action is rejected.
