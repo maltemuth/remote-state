@@ -28,6 +28,8 @@ export const startNotesServer = async () => {
     admit: (gameId: string, id: string) => remote.admit({ gameId, identity: { id } }),
     close: async () => {
       await remote.close();
+      // fetch keeps connections alive, which would hold the server open
+      server.closeAllConnections();
       await new Promise(resolve => server.close(resolve));
     },
   };
