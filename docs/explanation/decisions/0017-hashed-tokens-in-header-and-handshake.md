@@ -1,6 +1,6 @@
 # 0017. Tokens are stored hashed, and accepted only in the header and the handshake
 
-Status: Accepted
+Status: Accepted; existing databases weren't migrated after all: the rebuild after 0.2.0 starts with a new schema (see the changelog)
 Date: 2026-09-29
 
 ## Context
