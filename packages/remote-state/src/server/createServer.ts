@@ -67,6 +67,7 @@ export const createRemoteStateServer = async <StateType, ActionType, ViewType>(
     router: remote.router,
     createGame: remote.createGame,
     admit: remote.admit,
+    act: remote.act,
     startServer,
     close,
   };

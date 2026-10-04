@@ -7,6 +7,7 @@
 import { AudienceDiff, AudienceMembership, GameState, Player } from '../database/entities/index.js';
 import { diff } from '../patches/diff.js';
 import { type StateResult } from '../plugin/types.js';
+import { SYSTEM } from '../plugin/system.js';
 import { unwrapTransition } from '../plugin/transition.js';
 import { toJson } from '../json.js';
 import {
@@ -14,6 +15,7 @@ import {
   computeAudienceUpdates,
   effectiveAudiences,
 } from './audienceUpdates.js';
+import { checkTimerRequests } from './scheduler.js';
 import { type EngineContext, type TransitionOutcome } from './context.js';
 import { type StoredState } from './states.js';
 
@@ -22,6 +24,7 @@ export interface TransitionInput {
   previous: StoredState;
   /** What the game's join hook or `executeAction` returned */
   result: StateResult<unknown>;
+  /** A player ID, or `SYSTEM` */
   authorId: string;
   actionType: string;
   actionData: unknown;
@@ -29,21 +32,34 @@ export interface TransitionInput {
   joiningPlayer?: { id: string; identityId: string };
 }
 
-export const recordTransition = (
+export const recordTransition = async (
+  context: EngineContext,
+  input: TransitionInput
+): Promise<TransitionOutcome> => {
+  const { outcome, author } = await persist(context, input);
+  context.logger.info(
+    `${input.actionType} by ${author} in game ${input.gameId}, now at ${outcome.sequence}`
+  );
+  return outcome;
+};
+
+const persist = (
   { orm, plugin }: EngineContext,
   input: TransitionInput
-): Promise<TransitionOutcome> =>
+): Promise<{ outcome: TransitionOutcome; author: string }> =>
   orm.em.fork().transactional(async em => {
     const { gameId, previous, joiningPlayer } = input;
-    const { state: returned, audiences: changes } = unwrapTransition(input.result);
+    const { state: returned, changes } = unwrapTransition(input.result);
+    checkTimerRequests(changes.schedule);
     const state = toJson(returned);
+    const playerId = input.authorId === SYSTEM ? null : input.authorId;
     const sequence = previous.sequence + 1;
 
     const players = await em.find(Player, { game: gameId });
     const storedBefore = new Map(players.map(player => [player.id, player.audience]));
     const withJoining = new Map(storedBefore);
     if (joiningPlayer) withJoining.set(joiningPlayer.id, null);
-    const storedAfter = applyAudienceChanges(withJoining, changes);
+    const storedAfter = applyAudienceChanges(withJoining, changes.audiences);
 
     const audiencesBefore = effectiveAudiences(plugin, storedBefore);
     const audiencesAfter = effectiveAudiences(plugin, storedAfter);
@@ -68,12 +84,18 @@ export const recordTransition = (
       if (player.id === input.authorId) player.lastActivityAt = new Date();
     }
 
+    // The author's audience as they acted; a joining player's, as they joined (0039)
+    const authorAudience =
+      playerId === null
+        ? null
+        : ((joiningPlayer ? audiencesAfter : audiencesBefore).get(playerId) ?? null);
     em.create(GameState, {
       game: gameId,
       sequence,
       state,
       fullDiff: diff(previous.state, state),
-      player: input.authorId,
+      player: playerId,
+      audience: authorAudience,
       actionType: input.actionType,
       actionData: input.actionData ?? null,
     });
@@ -81,12 +103,15 @@ export const recordTransition = (
       em.create(AudienceDiff, { game: gameId, audience, sequence, patches });
     }
 
-    return {
+    const author = playerId === null ? SYSTEM : `${authorAudience}:${playerId}`;
+    const outcome: TransitionOutcome = {
       gameId,
       sequence,
       previousState: previous.state,
       updates,
       audiencesBefore,
       audiencesAfter,
+      timers: { schedule: changes.schedule, cancel: changes.cancel },
     };
+    return { outcome, author };
   });

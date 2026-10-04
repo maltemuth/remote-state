@@ -7,7 +7,9 @@ import { type Orm } from '../database/orm.js';
 import { type Logger } from '../logging/logger.js';
 import { type Patch } from '../patches/diff.js';
 import { type AnyGamePlugin } from '../plugin/types.js';
+import { type TimerRequest } from '../plugin/transition.js';
 import { type GameLock } from './gameLock.js';
+import { type Scheduler } from './scheduler.js';
 
 /** One audience's view after a transition, and the patches leading to it */
 export interface AudienceUpdate {
@@ -24,6 +26,8 @@ export interface TransitionOutcome {
   /** Player ID → effective audience, before and after the transition */
   audiencesBefore: Map<string, string>;
   audiencesAfter: Map<string, string>;
+  /** What the transition scheduled and cancelled, to apply once it's recorded */
+  timers: { schedule: TimerRequest[]; cancel: string[] };
 }
 
 export interface Publisher {
@@ -36,4 +40,5 @@ export interface EngineContext {
   withGameLock: GameLock;
   logger: Logger;
   publisher: Publisher;
+  scheduler: Scheduler;
 }

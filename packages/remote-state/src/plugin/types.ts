@@ -17,11 +17,15 @@ export interface JoiningPlayer {
   details: Record<string, unknown>;
 }
 
-/** A new state, optionally with audience changes (see `withAudiences`) */
-export type StateResult<StateType> = StateType | Transition<StateType>;
+/** A new state, optionally with audience changes and timers (see `transition`) */
+export type StateResult<StateType, ActionType = unknown> =
+  StateType | Transition<StateType, ActionType>;
 
 export interface GamePlugin<StateType, ActionType, ViewType = StateType> {
-  /** Accept an action, or return why it's rejected. Runs before `executeAction`. */
+  /**
+   * Accept an action, or return why it's rejected. Runs before `executeAction`.
+   * `playerId` is `SYSTEM` for actions from timers and from the host's `act`.
+   */
   validateAction: (
     state: StateType,
     action: ActionType,
@@ -33,13 +37,16 @@ export interface GamePlugin<StateType, ActionType, ViewType = StateType> {
     state: StateType,
     action: ActionType,
     playerId: string
-  ) => Awaitable<StateResult<StateType>>;
+  ) => Awaitable<StateResult<StateType, ActionType>>;
 
   /**
    * Add a new player to the game's state (decision 0026), or throw a `GameRefusal`
    * to refuse them. Without it, everyone admitted joins and the state is unchanged.
    */
-  onJoin?: (state: StateType, player: JoiningPlayer) => Awaitable<StateResult<StateType>>;
+  onJoin?: (
+    state: StateType,
+    player: JoiningPlayer
+  ) => Awaitable<StateResult<StateType, ActionType>>;
 
   /**
    * Reduce the full state to what an audience may see (decision 0024). By default,

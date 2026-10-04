@@ -46,6 +46,7 @@ export const joinGame = (
       actionData: null,
       joiningPlayer: { id: playerId, identityId },
     });
+    context.scheduler.apply(gameId, outcome.timers.schedule, outcome.timers.cancel);
     await context.publisher.publish(outcome);
     return { playerId };
   });

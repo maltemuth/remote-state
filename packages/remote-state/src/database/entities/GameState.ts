@@ -30,9 +30,13 @@ export class GameState {
   @Property({ type: 'json', nullable: true })
   fullDiff: Opt<unknown> | null = null;
 
-  /** Who caused this state; null for the initial state */
+  /** Who caused this state; null for the initial state and system actions */
   @ManyToOne(() => Player, { nullable: true })
   player: Opt<Player> | null = null;
+
+  /** The author's audience when they acted, or joined into; null without a player (0039) */
+  @Property({ type: 'string', nullable: true })
+  audience: Opt<string> | null = null;
 
   /** `initial`, `join`, or the action's `type` */
   @Property({ type: 'string' })

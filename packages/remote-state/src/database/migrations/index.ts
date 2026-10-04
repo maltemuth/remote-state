@@ -4,7 +4,9 @@
  */
 
 import { Migration20261004000000Initial } from './Migration20261004000000Initial.js';
+import { Migration20261004120000AuthorAudience } from './Migration20261004120000AuthorAudience.js';
 
 export const migrations = [
   { name: 'Migration20261004000000Initial', class: Migration20261004000000Initial },
+  { name: 'Migration20261004120000AuthorAudience', class: Migration20261004120000AuthorAudience },
 ];

@@ -15,7 +15,16 @@ export {
   type JoiningPlayer,
   type StateResult,
 } from './plugin/types.js';
-export { withAudiences, type AudienceChanges, type Transition } from './plugin/transition.js';
+export {
+  transition,
+  withAudiences,
+  type AudienceChanges,
+  type TimerRequest,
+  type Transition,
+  type TransitionChanges,
+} from './plugin/transition.js';
+export { SYSTEM } from './plugin/system.js';
+export { type ActResult } from './engine/act.js';
 export { GameRefusal } from './plugin/refusal.js';
 export { EVERYONE } from './plugin/views.js';
 export { type Patch } from './patches/diff.js';

@@ -9,12 +9,15 @@ import { type Router } from 'express';
 import { initializeDatabase } from '../database/orm.js';
 import { type EngineContext } from '../engine/context.js';
 import { createGameLock } from '../engine/gameLock.js';
+import { createScheduler } from '../engine/scheduler.js';
+import { runDueTimer } from '../engine/timers.js';
 import { createRouter } from '../http/router.js';
 import { consoleLogger } from '../logging/logger.js';
 import { type GamePlugin } from '../plugin/types.js';
 import { createPublisher } from '../socket/publisher.js';
 import { closeSocketServer, createSocketServer, type SocketServer } from '../socket/server.js';
-import { type Admission, admit, createGame } from './host.js';
+import { type ActResult } from '../engine/act.js';
+import { type Admission, actAsSystem, admit, createGame } from './host.js';
 import { defaultCors, type RemoteStateOptions } from './options.js';
 
 export interface RemoteState<StateType> {
@@ -26,6 +29,8 @@ export interface RemoteState<StateType> {
   createGame: (initialState: StateType) => Promise<string>;
   /** Issue a single-use code admitting an identity to a game (0020) */
   admit: (admission: Admission) => Promise<string>;
+  /** Run an action as the system (0040); throws `UnknownGameError` for an unknown game */
+  act: (gameId: string, action: unknown) => Promise<ActResult>;
   /** Disconnect clients and close the database. The host's HTTP server keeps running. */
   close: () => Promise<void>;
 }
@@ -46,6 +51,7 @@ export const createRemoteState = async <StateType, ActionType, ViewType>(
     logger,
     withGameLock: createGameLock(),
     publisher: { publish: async () => undefined },
+    scheduler: createScheduler(timer => runDueTimer(context, timer)),
   };
   let io: SocketServer | null = null;
 
@@ -61,7 +67,9 @@ export const createRemoteState = async <StateType, ActionType, ViewType>(
     attach,
     createGame: initialState => createGame(orm, initialState),
     admit: admission => admit(orm, admission),
+    act: (gameId, action) => actAsSystem(context, gameId, action),
     close: async () => {
+      context.scheduler.close();
       if (io) closeSocketServer(io);
       await orm.close();
     },
