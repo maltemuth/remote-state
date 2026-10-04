@@ -11,7 +11,7 @@ Proposals for open design questions. A proposal explains a problem and the optio
 | [Game options](game-options.md)                             | Creating a game with settings                                                  | Decided                           |
 | [Game lifecycle](game-lifecycle.md)                         | Joining, leaving, disconnecting, and the end of a game                         | Open                              |
 | [Server-initiated actions](server-initiated-actions.md)     | Timers, computer players, scheduled events                                     | Mostly decided; restarts open     |
-| [Client package](client-package.md)                         | A library for game clients                                                     | Deferred                          |
+| [Client package](client-package.md)                         | A library for game clients                                                     | Core decided; adapters open       |
 | [Throughput and persistence](throughput-and-persistence.md) | Storage settings, caching and splitting accept from execute, with measurements | Deferred                          |
 
 Further open questions are listed in [Known limitations](../limitations.md).

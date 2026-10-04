@@ -1,6 +1,12 @@
 # Client package
 
-Status: Deferred until [State synchronization](state-synchronization.md), [Player information](player-information.md) and [Game lifecycle](game-lifecycle.md) are decided
+Status: Core decided in [0043](../decisions/0043-client-core-without-state-library.md), [0044](../decisions/0044-client-hands-out-whole-views.md) and [0045](../decisions/0045-client-generic-over-game-types.md); adapters and lifecycle events open
+
+## Outcome
+
+The package starts as a core without a state library (0043). It keeps the player's whole view, which anything can subscribe to; it receives patches, applies them with Immer, and catches up by `sequence` after gaps (0044). It takes the game's view and action types as type parameters (0045). It doesn't update optimistically ([0033](../decisions/0033-no-optimistic-updates.md)).
+
+The synchronization protocol it needs was decided in 0029–0036, and [Player information](player-information.md) is decided. Events from [Game lifecycle](game-lifecycle.md), which is still open, and adapters for state libraries are added later.
 
 ## Problem
 
@@ -18,7 +24,7 @@ Every client has to implement the same work itself:
 
 The original project plan included a client package, `@malte.muth/remote-state-client`, with Redux middleware.
 
-## Why it's deferred
+## Why it was deferred
 
 The client's interface follows from decisions that are still open:
 
