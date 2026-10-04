@@ -7,7 +7,8 @@
 import { AdmissionCode, Game, GameState } from '../database/entities/index.js';
 import { type EntityManager } from '@mikro-orm/sqlite';
 import { type Orm } from '../database/orm.js';
-import { toJson } from '../json.js';
+import { droppedKeysWarning, toJson } from '../json.js';
+import { type Logger } from '../logging/logger.js';
 import { hashSecret, newSecret } from '../secrets.js';
 import { act, type ActResult } from '../engine/act.js';
 import { type EngineContext } from '../engine/context.js';
@@ -30,11 +31,16 @@ export interface Admission {
 }
 
 /** Store a new game with its initial state; returns the game's ID */
-export const createGame = async (orm: Orm, initialState: unknown): Promise<string> => {
+export const createGame = async (
+  orm: Orm,
+  logger: Logger,
+  initialState: unknown
+): Promise<string> => {
   if (initialState === undefined) throw new Error('An initial state is required');
   const em = orm.em.fork();
   const game = em.create(Game, {});
-  em.create(GameState, { game, sequence: 0, state: toJson(initialState), actionType: 'initial' });
+  const state = toJson(initialState, keys => logger.warn(droppedKeysWarning(keys, game.id, 0)));
+  em.create(GameState, { game, sequence: 0, state, actionType: 'initial' });
   await em.flush();
   return game.id;
 };

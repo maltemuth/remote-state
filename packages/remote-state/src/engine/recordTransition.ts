@@ -9,7 +9,7 @@ import { diff } from '../patches/diff.js';
 import { type StateResult } from '../plugin/types.js';
 import { SYSTEM } from '../plugin/system.js';
 import { unwrapTransition } from '../plugin/transition.js';
-import { toJson } from '../json.js';
+import { droppedKeysWarning, toJson } from '../json.js';
 import {
   applyAudienceChanges,
   computeAudienceUpdates,
@@ -44,16 +44,16 @@ export const recordTransition = async (
 };
 
 const persist = (
-  { orm, plugin }: EngineContext,
+  { orm, plugin, logger }: EngineContext,
   input: TransitionInput
 ): Promise<{ outcome: TransitionOutcome; author: string }> =>
   orm.em.fork().transactional(async em => {
     const { gameId, previous, joiningPlayer } = input;
     const { state: returned, changes } = unwrapTransition(input.result);
     checkTimerRequests(changes.schedule, changes.cancel);
-    const state = toJson(returned);
-    const playerId = input.authorId === SYSTEM ? null : input.authorId;
     const sequence = previous.sequence + 1;
+    const state = toJson(returned, keys => logger.warn(droppedKeysWarning(keys, gameId, sequence)));
+    const playerId = input.authorId === SYSTEM ? null : input.authorId;
 
     const players = await em.find(Player, { game: gameId });
     const storedBefore = new Map(players.map(player => [player.id, player.audience]));

@@ -1,5 +1,6 @@
 /**
- * Hostile input: reserved keys such as `__proto__` in actions and states, bodies
+ * Hostile input: reserved keys such as `__proto__` in actions and states (dropped
+ * from states, 0047), bodies
  * that are too large or not JSON, actions that aren't objects, malformed tokens,
  * codes and cursors, and handshakes with the wrong types. The server must answer
  * with a client error or the game's own answer, stay usable, and never change
@@ -7,15 +8,19 @@
  */
 
 import { afterAll, afterEach, beforeAll, describe, expect, it } from '@jest/globals';
+import { applyPatches, enablePatches } from 'immer';
 import { io as connect, type Socket } from 'socket.io-client';
 import request from 'supertest';
 import {
   createRemoteStateServer,
   type GamePlugin,
   type RemoteStateServer,
-  silentLogger,
+  type Logger,
+  type PatchesEvent,
   type StateEvent,
 } from '../../src/index.js';
+
+enablePatches();
 
 /** Stores whatever JSON a player sends, the worst case for reserved keys */
 interface BagState {
@@ -39,9 +44,17 @@ describe('hostile input', () => {
   let server: RemoteStateServer<BagState>;
   let url: string;
   const sockets: Socket[] = [];
+  const warnings: string[] = [];
+  const ignore = () => undefined;
+  const logger: Logger = {
+    debug: ignore,
+    info: ignore,
+    warn: message => void warnings.push(message),
+    error: ignore,
+  };
 
   beforeAll(async () => {
-    server = await createRemoteStateServer(bagGame, { port: 0, logger: silentLogger });
+    server = await createRemoteStateServer(bagGame, { port: 0, logger });
     await server.startServer();
     url = `http://localhost:${server.port}`;
   });
@@ -69,28 +82,44 @@ describe('hostile input', () => {
     };
   };
 
-  it('stores and sends states with reserved keys as data', async () => {
+  it('drops reserved keys from states, so patches apply, and warns', async () => {
     const { gameId, token, act, state, updates } = await player();
     const socket = connect(url, {
       auth: { gameId, token },
+      query: { format: 'immer' },
       transports: ['websocket'],
       reconnection: false,
     });
     sockets.push(socket);
-    const views: StateEvent[] = [];
-    socket.on('state', event => views.push(event));
+    let view: unknown;
+    let sequence = -1;
+    socket.on('state', (event: StateEvent) => ({ state: view, sequence } = event));
+    socket.on('patches', (event: PatchesEvent) => {
+      view = applyPatches(view as object, event.patches);
+      sequence = event.sequence;
+    });
     await new Promise(resolve => socket.once('state', resolve));
 
     for (const bag of RESERVED_BAGS) {
-      const body = JSON.stringify({ action: { type: 'put', bag } });
-      const { body: answer } = await act(body).expect(201);
+      const before = warnings.length;
+      const { body: answer } = await act(JSON.stringify({ action: { type: 'put', bag } })).expect(
+        201
+      );
       const { body: current } = await state().expect(200);
-      expect(JSON.stringify(current.state.bag)).toBe(JSON.stringify(bag));
-      expect(current.sequence).toBe(answer.sequence);
-      expect((await updates(String(answer.sequence - 1))).status).toBe(200);
+      expect(JSON.stringify(current.state)).not.toMatch(/__proto__|constructor/);
+      const since = await updates(String(answer.sequence - 1)).expect(200);
+      expect(JSON.stringify(since.body)).not.toMatch(/__proto__|constructor/);
+      const reserved = /__proto__|constructor/.test(JSON.stringify(bag));
+      expect(warnings.length - before).toBe(reserved ? 1 : 0);
+
+      for (let i = 0; i < 100 && sequence < answer.sequence; i++) {
+        await new Promise(resolve => setTimeout(resolve, 5));
+      }
+      expect(view).toEqual(current.state);
     }
-    await new Promise(resolve => setTimeout(resolve, 50));
-    expect(JSON.stringify(views.at(-1)!.state)).toBe(JSON.stringify({ bag: {} }));
+    expect(warnings[0]).toMatch(
+      new RegExp(`^Dropped keys named __proto__ from the state of game ${gameId} at \\d+`)
+    );
   });
 
   it('answers actions with reserved keys like any other', async () => {

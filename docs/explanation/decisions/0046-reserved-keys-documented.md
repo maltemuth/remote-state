@@ -1,6 +1,6 @@
 # 0046. Reserved keys in states are documented, not handled
 
-Status: Accepted
+Status: Superseded by [0047](0047-reserved-keys-dropped-with-warning.md)
 Date: 2026-10-04
 
 ## Context

@@ -39,8 +39,24 @@ export const PROPERTY_RUNS = Number(process.env.PROPERTY_RUNS ?? 40);
 /** Every player's notes start with their marker, so a leak can be spotted in any payload */
 export const markerOf = (player: number) => `SECRET${player}-`;
 
-/** Keys that need escaping in JSON Pointers, or look like array indices */
-const KEYS = ['a', 'b', 'a/b', 'a~b', '~0', '~1', '-', '0', '10', '', ' ', 'ü'];
+/** Keys that need escaping in JSON Pointers, look like array indices, or are reserved (0047) */
+const KEYS = [
+  'a',
+  'b',
+  'a/b',
+  'a~b',
+  '~0',
+  '~1',
+  '-',
+  '0',
+  '10',
+  '',
+  ' ',
+  'ü',
+  '__proto__',
+  'constructor',
+  'prototype',
+];
 
 const actionArbitrary = (player: number): fc.Arbitrary<ModelAction> =>
   fc.oneof(

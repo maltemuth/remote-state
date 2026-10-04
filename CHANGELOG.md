@@ -4,6 +4,10 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ## Unreleased
 
+### Changed
+
+- States and views drop keys named `__proto__` and `constructor` at any depth, so clients can apply every patch with Immer. A stored state that had them is logged as a warning (decision 0047).
+
 ## 0.7.0 - 2026-10-04
 
 The client package (decisions 0043–0045).
