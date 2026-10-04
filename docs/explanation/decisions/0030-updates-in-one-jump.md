@@ -1,6 +1,6 @@
 # 0030. `GET …/updates` answers in one jump, from any `since`
 
-Status: Accepted
+Status: Accepted; audience changes and `since` before joining are handled by [0035](0035-updates-across-audiences.md)
 Date: 2026-09-29
 
 ## Context

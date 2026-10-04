@@ -39,7 +39,7 @@ Decided in [0024](../decisions/0024-views-per-audience.md):
 
 1. **How membership is known:** each player's audience is stored on the player, rather than computed from the state.
 2. **Membership:** exactly one audience per player.
-3. **Changing audience:** the player starts from a whole state.
+3. **Changing audience:** the player starts from a whole state; refined by [0035](../decisions/0035-updates-across-audiences.md), which computes a diff across audiences instead.
 4. **Storage:** diffs are stored per audience, and membership is recorded after each action.
 
 5. **Default audiences:** a single audience for everyone when the game has no view filter, one per player when it has one ([0025](../decisions/0025-default-audiences.md)).

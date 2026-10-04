@@ -29,7 +29,7 @@ Records aren't edited after the fact, except to update their status. A decision 
 | [0021](0021-games-created-with-creategame.md) | Hosts create games with `createGame`, separately from admitting players | Accepted |
 | [0022](0022-roles-belong-to-game-state.md) | Roles belong to the game's state and rules | Accepted |
 | [0023](0023-no-server-to-server-admit.md) | `admit` is only called in-process | Accepted |
-| [0024](0024-views-per-audience.md) | Views are computed per audience | Accepted |
+| [0024](0024-views-per-audience.md) | Views are computed per audience | Accepted, refined by 0035 |
 | [0025](0025-default-audiences.md) | Default audiences depend on whether the game filters views | Accepted |
 | [0026](0026-join-hook-is-a-state-transition.md) | Joining a game is a state transition run by the game | Accepted |
 | [0027](0027-audiences-set-by-join-hook-and-actions.md) | Audiences are set by the join hook and by actions | Accepted |
@@ -40,6 +40,7 @@ Records aren't edited after the fact, except to update their status. A decision 
 | [0032](0032-action-response-without-body.md) | Accepted actions are answered with 201 and no body | Superseded by 0034 |
 | [0033](0033-no-optimistic-updates.md) | Clients wait for the server before showing an action's result | Accepted |
 | [0034](0034-action-response-with-sequence.md) | Accepted actions are answered with 201 and their `sequence` | Accepted |
+| [0035](0035-updates-across-audiences.md) | Updates across audience changes are computed; otherwise 303 to the whole state | Accepted |
 
 ## Writing a record
 
