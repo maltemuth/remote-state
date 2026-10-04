@@ -4,6 +4,8 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ## Unreleased
 
+## 0.3.0 - 2026-10-04
+
 The library is rebuilt around the decisions in `docs/explanation/decisions/` 0015–0036: hosts create games and admit players, views are computed per audience, and clients receive patches.
 
 ### Breaking
