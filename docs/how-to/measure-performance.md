@@ -1,6 +1,8 @@
 # Measure performance
 
-The repository has a load test: it plays many battleship games at once against the example server, and measures how long each action takes, until its HTTP response and until the other player's socket receives the update.
+The repository has a load test. Past results are recorded in [Performance measurements](../reference/performance.md).
+
+The load test plays many battleship games at once against the example server, and measures how long each action takes, until its HTTP response and until the other player's socket receives the update.
 
 ## Run it
 

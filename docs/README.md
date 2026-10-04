@@ -23,6 +23,7 @@ All documentation for this project, including designs and decisions, is organize
 - [GamePlugin](reference/game-plugin.md): the interface a game implements
 - [HTTP API](reference/http-api.md)
 - [Socket.IO events](reference/socket-events.md)
+- [Performance measurements](reference/performance.md): load test results, as measured
 - [Server API](reference/server-api.md): `createRemoteStateServer`, `createRemoteState`, options, logging, database schema
 
 ## Explanation: understand the design
