@@ -16,13 +16,13 @@ npm run perf -- --games 100 --pause 2000
 It builds both packages, starts the example server in its own process with its databases in a temporary directory, plays the games, stops the server and prints a report:
 
 ```text
-100 battleship games at once, 17 actions each, pause 2000 ms, format state
-  1700 actions in 44.4 s = 38 actions/s, 0 errors
-  HTTP response:  p50 12.8  p95 29.1  p99 87.2  max 159.3 ms
-  end to end:     p50 12.4  p95 28.8  p99 86.9  max 158.9 ms
+100 battleship games at once, 43 actions each, pause 2000 ms, format state
+  4300 actions in 105.6 s = 41 actions/s, 0 errors
+  HTTP response:  p50 25.5  p95 124.0  p99 285.7  max 1640.5 ms
+  end to end:     p50 25.2  p95 123.8  p99 285.3  max 1640.2 ms
 ```
 
-Each game has two players, who place their fleets and fire until one fleet is sunk: 17 actions.
+Each game has two players on the classic 10×10 board. Both place their five ships, then player 1 sinks player 2's fleet while player 2 misses: 43 actions. Results recorded before 2026-10-05 come from a smaller game, 5×5 with two ships and 17 actions, and can't be compared with later ones.
 
 ## Options
 

@@ -2,6 +2,16 @@
 
 Results of the load test, as measured. For how to run it, see [Measure performance](../how-to/measure-performance.md).
 
+## 2026-10-05, classic battleship, after 0.8.0
+
+The example's battleship now follows the classic rules: a 10×10 board and five ships per player, 43 actions per game instead of 17. Same environment as for version 0.4.2, below.
+
+| Command                    | Actions | Duration | Actions/s | Errors | HTTP p50 | HTTP p95 | HTTP p99 | HTTP max | End-to-end p50 | End-to-end p95 | End-to-end p99 | End-to-end max |
+| -------------------------- | ------- | -------- | --------- | ------ | -------- | -------- | -------- | -------- | -------------- | -------------- | -------------- | -------------- |
+| `--games 100 --pause 2000` | 4300    | 105.6 s  | 41        | 0      | 25.5     | 124.0    | 285.7    | 1640.5   | 25.2           | 123.8          | 285.3          | 1640.2         |
+
+The command was run once.
+
 ## 2026-10-04, persistence experiments on 0.6.0
 
 Same environment and scenario as for version 0.4.2, below. Every run was `--games 100 --pause 0`, 1700 actions, on version 0.6.0 with experimental switches that have since been removed; see [Throughput and persistence](../explanation/designs/throughput-and-persistence.md). Each line is one run, in the order they ran; the first set was run without `--runs`, the others with `--runs 3`.

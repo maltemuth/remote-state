@@ -4,6 +4,11 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ## Unreleased
 
+### Changed
+
+- Example: battleship follows the classic rules, a 10×10 board with a carrier (5), a battleship (4), a cruiser (3), a submarine (3) and a destroyer (2) per player. Players are seated on admission only; `join` and `leave` are no longer actions. Its engine validates with `true | string` and applies actions with Immer, and the unused timestamps, action `playerId` and validation codes are gone.
+- Load test: games follow the classic rules, 43 actions each instead of 17, so results can't be compared with earlier ones. The scripted game lives in `src/games/battleship/script.ts`.
+
 ### Fixed
 
 - A transition with a change passed as `undefined`, such as `transition(state, { schedule: undefined })`, failed the action with status 500; missing and undefined changes now both default to none.

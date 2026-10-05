@@ -5,7 +5,7 @@
  * receives the update.
  */
 
-import type { BattleshipAction } from "../games/battleship/types.js";
+import { SCRIPT } from "../games/battleship/script.js";
 import type { Format } from "@malte.muth/remote-state";
 import { joinPlayer, type Player, postJson } from "./player.js";
 
@@ -24,56 +24,7 @@ export interface GameOptions {
   pause: number;
 }
 
-const fleet: BattleshipAction[] = [
-  {
-    type: "place_ship",
-    shipType: "destroyer",
-    position: [0, 0],
-    orientation: "horizontal",
-  },
-  {
-    type: "place_ship",
-    shipType: "battleship",
-    position: [1, 0],
-    orientation: "horizontal",
-  },
-];
-const hits: [number, number][] = [
-  [0, 0],
-  [0, 1],
-  [0, 2],
-  [1, 0],
-  [1, 1],
-  [1, 2],
-  [1, 3],
-];
-const misses: [number, number][] = [
-  [4, 0],
-  [4, 1],
-  [4, 2],
-  [4, 3],
-  [4, 4],
-  [3, 0],
-];
-
-/** The 17 actions of a game, as [actor, action]; actor 0 is player 1 */
-const script: [0 | 1, BattleshipAction][] = [
-  ...fleet.map((action): [0, BattleshipAction] => [0, action]),
-  ...fleet.map((action): [1, BattleshipAction] => [1, action]),
-  ...hits.flatMap((position, i): [0 | 1, BattleshipAction][] => [
-    [0, { type: "fire_shot", position }],
-    ...(i < misses.length
-      ? [
-          [1, { type: "fire_shot", position: misses[i] }] as [
-            1,
-            BattleshipAction,
-          ],
-        ]
-      : []),
-  ]),
-];
-
-export const ACTIONS_PER_GAME = script.length;
+export const ACTIONS_PER_GAME = SCRIPT.length;
 
 export const playGame = async (
   { base, format, pause }: GameOptions,
@@ -87,7 +38,7 @@ export const playGame = async (
     await joinPlayer(base, gameId, "A", format),
     await joinPlayer(base, gameId, "B", format),
   ];
-  for (const [actor, action] of script) {
+  for (const [actor, action] of SCRIPT) {
     if (pause)
       await new Promise((r) => setTimeout(r, pause * (0.5 + Math.random())));
     const started = performance.now();
