@@ -22,7 +22,7 @@ export const getUpdates =
         res.status(400).json({ error: '`since` must be a sequence number' });
         return;
       }
-      const result = await catchUp(context, gameId, playerOf(res).id, since);
+      const result = await catchUp(context, gameId, playerOf(res), since);
       if ('notFound' in result) {
         res.status(404).json({ error: `No updates since ${since} for this player` });
       } else if ('seeState' in result) {

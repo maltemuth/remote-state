@@ -4,7 +4,7 @@
  * computed from rebuilt views when they changed audience.
  */
 
-import { AudienceDiff, AudienceMembership, Player } from '../database/entities/index.js';
+import { AudienceDiff, AudienceMembership } from '../database/entities/index.js';
 import { diff, type Patch } from '../patches/diff.js';
 import { effectiveAudience, viewFor } from '../plugin/views.js';
 import { type EngineContext } from './context.js';
@@ -27,7 +27,6 @@ export const catchUp = (
     const { orm, plugin } = context;
     const em = orm.em.fork();
     const current = await latestState(em, gameId);
-    const player = await em.findOneOrFail(Player, playerId);
     const memberships = await em.find(
       AudienceMembership,
       { player: playerId },
@@ -39,7 +38,11 @@ export const catchUp = (
     const sequence = current.sequence;
     if (since === sequence) return { sequence, patches: [] };
 
-    const audience = effectiveAudience(plugin, player);
+    // Every join and audience change records a membership, so the last is the current one
+    const audience = effectiveAudience(plugin, {
+      id: playerId,
+      audience: memberships.at(-1)!.audience,
+    });
     if (!memberships.some(membership => membership.sequence > since)) {
       const diffs = await em.find(
         AudienceDiff,

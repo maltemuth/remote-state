@@ -20,8 +20,6 @@ export interface Scheduler {
   apply: (gameId: string, schedule: TimerRequest[], cancel: string[]) => void;
   /** Remove the timer if it's still the pending one with this name; false if not */
   claim: (timer: PendingTimer) => boolean;
-  /** Names of a game's pending timers */
-  pending: (gameId: string) => string[];
   /** Drop every pending timer */
   close: () => void;
 }
@@ -72,7 +70,6 @@ export const createScheduler = (onDue: (timer: PendingTimer) => void): Scheduler
       drop(timer.gameId, timer.name);
       return true;
     },
-    pending: gameId => [...(games.get(gameId)?.keys() ?? [])],
     close: () => {
       for (const [gameId, timers] of games) [...timers.keys()].forEach(name => drop(gameId, name));
     },

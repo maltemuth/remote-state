@@ -12,7 +12,7 @@ export const getState =
   (context: EngineContext) => async (req: GameRequest, res: Response, next: NextFunction) => {
     try {
       const { gameId } = req.params;
-      const { sequence, state } = await currentView(context, gameId, playerOf(res).id);
+      const { sequence, state } = await currentView(context, gameId, playerOf(res));
       res.json({ gameId, sequence, state });
     } catch (err) {
       next(err);

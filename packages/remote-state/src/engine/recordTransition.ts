@@ -1,7 +1,8 @@
 /**
  * Records one state transition, from a join or an action, in a single database
  * transaction: the new full state with its full-state diff (0013), each audience's
- * diff (0024), and audience changes (0027). Callers hold the game's lock.
+ * diff (0024), and audience changes (0027). Once it's recorded, applies its timers
+ * and publishes it. Callers hold the game's lock.
  */
 
 import { AudienceDiff, AudienceMembership, GameState, Player } from '../database/entities/index.js';
@@ -40,6 +41,8 @@ export const recordTransition = async (
   context.logger.info(
     `${input.actionType} by ${author} in game ${input.gameId}, now at ${outcome.sequence}`
   );
+  context.scheduler.apply(input.gameId, outcome.timers.schedule, outcome.timers.cancel);
+  await context.publisher.publish(outcome);
   return outcome;
 };
 
@@ -72,7 +75,7 @@ const persist = (
 
     if (joiningPlayer) {
       const audience = storedAfter.get(joiningPlayer.id) ?? null;
-      em.create(Player, { ...joiningPlayer, game: gameId, audience, lastActivityAt: new Date() });
+      em.create(Player, { ...joiningPlayer, game: gameId, audience });
       em.create(AudienceMembership, { player: joiningPlayer.id, sequence, audience });
     }
     for (const player of players) {
@@ -81,7 +84,6 @@ const persist = (
         player.audience = audience;
         em.create(AudienceMembership, { player, sequence, audience });
       }
-      if (player.id === input.authorId) player.lastActivityAt = new Date();
     }
 
     // The author's audience as they acted; a joining player's, as they joined (0039)

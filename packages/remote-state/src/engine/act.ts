@@ -5,6 +5,7 @@
  */
 
 import { GameRefusal } from '../plugin/refusal.js';
+import { UnknownGameError } from '../server/errors.js';
 import { type EngineContext } from './context.js';
 import { recordTransition } from './recordTransition.js';
 import { latestState } from './states.js';
@@ -25,7 +26,7 @@ export const runAction = async (
 ): Promise<ActResult> => {
   const { plugin } = context;
   const previous = await latestState(context.orm.em.fork(), gameId);
-  if (!previous) throw new Error(`Game ${gameId} has no state`);
+  if (!previous) throw new UnknownGameError(gameId);
 
   let result: unknown;
   try {
@@ -45,8 +46,6 @@ export const runAction = async (
     actionType: actionType(action),
     actionData: action,
   });
-  context.scheduler.apply(gameId, outcome.timers.schedule, outcome.timers.cancel);
-  await context.publisher.publish(outcome);
   return { sequence: outcome.sequence };
 };
 

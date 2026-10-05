@@ -26,10 +26,6 @@ export class Player {
   @Property({ type: 'string', nullable: true })
   audience: Opt<string> | null = null;
 
-  /** Updated on each accepted action */
-  @Property({ type: 'datetime', nullable: true })
-  lastActivityAt: Opt<Date> | null = null;
-
   @Property({ type: 'datetime' })
   createdAt: Opt<Date> = new Date();
 }

@@ -25,17 +25,15 @@ const resolvePath = (document: unknown, tokens: string[]): (string | number)[] =
   });
 };
 
-const toImmer = (operation: Operation, path: (string | number)[]): Patch => {
-  switch (operation.op) {
-    case 'add':
-    case 'replace':
-      return { op: operation.op, path, value: operation.value };
-    case 'remove':
-      return { op: 'remove', path };
-    default:
-      throw new Error(`Unexpected patch operation: ${operation.op}`);
-  }
-};
+/** `createPatch` only emits add, remove and replace */
+const toImmer = (operation: Operation, path: (string | number)[]): Patch =>
+  operation.op === 'remove'
+    ? { op: 'remove', path }
+    : {
+        op: operation.op as 'add' | 'replace',
+        path,
+        value: (operation as { value: unknown }).value,
+      };
 
 /** Patches that turn `base` into `target`. Neither argument is modified. */
 export const diff = (base: unknown, target: unknown): Patch[] => {

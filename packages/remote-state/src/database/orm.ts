@@ -12,7 +12,7 @@ import { entities } from './entities/index.js';
 export type Orm = MikroORM;
 
 /** Stored as SQLite's `user_version`; raise it whenever the entities' tables change */
-export const SCHEMA_VERSION = 1;
+export const SCHEMA_VERSION = 2;
 
 /** The database was created by a version of the library with another schema */
 export class UnsupportedDatabaseError extends Error {
@@ -53,7 +53,6 @@ export const initializeDatabase = async (databasePath: string, logger: Logger): 
   const orm = await MikroORM.init({
     dbName: databasePath,
     entities,
-    debug: false,
     colors: false,
     logger: message => logger.debug(message),
   });

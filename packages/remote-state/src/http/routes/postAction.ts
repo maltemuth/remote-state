@@ -17,7 +17,7 @@ export const postAction =
         res.status(400).json({ error: 'An action is required' });
         return;
       }
-      const result = await act(context, req.params.gameId, playerOf(res).id, action);
+      const result = await act(context, req.params.gameId, playerOf(res), action);
       if ('rejected' in result) {
         res.status(400).json({ error: result.rejected });
         return;

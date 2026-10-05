@@ -16,8 +16,9 @@ import { consoleLogger } from '../logging/logger.js';
 import { type GamePlugin } from '../plugin/types.js';
 import { createPublisher } from '../socket/publisher.js';
 import { closeSocketServer, createSocketServer, type SocketServer } from '../socket/server.js';
-import { type ActResult } from '../engine/act.js';
-import { type Admission, actAsSystem, admit, createGame } from './host.js';
+import { act, type ActResult } from '../engine/act.js';
+import { SYSTEM } from '../plugin/system.js';
+import { type Admission, admit, createGame } from './host.js';
 import { defaultCors, type RemoteStateOptions } from './options.js';
 
 export interface RemoteState<StateType> {
@@ -69,7 +70,7 @@ export const createRemoteState = async <StateType, ActionType, ViewType>(
     attach,
     createGame: initialState => createGame(orm, logger, initialState),
     admit: admission => admit(orm, admission),
-    act: (gameId, action) => actAsSystem(context, gameId, action),
+    act: (gameId, action) => act(context, gameId, SYSTEM, action),
     close: async () => {
       context.scheduler.close();
       if (io) closeSocketServer(io);

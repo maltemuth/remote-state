@@ -8,7 +8,7 @@ The library doesn't tell the game logic when things happen outside actions, and 
 
 - **Players.** Players registering, leaving, or losing their connection aren't reported to the plugin. Only clients get `player-joined` and `player-left` socket events.
 - **End of game.** The library can't tell that a game is over. Each plugin has to reject moves in finished games itself. Finished games stay open to new registrations and remain in the database forever.
-- **Activity.** `lastActivityAt` is recorded for each player but never used.
+- **Activity.** When a player last acted isn't recorded. A `lastActivityAt` column was removed unused after 0.8.0; this design can bring it back.
 
 ## Constraints
 

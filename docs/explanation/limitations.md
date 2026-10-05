@@ -32,4 +32,4 @@ These are current properties of the library, not bugs in your game. Each one is 
 
 - **Timers are lost on restart.** Pending timers are kept in memory only, so a restart drops them, and a game waiting for a timeout waits until a player acts. How timers should behave across restarts is still open ([0042](decisions/0042-timer-restarts-open.md)).
 
-- **No game lifecycle.** Games are never closed, archived or deleted, players can't leave, and nothing uses `lastActivityAt`.
+- **No game lifecycle.** Games are never closed, archived or deleted, players can't leave, and player activity isn't recorded.

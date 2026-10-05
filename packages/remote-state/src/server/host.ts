@@ -1,7 +1,7 @@
 /**
  * The host's side of the library, called in-process (decision 0023): creating games
- * from an initial state (0021, 0036), admitting people with single-use codes (0020),
- * and acting as the system (0040).
+ * from an initial state (0021, 0036), and admitting people with single-use codes
+ * (0020). Acting as the system (0040) is `act` with the player `SYSTEM`.
  */
 
 import { AdmissionCode, Game, GameState } from '../database/entities/index.js';
@@ -10,10 +10,6 @@ import { type Orm } from '../database/orm.js';
 import { droppedKeysWarning, toJson } from '../json.js';
 import { type Logger } from '../logging/logger.js';
 import { hashSecret, newSecret } from '../secrets.js';
-import { act, type ActResult } from '../engine/act.js';
-import { type EngineContext } from '../engine/context.js';
-import { latestState } from '../engine/states.js';
-import { SYSTEM } from '../plugin/system.js';
 import { UnknownGameError } from './errors.js';
 
 /** How long an admission code can be redeemed */
@@ -71,14 +67,4 @@ export const admit = async (orm: Orm, { gameId, identity }: Admission): Promise<
   });
   await em.flush();
   return code;
-};
-
-/** Run an action as the system, through the game's rules like any other action */
-export const actAsSystem = async (
-  context: EngineContext,
-  gameId: string,
-  action: unknown
-): Promise<ActResult> => {
-  if (!(await latestState(context.orm.em.fork(), gameId))) throw new UnknownGameError(gameId);
-  return act(context, gameId, SYSTEM, action);
 };

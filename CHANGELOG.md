@@ -4,6 +4,12 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ## Unreleased
 
+Databases from 0.8.0 have to be deleted: the schema's version is now 2.
+
+### Removed
+
+- The `last_activity_at` column of players, which was written on every action and never read.
+
 ### Changed
 
 - Example: battleship follows the classic rules, a 10×10 board with a carrier (5), a battleship (4), a cruiser (3), a submarine (3) and a destroyer (2) per player. Players are seated on admission only; `join` and `leave` are no longer actions. Its engine validates with `true | string` and applies actions with Immer, and the unused timestamps, action `playerId` and validation codes are gone.

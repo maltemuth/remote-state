@@ -30,7 +30,7 @@ export const createSocketServer = (
   const { info, error } = context.logger;
   const io: SocketServer = new Server(httpServer, {
     cors,
-    ...(path ? { path } : {}),
+    path,
     // Leave upgrade requests for other paths to the host, such as another game's socket
     destroyUpgrade: false,
   });
@@ -40,9 +40,9 @@ export const createSocketServer = (
     const format = parseFormat(socket.handshake.query.format);
     if (!format) return next(new Error(`Unknown format; use one of ${formats.join(', ')}`));
     try {
-      const player = await authenticate(context.orm, token, gameId);
-      if (!player) return next(new Error('Invalid token or game'));
-      socket.data = { gameId, playerId: player.id, format };
+      const playerId = await authenticate(context.orm, token, gameId);
+      if (!playerId) return next(new Error('Invalid token or game'));
+      socket.data = { gameId, playerId, format };
       next();
     } catch (err) {
       error('Socket authentication failed', err);

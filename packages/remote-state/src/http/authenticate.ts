@@ -5,7 +5,7 @@
 
 import { type NextFunction, type Request, type Response } from 'express';
 import { type Orm } from '../database/orm.js';
-import { authenticate, type AuthenticatedPlayer } from '../engine/tokens.js';
+import { authenticate } from '../engine/tokens.js';
 
 export type GameRequest = Request<{ gameId: string }>;
 
@@ -14,8 +14,8 @@ const bearerToken = (req: Request): string | undefined => {
   return header?.startsWith('Bearer ') ? header.slice('Bearer '.length).trim() : undefined;
 };
 
-/** The authenticated player, set by `requirePlayer` */
-export const playerOf = (res: Response): AuthenticatedPlayer => res.locals.player;
+/** The authenticated player's ID, set by `requirePlayer` */
+export const playerOf = (res: Response): string => res.locals.player;
 
 export const requirePlayer =
   (orm: Orm) => async (req: GameRequest, res: Response, next: NextFunction) => {

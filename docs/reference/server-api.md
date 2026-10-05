@@ -241,14 +241,13 @@ All IDs are UUID strings. Tokens and codes are stored only as SHA-256 hashes ([0
 
 **players**: everyone admitted to a game, seated or not. Unique per `(game_id, identity_id)`.
 
-| Column             | Type                            | Notes                                                 |
-| ------------------ | ------------------------------- | ----------------------------------------------------- |
-| `id`               | primary key                     | The `playerId`                                        |
-| `game_id`          | foreign key to `games`, indexed |                                                       |
-| `identity_id`      | string                          | The host's `identity.id`                              |
-| `audience`         | string, nullable                | Set by the game; null for the default audience        |
-| `last_activity_at` | datetime, nullable              | Set when the player joins and on each accepted action |
-| `created_at`       | datetime                        |                                                       |
+| Column        | Type                            | Notes                                          |
+| ------------- | ------------------------------- | ---------------------------------------------- |
+| `id`          | primary key                     | The `playerId`                                 |
+| `game_id`     | foreign key to `games`, indexed |                                                |
+| `identity_id` | string                          | The host's `identity.id`                       |
+| `audience`    | string, nullable                | Set by the game; null for the default audience |
+| `created_at`  | datetime                        |                                                |
 
 **tokens**
 
