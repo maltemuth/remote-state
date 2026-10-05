@@ -6,7 +6,7 @@
 import { afterAll, beforeAll, describe, expect, it, jest } from '@jest/globals';
 import request from 'supertest';
 import { CODE_LIFETIME_MS, UnknownGameError } from '../../src/index.js';
-import { MAX_PLAYERS } from '../helpers/counterGame.js';
+import { counterGame, MAX_PLAYERS } from '../helpers/counterGame.js';
 import {
   type CounterServer,
   getState,
@@ -21,8 +21,17 @@ const redeem = (server: CounterServer, code: unknown) =>
 
 describe('admission', () => {
   let server: CounterServer;
+  /** What the join hook was given, per call */
+  const joins: { playerId: string; details: Record<string, unknown> }[] = [];
   beforeAll(async () => {
-    server = await startCounterServer();
+    const game = counterGame();
+    server = await startCounterServer({
+      ...game,
+      onJoin: (state, player) => {
+        joins.push(player);
+        return game.onJoin!(state, player);
+      },
+    });
   });
   afterAll(() => server.close());
 
@@ -67,6 +76,9 @@ describe('admission', () => {
     const first = await join(server, gameId, 'alice', { name: 'Alice' });
     const again = await join(server, gameId, 'alice', { name: 'Ignored' });
     expect(again.playerId).toBe(first.playerId);
+    expect(joins.filter(({ playerId }) => playerId === first.playerId)).toEqual([
+      { playerId: first.playerId, details: { name: 'Alice' } },
+    ]);
     expect(again.token).not.toBe(first.token);
 
     // Both tokens stay valid (0019); the join is the only transition so far

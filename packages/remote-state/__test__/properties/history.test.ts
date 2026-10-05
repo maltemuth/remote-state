@@ -7,12 +7,10 @@
 import { afterAll, beforeAll, describe, expect, it } from '@jest/globals';
 import { MikroORM } from '@mikro-orm/sqlite';
 import fc from 'fast-check';
-import { mkdtempSync, rmSync } from 'fs';
 import { applyPatches, enablePatches, type Patch } from 'immer';
-import { tmpdir } from 'os';
-import { join as joinPath } from 'path';
 import { AudienceDiff, entities, GameState } from '../../src/database/entities/index.js';
 import { type ModelState, viewOf } from '../helpers/modelGame.js';
+import { tempDatabases } from '../helpers/tempDatabase.js';
 import {
   type ModelServer,
   playScenario,
@@ -24,19 +22,17 @@ import {
 enablePatches();
 
 describe('history', () => {
-  const directory = mkdtempSync(joinPath(tmpdir(), 'remote-state-history-'));
-  const database = joinPath(directory, 'games.db');
+  const database = tempDatabases('history')();
   let server: ModelServer;
   let orm: MikroORM;
 
   beforeAll(async () => {
     server = await startModelServer({ database });
-    orm = await MikroORM.init({ dbName: database, entities, debug: false });
+    orm = await MikroORM.init({ dbName: database, entities });
   });
   afterAll(async () => {
     await orm.close();
     await server.close();
-    rmSync(directory, { recursive: true, force: true });
   });
 
   it(

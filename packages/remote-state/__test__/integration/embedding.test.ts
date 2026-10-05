@@ -8,7 +8,6 @@ import { afterAll, beforeAll, describe, expect, it } from '@jest/globals';
 import express from 'express';
 import { createServer, type Server } from 'http';
 import request from 'supertest';
-import { io as connect } from 'socket.io-client';
 import {
   createRemoteState,
   type RemoteState,
@@ -16,6 +15,7 @@ import {
   type StateEvent,
 } from '../../src/index.js';
 import { counterGame, type CounterState, initialCounterState } from '../helpers/counterGame.js';
+import { openSocket } from '../helpers/testServer.js';
 
 describe('embedding', () => {
   const app = express();
@@ -56,12 +56,11 @@ describe('embedding', () => {
 
   it('serves the socket on the host server, at its path', async () => {
     const { gameId, token } = await joinGame();
-    const socket = connect(`http://localhost:${port}`, {
-      path: '/counter/socket.io',
-      auth: { gameId, token },
-      transports: ['websocket'],
-      reconnection: false,
-    });
+    const socket = openSocket(
+      `http://localhost:${port}`,
+      { gameId, token },
+      { path: '/counter/socket.io' }
+    );
     const event = await new Promise<StateEvent>(resolve => socket.once('state', resolve));
     socket.disconnect();
     expect(event.sequence).toBe(1);

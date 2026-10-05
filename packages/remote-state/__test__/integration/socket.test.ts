@@ -6,13 +6,14 @@
 
 import { afterAll, beforeAll, describe, expect, it } from '@jest/globals';
 import { applyPatches, enablePatches } from 'immer';
-import { io as connect, type Socket } from 'socket.io-client';
+import { type Socket } from 'socket.io-client';
 import { type PatchesEvent, type StateEvent } from '../../src/index.js';
 import {
   type CounterServer,
   join,
   newGame,
   sendAction,
+  openSocket,
   serverUrl,
   startCounterServer,
 } from '../helpers/testServer.js';
@@ -33,12 +34,7 @@ describe('socket', () => {
   });
 
   const open = (auth: object, format?: string) => {
-    const socket = connect(serverUrl(server), {
-      auth,
-      query: format ? { format } : {},
-      transports: ['websocket'],
-      reconnection: false,
-    });
+    const socket = openSocket(serverUrl(server), auth, { query: format ? { format } : {} });
     sockets.push(socket);
     return socket;
   };

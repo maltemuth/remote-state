@@ -99,5 +99,5 @@ Create the server with `port: 0`, call `startServer()`, which resolves to the po
 
 - [tic-tac-toe.e2e.test.ts](../../packages/remote-state-example-server/__test__/e2e/tic-tac-toe.e2e.test.ts): a full game through the example's lobby and the library's API, using the library through its package name as your project would. Its [client helpers](../../packages/remote-state-example-server/__test__/helpers/client.ts) do what a browser client does.
 - [rules.test.ts](../../packages/remote-state-example-server/__test__/games/tic-tac-toe/rules.test.ts): tic-tac-toe's rules, tested without a server
-- [jest.config.js](../../packages/remote-state-example-server/jest.config.js): Jest running TypeScript as native ESM. The tests run with `NODE_OPTIONS=--experimental-vm-modules`, which Jest's ESM mode needs.
+- [jest.config.base.js](../../jest.config.base.js), which the example's `jest.config.js` re-exports: Jest running TypeScript as native ESM. The tests run with `NODE_OPTIONS=--experimental-vm-modules`, which Jest's ESM mode needs.
 - [admission.test.ts](../../packages/remote-state/__test__/integration/admission.test.ts) and [updates.test.ts](../../packages/remote-state/__test__/integration/updates.test.ts): codes, the join hook, refusals, audiences and catch-up, using a small [counter game](../../packages/remote-state/__test__/helpers/counterGame.ts)

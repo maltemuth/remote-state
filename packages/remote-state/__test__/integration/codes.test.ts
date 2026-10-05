@@ -3,37 +3,24 @@
  */
 
 import { afterAll, beforeAll, describe, expect, it, jest } from '@jest/globals';
-import { MikroORM } from '@mikro-orm/sqlite';
-import { mkdtempSync, rmSync } from 'fs';
-import { tmpdir } from 'os';
-import { join as joinPath } from 'path';
 import { CODE_LIFETIME_MS } from '../../src/index.js';
-import { AdmissionCode, entities } from '../../src/database/entities/index.js';
+import { AdmissionCode } from '../../src/database/entities/index.js';
+import { tempDatabases, withOrm } from '../helpers/tempDatabase.js';
 import { counterGame } from '../helpers/counterGame.js';
 import { type CounterServer, join, newGame, startCounterServer } from '../helpers/testServer.js';
 
 describe('admission codes', () => {
-  const directory = mkdtempSync(joinPath(tmpdir(), 'remote-state-codes-'));
-  const database = joinPath(directory, 'games.db');
+  const database = tempDatabases('codes')();
   let server: CounterServer;
 
   beforeAll(async () => {
     server = await startCounterServer(counterGame(), { database });
   });
-  afterAll(async () => {
-    await server.close();
-    rmSync(directory, { recursive: true, force: true });
-  });
+  afterAll(() => server.close());
 
   /** The identities of the codes still stored */
-  const storedCodes = async () => {
-    const orm = await MikroORM.init({ dbName: database, entities, debug: false });
-    try {
-      return (await orm.em.fork().find(AdmissionCode, {})).map(code => code.identityId);
-    } finally {
-      await orm.close();
-    }
-  };
+  const storedCodes = () =>
+    withOrm(database, async em => (await em.find(AdmissionCode, {})).map(code => code.identityId));
 
   it('deletes used and expired codes when issuing a new one', async () => {
     const gameId = await newGame(server);

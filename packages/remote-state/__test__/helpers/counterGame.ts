@@ -13,7 +13,6 @@ export interface CounterState {
   count: number;
   /** Player ID → increments, for seated players */
   increments: Record<string, number>;
-  names: Record<string, string>;
 }
 
 export type CounterAction = { type: 'increment' | 'spectate' | 'forbidden' | 'refuse' };
@@ -24,20 +23,17 @@ export interface CounterView {
   mine: number | null;
 }
 
-export const initialCounterState = (): CounterState => ({ count: 0, increments: {}, names: {} });
+export const initialCounterState = (): CounterState => ({ count: 0, increments: {} });
 
 export const counterGame = (
   overrides: Partial<GamePlugin<CounterState, CounterAction, CounterView>> = {}
 ): GamePlugin<CounterState, CounterAction, CounterView> => ({
   onJoin: (state, { playerId, details }) => {
-    const names = { ...state.names, [playerId]: String(details.name ?? '') };
-    if (details.spectator) {
-      return withAudiences({ ...state, names }, { [playerId]: 'spectators' });
-    }
+    if (details.spectator) return withAudiences(state, { [playerId]: 'spectators' });
     if (Object.keys(state.increments).length >= MAX_PLAYERS) {
       throw new GameRefusal('Game is full');
     }
-    return { ...state, names, increments: { ...state.increments, [playerId]: 0 } };
+    return { ...state, increments: { ...state.increments, [playerId]: 0 } };
   },
   validateAction: (state, action, playerId) => {
     if (action.type === 'forbidden') return `Action ${action.type} is not allowed`;

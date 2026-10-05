@@ -5,33 +5,34 @@
  */
 
 import { afterAll, describe, expect, it, jest } from '@jest/globals';
-import { mkdtempSync, rmSync } from 'fs';
 import { applyPatches, enablePatches } from 'immer';
-import { tmpdir } from 'os';
-import { join as joinPath } from 'path';
-import { io as connect, type Socket } from 'socket.io-client';
+import { type Socket } from 'socket.io-client';
 import request from 'supertest';
-import { type StateEvent, type RemoteStateServer } from '../../src/index.js';
+import { type StateEvent } from '../../src/index.js';
 import { initialCounterState } from '../helpers/counterGame.js';
-import { startCounterServer } from '../helpers/testServer.js';
+import { tempDatabases } from '../helpers/tempDatabase.js';
+import {
+  getState,
+  join,
+  openSocket,
+  sendAction,
+  startCounterServer,
+  startServer,
+} from '../helpers/testServer.js';
+import { timerGame } from '../helpers/timerGame.js';
 import { waitUntil } from '../helpers/waitUntil.js';
-import { timerGame, type TimerState } from '../helpers/timerGame.js';
-import { createRemoteStateServer, silentLogger } from '../../src/index.js';
 
 enablePatches();
 
 jest.setTimeout(20_000);
 
 describe('restart', () => {
-  const directory = mkdtempSync(joinPath(tmpdir(), 'remote-state-restart-'));
+  const databaseNamed = tempDatabases('restart');
   const sockets: Socket[] = [];
-  afterAll(() => {
-    sockets.forEach(socket => socket.disconnect());
-    rmSync(directory, { recursive: true, force: true });
-  });
+  afterAll(() => sockets.forEach(socket => socket.disconnect()));
 
   it('carries games, tokens, codes and sequences over a restart', async () => {
-    const database = joinPath(directory, 'counter.db');
+    const database = databaseNamed('counter.db');
     let server = await startCounterServer(undefined, { database });
     const port = server.port;
     const url = `http://localhost:${port}`;
@@ -57,12 +58,11 @@ describe('restart', () => {
     const before = (await getState(alice.token)).body;
     expect(before).toMatchObject({ sequence: 2, state: { count: 1, mine: 1 } });
 
-    const socket = connect(url, {
-      auth: { gameId, token: alice.token },
-      transports: ['websocket'],
-      reconnectionDelay: 50,
-      reconnectionDelayMax: 100,
-    });
+    const socket = openSocket(
+      url,
+      { gameId, token: alice.token },
+      { reconnection: true, reconnectionDelay: 50, reconnectionDelayMax: 100 }
+    );
     sockets.push(socket);
     const views: StateEvent[] = [];
     socket.on('state', (event: StateEvent) => views.push(event));
@@ -101,37 +101,23 @@ describe('restart', () => {
   });
 
   it('drops pending timers, and the game carries on', async () => {
-    const database = joinPath(directory, 'timers.db');
-    let server: RemoteStateServer<TimerState> = await createRemoteStateServer(timerGame, {
-      port: 0,
-      logger: silentLogger,
-      database,
-    });
-    await server.startServer();
+    const database = databaseNamed('timers.db');
+    let server = await startServer(timerGame, { database });
     const port = server.port;
     const gameId = await server.createGame({ fired: [] });
-    const code = await server.admit({ gameId, identity: { id: 'alice' } });
-    const { token } = (await request(server.app).post('/api/tokens').send({ code })).body;
-    const send = (action: object) =>
-      request(server.app)
-        .post(`/api/games/${gameId}/actions`)
-        .set('Authorization', `Bearer ${token}`)
-        .send({ action });
-    await send({ type: 'arm', name: 'turn', ms: 300, label: 'lost' }).expect(201);
+    const { token } = await join(server, gameId, 'alice');
+    const arm = (label: string, ms: number) =>
+      sendAction(server, gameId, token, { type: 'arm', name: 'turn', ms, label }).expect(201);
+    await arm('lost', 300);
 
     await server.close();
-    server = await createRemoteStateServer(timerGame, { port, logger: silentLogger, database });
-    await server.startServer();
+    server = await startServer(timerGame, { database, port });
     try {
       // Nothing to wait for: give the lost timer time to fire if it survived
       await new Promise(resolve => setTimeout(resolve, 400));
-      await send({ type: 'arm', name: 'turn', ms: 10, label: 'after' }).expect(201);
+      await arm('after', 10);
       const fired = async () =>
-        (
-          await request(server.app)
-            .get(`/api/games/${gameId}/state`)
-            .set('Authorization', `Bearer ${token}`)
-        ).body.state.fired as string[];
+        (await getState(server, gameId, token)).body.state.fired as string[];
       await waitUntil(async () => (await fired()).length > 0, 'the new timer');
       expect(await fired()).toEqual(['after']);
     } finally {

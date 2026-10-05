@@ -1,24 +1,23 @@
 /**
  * Hostile input: reserved keys such as `__proto__` in actions and states (dropped
- * from states, 0047), bodies
- * that are too large or not JSON, actions that aren't objects, malformed tokens,
- * codes and cursors, and handshakes with the wrong types. The server must answer
+ * from states, 0047), bodies that are too large or not JSON, actions that aren't
+ * objects, malformed tokens, codes and cursors, and handshakes with the wrong types. The server must answer
  * with a client error or the game's own answer, stay usable, and never change
  * `Object.prototype`.
  */
 
 import { afterAll, afterEach, beforeAll, describe, expect, it } from '@jest/globals';
 import { applyPatches, enablePatches } from 'immer';
-import { io as connect, type Socket } from 'socket.io-client';
+import { type Socket } from 'socket.io-client';
 import request from 'supertest';
 import {
-  createRemoteStateServer,
   type GamePlugin,
   type RemoteStateServer,
   type Logger,
   type PatchesEvent,
   type StateEvent,
 } from '../../src/index.js';
+import { join, openSocket, serverUrl, startServer } from '../helpers/testServer.js';
 import { waitUntil } from '../helpers/waitUntil.js';
 
 enablePatches();
@@ -55,9 +54,8 @@ describe('hostile input', () => {
   };
 
   beforeAll(async () => {
-    server = await createRemoteStateServer(bagGame, { port: 0, logger });
-    await server.startServer();
-    url = `http://localhost:${server.port}`;
+    server = await startServer(bagGame, { logger });
+    url = serverUrl(server);
   });
   afterEach(() => {
     sockets.splice(0).forEach(socket => socket.disconnect());
@@ -67,12 +65,11 @@ describe('hostile input', () => {
 
   const player = async () => {
     const gameId = await server.createGame({ bag: null });
-    const code = await server.admit({ gameId, identity: { id: 'alice' } });
-    const { body } = await request(url).post('/api/tokens').send({ code }).expect(201);
-    const auth = (req: request.Test) => req.set('Authorization', `Bearer ${body.token}`);
+    const { token } = await join(server, gameId, 'alice');
+    const auth = (req: request.Test) => req.set('Authorization', `Bearer ${token}`);
     return {
       gameId,
-      token: body.token as string,
+      token,
       act: (payload: string) =>
         auth(request(url).post(`/api/games/${gameId}/actions`))
           .set('Content-Type', 'application/json')
@@ -85,12 +82,7 @@ describe('hostile input', () => {
 
   it('drops reserved keys from states, so patches apply, and warns', async () => {
     const { gameId, token, act, state, updates } = await player();
-    const socket = connect(url, {
-      auth: { gameId, token },
-      query: { format: 'immer' },
-      transports: ['websocket'],
-      reconnection: false,
-    });
+    const socket = openSocket(url, { gameId, token }, { query: { format: 'immer' } });
     sockets.push(socket);
     let view: unknown;
     let sequence = -1;
@@ -176,7 +168,7 @@ describe('hostile input', () => {
   it('refuses handshakes with the wrong types', async () => {
     const { gameId, token } = await player();
     const refusal = (auth: object, query: Record<string, string | string[]> = {}) => {
-      const socket = connect(url, { auth, query, transports: ['websocket'], reconnection: false });
+      const socket = openSocket(url, auth, { query });
       sockets.push(socket);
       return new Promise<string>(resolve =>
         socket.once('connect_error', error => resolve(error.message))

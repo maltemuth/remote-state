@@ -6,7 +6,8 @@
 
 import { applyPatches, enablePatches } from 'immer';
 import request from 'supertest';
-import { type ModelServer, type PlayedPlayer, urlOf } from './scenario.js';
+import { type ModelServer, type PlayedPlayer } from './scenario.js';
+import { serverUrl } from './testServer.js';
 
 enablePatches();
 
@@ -31,7 +32,7 @@ export const socketViews = (player: PlayedPlayer): Map<number, unknown> => {
 };
 
 const get = async (server: ModelServer, path: string, player: PlayedPlayer) => {
-  const response = await request(urlOf(server))
+  const response = await request(serverUrl(server))
     .get(path)
     .set('Authorization', `Bearer ${player.token}`)
     .redirects(0);

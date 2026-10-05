@@ -8,8 +8,7 @@ import { afterAll, describe, expect, it, jest } from '@jest/globals';
 import { mkdtempSync, rmSync } from 'fs';
 import { tmpdir } from 'os';
 import { join as joinPath } from 'path';
-import { type ConnectionState, createClient, redeemCode } from '../../src/index.js';
-import { type NotesAction, type NotesView } from '../helpers/notesGame.js';
+import { type ConnectionState } from '../../src/index.js';
 import { startNotesServer } from '../helpers/testServer.js';
 
 jest.setTimeout(20_000);
@@ -22,13 +21,8 @@ describe('client across a restart', () => {
     const database = joinPath(directory, 'notes.db');
     let server = await startNotesServer({ database });
     const gameId = await server.newGame();
-    const join = async (id: string) =>
-      createClient<NotesView, NotesAction>({
-        session: await redeemCode(await server.admit(gameId, id), { baseUrl: server.baseUrl }),
-        baseUrl: server.baseUrl,
-      });
-    const alice = await join('alice');
-    const bob = await join('bob');
+    const alice = await server.join(gameId, 'alice');
+    const bob = await server.join(gameId, 'bob');
     const statuses: ConnectionState['status'][] = [];
     alice.onConnection(({ status }) => statuses.push(status));
     try {

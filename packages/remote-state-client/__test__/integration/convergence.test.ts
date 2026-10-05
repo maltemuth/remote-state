@@ -6,13 +6,7 @@
 
 import { afterAll, beforeAll, describe, expect, it } from '@jest/globals';
 import fc from 'fast-check';
-import {
-  ActionRejectedError,
-  createClient,
-  type Format,
-  redeemCode,
-  type RemoteStateClient,
-} from '../../src/index.js';
+import { ActionRejectedError, type Format, type RemoteStateClient } from '../../src/index.js';
 import { type NotesAction, type NotesView } from '../helpers/notesGame.js';
 import { type NotesServer, startNotesServer } from '../helpers/testServer.js';
 
@@ -49,13 +43,7 @@ describe('client convergence', () => {
         const seen: number[][] = [];
         try {
           for (const [index, format] of formats.entries()) {
-            const code = await server.admit(gameId, `player-${index}`);
-            const session = await redeemCode(code, { baseUrl: server.baseUrl });
-            const client = createClient<NotesView, NotesAction>({
-              session,
-              baseUrl: server.baseUrl,
-              format,
-            });
+            const client = await server.join(gameId, `player-${index}`, format);
             const sequences: number[] = [];
             client.subscribe(({ sequence }) => sequences.push(sequence));
             clients.push(client);

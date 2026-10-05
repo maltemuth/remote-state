@@ -14,7 +14,6 @@ import {
   type RemoteStateClient,
   RequestError,
 } from '../../src/index.js';
-import { type NotesAction, type NotesView } from '../helpers/notesGame.js';
 import { type NotesServer, startNotesServer } from '../helpers/testServer.js';
 
 describe('client', () => {
@@ -28,12 +27,7 @@ describe('client', () => {
   afterAll(() => server.close());
 
   const joinAs = async (gameId: string, id: string, format?: Format) => {
-    const session = await redeemCode(await server.admit(gameId, id), { baseUrl: server.baseUrl });
-    const client = createClient<NotesView, NotesAction>({
-      session,
-      baseUrl: server.baseUrl,
-      format,
-    });
+    const client = await server.join(gameId, id, format);
     clients.push(client as RemoteStateClient<unknown, unknown>);
     return client;
   };

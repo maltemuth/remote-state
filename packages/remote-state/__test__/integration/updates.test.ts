@@ -5,12 +5,9 @@
  */
 
 import { afterAll, beforeAll, describe, expect, it } from '@jest/globals';
-import { MikroORM } from '@mikro-orm/sqlite';
-import { mkdtempSync, rmSync } from 'fs';
 import { applyPatches, enablePatches } from 'immer';
-import { tmpdir } from 'os';
-import { join as joinPath } from 'path';
-import { entities, GameState } from '../../src/database/entities/index.js';
+import { GameState } from '../../src/database/entities/index.js';
+import { tempDatabases, withOrm } from '../helpers/tempDatabase.js';
 import { counterGame } from '../helpers/counterGame.js';
 import {
   type CounterServer,
@@ -25,17 +22,13 @@ import {
 enablePatches();
 
 describe('updates', () => {
-  const directory = mkdtempSync(joinPath(tmpdir(), 'remote-state-updates-'));
-  const databaseFilename = joinPath(directory, 'games.db');
+  const databaseFilename = tempDatabases('updates')();
   let server: CounterServer;
 
   beforeAll(async () => {
     server = await startCounterServer(counterGame(), { database: databaseFilename });
   });
-  afterAll(async () => {
-    await server.close();
-    rmSync(directory, { recursive: true, force: true });
-  });
+  afterAll(() => server.close());
 
   /** alice joins (1), bob joins (2), then alice, bob, alice increment (3–5) */
   const playedGame = async () => {
@@ -83,9 +76,9 @@ describe('updates', () => {
   it('redirects to the state when the view at `since` is gone', async () => {
     const { gameId, alice, bob } = await playedGame();
     await sendAction(server, gameId, alice.token, { type: 'spectate' }).expect(201);
-    const orm = await MikroORM.init({ dbName: databaseFilename, entities, debug: false });
-    await orm.em.fork().nativeDelete(GameState, { game: gameId, sequence: 3 });
-    await orm.close();
+    await withOrm(databaseFilename, em =>
+      em.nativeDelete(GameState, { game: gameId, sequence: 3 })
+    );
 
     const redirect = await getUpdates(server, gameId, alice.token, 3).expect(303);
     expect(redirect.headers.location).toBe('state');

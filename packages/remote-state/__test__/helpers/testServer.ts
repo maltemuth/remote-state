@@ -1,8 +1,9 @@
 /**
- * Test helpers acting as a host and as clients: start a server for the counter
- * game, create games, admit and join players, and send actions.
+ * Test helpers acting as a host and as clients: start a server for any game (the
+ * counter game by default), create games, admit and join players, and send actions.
  */
 
+import { io, type ManagerOptions, type SocketOptions } from 'socket.io-client';
 import request from 'supertest';
 import {
   createRemoteStateServer,
@@ -20,16 +21,19 @@ import {
 } from './counterGame.js';
 
 export type CounterServer = RemoteStateServer<CounterState>;
+/** Any game's server, for the helpers that don't depend on the game */
+type AnyServer = RemoteStateServer<unknown>;
 
 export interface TestPlayer {
   playerId: string;
   token: string;
 }
 
-export const startCounterServer = async (
-  plugin: GamePlugin<CounterState, CounterAction, CounterView> = counterGame(),
+/** A standalone server on a free port, silent unless given a logger */
+export const startServer = async <S, A, V>(
+  plugin: GamePlugin<S, A, V>,
   options: RemoteStateServerOptions = {}
-): Promise<CounterServer> => {
+): Promise<RemoteStateServer<S>> => {
   const server = await createRemoteStateServer(plugin, {
     port: 0,
     logger: silentLogger,
@@ -39,13 +43,25 @@ export const startCounterServer = async (
   return server;
 };
 
-export const serverUrl = (server: CounterServer) => `http://localhost:${server.port}`;
+export const startCounterServer = (
+  plugin: GamePlugin<CounterState, CounterAction, CounterView> = counterGame(),
+  options: RemoteStateServerOptions = {}
+): Promise<CounterServer> => startServer(plugin, options);
+
+export const serverUrl = (server: AnyServer) => `http://localhost:${server.port}`;
+
+/** A Socket.IO client over WebSocket only, which doesn't reconnect unless asked to */
+export const openSocket = (
+  url: string,
+  auth: object,
+  options: Partial<ManagerOptions & SocketOptions> = {}
+) => io(url, { auth, transports: ['websocket'], reconnection: false, ...options });
 
 export const newGame = (server: CounterServer) => server.createGame(initialCounterState());
 
 /** Admit an identity as the host would, and redeem the code as its client would */
 export const join = async (
-  server: CounterServer,
+  server: AnyServer,
   gameId: string,
   identityId: string,
   details: Record<string, unknown> = {}
@@ -55,21 +71,16 @@ export const join = async (
   return { playerId: response.body.playerId, token: response.body.token };
 };
 
-export const sendAction = (
-  server: CounterServer,
-  gameId: string,
-  token: string,
-  action: CounterAction
-) =>
+export const sendAction = (server: AnyServer, gameId: string, token: string, action: unknown) =>
   request(server.app)
     .post(`/api/games/${gameId}/actions`)
     .set('Authorization', `Bearer ${token}`)
     .send({ action });
 
-export const getState = (server: CounterServer, gameId: string, token: string) =>
+export const getState = (server: AnyServer, gameId: string, token: string) =>
   request(server.app).get(`/api/games/${gameId}/state`).set('Authorization', `Bearer ${token}`);
 
-export const getUpdates = (server: CounterServer, gameId: string, token: string, since: unknown) =>
+export const getUpdates = (server: AnyServer, gameId: string, token: string, since: unknown) =>
   request(server.app)
     .get(`/api/games/${gameId}/updates`)
     .query({ since: String(since) })

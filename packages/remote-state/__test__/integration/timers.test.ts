@@ -5,55 +5,32 @@
  */
 
 import { afterAll, beforeAll, describe, expect, it } from '@jest/globals';
-import { MikroORM } from '@mikro-orm/sqlite';
-import { mkdtempSync, rmSync } from 'fs';
-import { tmpdir } from 'os';
-import { join as joinPath } from 'path';
-import request from 'supertest';
-import {
-  createRemoteStateServer,
-  type Logger,
-  type RemoteStateServer,
-  UnknownGameError,
-} from '../../src/index.js';
-import { entities, GameState } from '../../src/database/entities/index.js';
-import { waitUntil } from '../helpers/waitUntil.js';
-import { type TimerAction, timerGame, type TimerState } from '../helpers/timerGame.js';
-
 import { setTimeout as sleep } from 'timers/promises';
+import { type Logger, type RemoteStateServer, UnknownGameError } from '../../src/index.js';
+import { GameState } from '../../src/database/entities/index.js';
+import { tempDatabases, withOrm } from '../helpers/tempDatabase.js';
+import { getState, join, sendAction, startServer } from '../helpers/testServer.js';
+import { type TimerAction, timerGame, type TimerState } from '../helpers/timerGame.js';
+import { waitUntil } from '../helpers/waitUntil.js';
 
 describe('timers', () => {
-  const directory = mkdtempSync(joinPath(tmpdir(), 'remote-state-timers-'));
-  const database = joinPath(directory, 'games.db');
+  const database = tempDatabases('timers')();
   const logged: string[] = [];
   const record = (message: string) => void logged.push(message);
   const logger: Logger = { debug: () => undefined, info: record, warn: record, error: record };
   let server: RemoteStateServer<TimerState>;
 
   beforeAll(async () => {
-    server = await createRemoteStateServer(timerGame, { port: 0, logger, database });
+    server = await startServer(timerGame, { logger, database });
   });
-  afterAll(async () => {
-    await server.close();
-    rmSync(directory, { recursive: true, force: true });
-  });
+  afterAll(() => server.close());
 
   const newPlayer = async () => {
     const gameId = await server.createGame({ fired: [] });
-    const code = await server.admit({ gameId, identity: { id: 'alice' } });
-    const { body } = await request(server.app).post('/api/tokens').send({ code }).expect(201);
-    const send = (action: TimerAction) =>
-      request(server.app)
-        .post(`/api/games/${gameId}/actions`)
-        .set('Authorization', `Bearer ${body.token}`)
-        .send({ action });
-    const fired = async () =>
-      (
-        await request(server.app)
-          .get(`/api/games/${gameId}/state`)
-          .set('Authorization', `Bearer ${body.token}`)
-      ).body.state.fired;
-    return { gameId, playerId: body.playerId as string, send, fired };
+    const { playerId, token } = await join(server, gameId, 'alice');
+    const send = (action: TimerAction) => sendAction(server, gameId, token, action);
+    const fired = async () => (await getState(server, gameId, token)).body.state.fired;
+    return { gameId, playerId, send, fired };
   };
 
   it('runs a due timer as the system', async () => {
@@ -106,19 +83,14 @@ describe('timers', () => {
     await waitUntil(() => logged.includes(fire), 'the timer');
     expect(logged).toContain(`arm by everyone:${playerId} in game ${gameId}, now at 2`);
 
-    const orm = await MikroORM.init({ dbName: database, entities, debug: false });
-    try {
-      const rows = await orm.em
-        .fork()
-        .find(GameState, { game: gameId }, { orderBy: { sequence: 'asc' } });
-      expect(rows.map(row => [row.actionType, row.player?.id ?? null, row.audience])).toEqual([
-        ['initial', null, null],
-        ['join', playerId, 'everyone'],
-        ['arm', playerId, 'everyone'],
-        ['fire', null, null],
-      ]);
-    } finally {
-      await orm.close();
-    }
+    const rows = await withOrm(database, em =>
+      em.find(GameState, { game: gameId }, { orderBy: { sequence: 'asc' } })
+    );
+    expect(rows.map(row => [row.actionType, row.player?.id ?? null, row.audience])).toEqual([
+      ['initial', null, null],
+      ['join', playerId, 'everyone'],
+      ['arm', playerId, 'everyone'],
+      ['fire', null, null],
+    ]);
   });
 });

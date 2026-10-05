@@ -1,13 +1,15 @@
 /**
  * A host for the client's tests: the notes game mounted under `/notes` of an
- * Express app, with its socket at `/notes/socket.io`, as the example server does.
+ * Express app, with its socket at `/notes/socket.io`, as the example server does,
+ * and players joining it through the client.
  */
 
 import express from 'express';
 import { createServer } from 'http';
 import { type AddressInfo } from 'net';
 import { createRemoteState, silentLogger } from '@malte.muth/remote-state';
-import { newNotesGame, notesGame } from './notesGame.js';
+import { createClient, type Format, redeemCode } from '../../src/index.js';
+import { type NotesAction, type NotesView, newNotesGame, notesGame } from './notesGame.js';
 
 export interface NotesServerOptions {
   /** SQLite file, to restart on the same games; in memory by default */
@@ -35,6 +37,13 @@ export const startNotesServer = async ({ database, port = 0 }: NotesServerOption
     port: listening,
     newGame: () => remote.createGame(newNotesGame()),
     admit: (gameId: string, id: string) => remote.admit({ gameId, identity: { id } }),
+    /** Admit an identity and connect a client for it, as a player's browser would */
+    join: async (gameId: string, id: string, format?: Format) =>
+      createClient<NotesView, NotesAction>({
+        session: await redeemCode(await remote.admit({ gameId, identity: { id } }), { baseUrl }),
+        baseUrl,
+        format,
+      }),
     close: async () => {
       await remote.close();
       // fetch keeps connections alive, which would hold the server open

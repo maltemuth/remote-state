@@ -5,34 +5,23 @@
  */
 
 import fc from 'fast-check';
-import { io as connect, type Socket } from 'socket.io-client';
+import { type Socket } from 'socket.io-client';
 import request from 'supertest';
 import {
-  createRemoteStateServer,
   type Format,
   type PatchesEvent,
   type RemoteStateServer,
   type RemoteStateServerOptions,
-  silentLogger,
   type StateEvent,
 } from '../../src/index.js';
+import { openSocket, serverUrl, startServer } from './testServer.js';
 import { waitUntil } from './waitUntil.js';
 import { initialModelState, type ModelAction, modelGame, type ModelState } from './modelGame.js';
 
 export type ModelServer = RemoteStateServer<ModelState>;
 
-export const startModelServer = async (options: RemoteStateServerOptions = {}) => {
-  const server = await createRemoteStateServer(modelGame, {
-    port: 0,
-    logger: silentLogger,
-    ...options,
-  });
-  await server.startServer();
-  return server;
-};
-
-/** Requests go to the listening server; supertest would start a server per request for the app */
-export const urlOf = (server: ModelServer) => `http://localhost:${server.port}`;
+export const startModelServer = (options: RemoteStateServerOptions = {}) =>
+  startServer(modelGame, options);
 
 /** Scenarios per property; set PROPERTY_RUNS to search longer */
 export const PROPERTY_RUNS = Number(process.env.PROPERTY_RUNS ?? 40);
@@ -142,7 +131,8 @@ export interface Played {
 const lastSequence = (player: PlayedPlayer) => player.events.at(-1)?.payload.sequence ?? -1;
 
 export const playScenario = async (server: ModelServer, scenario: Scenario): Promise<Played> => {
-  const url = urlOf(server);
+  // The listening server: supertest would start a server per request for the app
+  const url = serverUrl(server);
   const gameId = await server.createGame(initialModelState());
   const sockets: Socket[] = [];
   try {
@@ -160,12 +150,11 @@ export const playScenario = async (server: ModelServer, scenario: Scenario): Pro
     }
 
     for (const player of players) {
-      const socket = connect(url, {
-        auth: { gameId, token: player.token },
-        query: { format: player.format },
-        transports: ['websocket'],
-        reconnection: false,
-      });
+      const socket = openSocket(
+        url,
+        { gameId, token: player.token },
+        { query: { format: player.format } }
+      );
       sockets.push(socket);
       const record = (event: 'state' | 'patches') => (payload: StateEvent & PatchesEvent) => {
         player.events.push({ event, payload } as Received);
