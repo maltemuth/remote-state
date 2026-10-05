@@ -37,8 +37,6 @@
     "build": "npm run clean && tsc",
     "test": "npm run typecheck && NODE_OPTIONS=--experimental-vm-modules jest",
     "typecheck": "tsc -p tsconfig.test.json",
-    "test:integration": "NODE_OPTIONS=--experimental-vm-modules jest --testMatch='**/__test__/integration/**/*.test.ts'",
-    "test:watch": "NODE_OPTIONS=--experimental-vm-modules jest --watch",
     "lint": "eslint src __test__",
     "lint:fix": "eslint src __test__ --fix",
     "format": "prettier --write src __test__",
@@ -56,17 +54,12 @@
     "socket.io": "^4.8.4"
   },
   "devDependencies": {
-    "@jest/globals": "^30.5.2",
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.6",
-    "@types/node": "^24.19.0",
     "@types/supertest": "^7.2.1",
     "fast-check": "^4.10.2",
     "immer": "^11.1.21",
-    "jest": "^30.5.2",
     "socket.io-client": "^4.8.4",
-    "supertest": "^7.3.0",
-    "ts-jest": "^29.4.14",
-    "typescript": "^6.0.3"
+    "supertest": "^7.3.0"
   }
 }

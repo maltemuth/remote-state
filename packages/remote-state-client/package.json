@@ -48,14 +48,9 @@
     "socket.io-client": "^4.8.4"
   },
   "devDependencies": {
-    "@jest/globals": "^30.5.2",
     "@malte.muth/remote-state": "file:../remote-state",
     "@types/express": "^5.0.6",
-    "@types/node": "^24.19.0",
     "express": "^5.2.1",
-    "fast-check": "^4.10.2",
-    "jest": "^30.5.2",
-    "ts-jest": "^29.4.14",
-    "typescript": "^6.0.3"
+    "fast-check": "^4.10.2"
   }
 }

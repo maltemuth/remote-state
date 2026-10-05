@@ -3,38 +3,28 @@ import tseslint from "@typescript-eslint/eslint-plugin";
 import tsparser from "@typescript-eslint/parser";
 
 export default [
-  {
-    ignores: ["**/dist/", "node_modules/"],
-  },
+  { ignores: ["**/dist/"] },
 
-  // Apply recommended JavaScript rules to all files
   js.configs.recommended,
 
-  // TypeScript configuration
   {
     files: ["**/*.ts"],
-    languageOptions: {
-      parser: tsparser,
-    },
-    plugins: {
-      "@typescript-eslint": tseslint,
-    },
+    languageOptions: { parser: tsparser },
+    plugins: { "@typescript-eslint": tseslint },
     rules: {
       "no-unused-vars": "off",
       // TypeScript checks names itself, including globals such as `process` (typescript-eslint recommends this)
       "no-undef": "off",
-      // TypeScript specific rules
+      // `_` marks what's unused on purpose, such as a key destructured away
       "@typescript-eslint/no-unused-vars": [
         "error",
-        { argsIgnorePattern: "^_" },
+        {
+          argsIgnorePattern: "^_",
+          varsIgnorePattern: "^_",
+          caughtErrorsIgnorePattern: "^_",
+        },
       ],
       "@typescript-eslint/no-explicit-any": "warn",
-      "@typescript-eslint/explicit-function-return-type": "off",
-      "@typescript-eslint/explicit-module-boundary-types": "off",
-      "@typescript-eslint/no-empty-interface": "off",
-      "@typescript-eslint/ban-ts-comment": "off",
-
-      // General rules
       "no-console": "warn",
       "prefer-const": "error",
       "no-var": "error",

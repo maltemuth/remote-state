@@ -5,9 +5,8 @@
     "lib": ["es2024"],
     "types": ["node"],
 
+    // Also implies Node's module resolution and esModuleInterop
     "module": "nodenext",
-    "moduleResolution": "nodenext",
-    "esModuleInterop": true,
 
     // Standard (TC39) decorators need no flags; entity property types are given
     // explicitly, so no decorator metadata is needed either
@@ -19,7 +18,5 @@
 
     // TypeScript 6 enables strict by default; the library is not strict-clean yet
     "strict": false
-  },
-
-  "exclude": ["node_modules", "dist"]
+  }
 }
