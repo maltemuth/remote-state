@@ -9,6 +9,7 @@ Databases from 0.8.0 have to be deleted: the schema's version is now 2.
 ### Removed
 
 - `GamePlugin.gameConfig`. Its `name` only labelled the health check, and `description` was never read.
+- The `full_diff` column of game states and the diff computed for it on every action. Full states remain stored; diffs between them can be computed when needed (0050, superseding 0013).
 - The `last_activity_at` column of players, which was written on every action and never read.
 - Client: the `fetch` option of `createClient` and `redeemCode`. Both use the global `fetch`.
 

@@ -18,7 +18,7 @@ Records aren't edited after the fact, except to update their status. A decision 
 | [0010](0010-every-game-has-hidden-information.md)                      | Every game is treated as a game with hidden information                        | Accepted, refined by 0024                                             |
 | [0011](0011-patches-are-diffs-of-views.md)                             | Patches are diffs of player views; only full states are stored                 | Accepted, storage extended by 0012, views per audience by 0024        |
 | [0012](0012-store-player-diffs.md)                                     | Store each player's diffs alongside the full states                            | Accepted, superseded in part by 0024                                  |
-| [0013](0013-store-full-state-diffs.md)                                 | Also store diffs of the full state                                             | Accepted                                                              |
+| [0013](0013-store-full-state-diffs.md)                                 | Also store diffs of the full state                                             | Superseded by 0050                                                    |
 | [0014](0014-immer-patches-only-external-format.md)                     | Immer's patch format is the only external patch format                         | Accepted for now                                                      |
 | [0015](0015-library-issues-opaque-tokens.md)                           | The library issues its own opaque tokens                                       | Accepted                                                              |
 | [0016](0016-authentication-in-library-authorization-by-implementer.md) | The library authenticates; implementers authorize                              | Accepted                                                              |
@@ -55,6 +55,7 @@ Records aren't edited after the fact, except to update their status. A decision 
 | [0047](0047-reserved-keys-dropped-with-warning.md)                     | Reserved keys are dropped from states, with a warning                          | Accepted                                                              |
 | [0048](0048-no-database-upgrades-before-1-0.md)                        | No database upgrades before 1.0                                                | Accepted                                                              |
 | [0049](0049-health-check-under-the-api.md)                             | One operational endpoint: a health check under the API                         | Accepted                                                              |
+| [0050](0050-full-state-diffs-derived-not-stored.md)                    | Full-state diffs are derived, not stored                                       | Accepted                                                              |
 
 ## Writing a record
 

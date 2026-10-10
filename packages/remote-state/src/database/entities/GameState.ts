@@ -1,7 +1,7 @@
 /**
  * One row per state of a game: `createGame` stores sequence 0, and every join or
- * accepted action appends the next. Full states are the source of truth; the
- * full-state diff is informational and sensitive (decision 0013).
+ * accepted action appends the next. Full states are the record of a game; diffs
+ * between them are computed when needed (decision 0050).
  */
 
 import { type Opt } from '@mikro-orm/core';
@@ -25,10 +25,6 @@ export class GameState {
   /** The full, unfiltered state */
   @Property({ type: 'json' })
   state!: unknown;
-
-  /** Immer patches from the previous full state; null for sequence 0. Never sent to clients. */
-  @Property({ type: 'json', nullable: true })
-  fullDiff: Opt<unknown> | null = null;
 
   /** Who caused this state; null for the initial state and system actions */
   @ManyToOne(() => Player, { nullable: true })

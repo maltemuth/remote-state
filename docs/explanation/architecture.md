@@ -116,7 +116,7 @@ Filtering happens at send time, so the stored state stays complete. That's what 
 Two consequences:
 
 - **Anything outside the filter can leak.** That includes `validateAction` messages and `GameRefusal` reasons, and anything the host app sends on its own routes.
-- **The database is not filtered.** Anyone with access to the SQLite file sees everything, including every past action and the full-state diffs.
+- **The database is not filtered.** Anyone with access to the SQLite file sees everything, including every past action and every past full state.
 
 ## Single process
 

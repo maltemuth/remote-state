@@ -1,6 +1,6 @@
 # 0013. Also store diffs of the full state
 
-Status: Accepted
+Status: Superseded by [0050](0050-full-state-diffs-derived-not-stored.md)
 Date: 2026-09-29
 
 ## Context

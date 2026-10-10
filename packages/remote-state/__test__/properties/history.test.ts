@@ -1,7 +1,7 @@
 /**
- * The stored history replays: in generated scenarios, every stored full-state diff
- * turns the previous state into the next (0013), and every stored audience diff
- * turns that audience's previous view into its next (0012, 0024).
+ * The stored history replays: in generated scenarios, every state is stored once,
+ * and every stored audience diff turns that audience's previous view into its
+ * next (0012, 0024).
  */
 
 import { afterAll, beforeAll, describe, expect, it } from '@jest/globals';
@@ -45,11 +45,6 @@ describe('history', () => {
           const rows = await em.find(GameState, { game: gameId }, { orderBy: { sequence: 'asc' } });
           expect(rows.map(row => row.sequence)).toEqual([...Array(latest + 1).keys()]);
           const states = rows.map(row => row.state as ModelState);
-
-          for (const row of rows.slice(1)) {
-            const previous = states[row.sequence - 1];
-            expect(applyPatches(previous, row.fullDiff as Patch[])).toEqual(row.state);
-          }
 
           const diffs = await em.find(AudienceDiff, { game: gameId });
           expect(diffs.length).toBeGreaterThan(0);

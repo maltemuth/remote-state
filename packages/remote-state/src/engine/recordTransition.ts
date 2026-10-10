@@ -1,12 +1,11 @@
 /**
  * Records one state transition, from a join or an action, in a single database
- * transaction: the new full state with its full-state diff (0013), each audience's
- * diff (0024), and audience changes (0027). Once it's recorded, applies its timers
+ * transaction: the new full state, each audience's diff (0024), and audience
+ * changes (0027). Once it's recorded, applies its timers
  * and publishes it. Callers hold the game's lock.
  */
 
 import { AudienceDiff, AudienceMembership, GameState, Player } from '../database/entities/index.js';
-import { diff } from '../patches/diff.js';
 import { type StateResult } from '../plugin/types.js';
 import { SYSTEM } from '../plugin/system.js';
 import { unwrapTransition } from '../plugin/transition.js';
@@ -95,7 +94,6 @@ const persist = (
       game: gameId,
       sequence,
       state,
-      fullDiff: diff(previous.state, state),
       player: playerId,
       audience: authorAudience,
       actionType: input.actionType,

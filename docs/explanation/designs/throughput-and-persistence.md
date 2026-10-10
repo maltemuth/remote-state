@@ -54,7 +54,7 @@ Keep the latest state, the players and their audiences, and the token-to-player 
 
 ### C. Write and compute less per action
 
-- The full-state diff is stored but never sent to clients. It could be computed when it's needed, from the stored states.
+- The full-state diff was stored but never sent to clients. It's now computed only when needed, from the stored states ([0050](../decisions/0050-full-state-diffs-derived-not-stored.md)).
 - The per-audience diffs only serve `GET …/updates`. They could be built from stored states on demand, or kept in memory for recent sequences only.
 - A faster established diff library, or games that produce patches themselves with Immer's `produceWithPatches`, would make the remaining diffs cheaper.
 - Writing fewer rows, or writing them without the ORM's unit of work, reduces the ORM's share.
@@ -115,4 +115,3 @@ Accept writes the action to the log before answering. Execute works in memory, a
 - Which latency and throughput targets matter, for which kinds of games? Turn-based games at human speed are well within 0.6.0's numbers. Realtime games aren't.
 - Is losing the last commits on a power loss acceptable (A)?
 - Must replay after a crash reproduce what clients saw (E), or is a fresh full state enough?
-- Should the history keep the full-state diff, or derive it? [Known limitations](../limitations.md) plans to rely on it for storing a snapshot only every N actions.
