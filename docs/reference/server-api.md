@@ -149,7 +149,7 @@ interface RemoteState<StateType> {
 
 | Member                        | Description                                                                                                                                                                                                                         |
 | ----------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `router`                      | An Express router with the [HTTP API](http-api.md) (`/api/…`) and `/health`. Mount it in the host's app, at the root or under a prefix.                                                                                             |
+| `router`                      | An Express router with the [HTTP API](http-api.md) (`/api/…`), including `/api/health`. Mount it in the host's app, at the root or under a prefix.                                                                                  |
 | `attach(httpServer)`          | Serves the socket on the host's HTTP server, at the socket path. Until it's called, no updates are pushed. Throws if called twice, or if `socket` is `false`.                                                                       |
 | `createGame(initialState)`    | As in [`RemoteStateServer`](#remotestateserver)                                                                                                                                                                                     |
 | `admit({ gameId, identity })` | As in [`RemoteStateServer`](#remotestateserver)                                                                                                                                                                                     |
@@ -213,7 +213,7 @@ A recorded state is logged once its transaction has committed, as `<actionType> 
 
 `silentLogger` discards everything, for example in tests.
 
-The library has no endpoint for changing the log level at runtime ([0028](../explanation/decisions/0028-no-operational-endpoints.md)). A host that wants one can add it, and pass a logger whose level it controls.
+The library has no endpoint for changing the log level at runtime ([0049](../explanation/decisions/0049-health-check-under-the-api.md)). A host that wants one can add it, and pass a logger whose level it controls.
 
 ## Types
 

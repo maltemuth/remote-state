@@ -22,7 +22,7 @@ remote.attach(httpServer);
 httpServer.listen(3000);
 ```
 
-The prefix is up to you. With `/my-game`, the [HTTP API](../reference/http-api.md) is at `/my-game/api/…` and the health check at `/my-game/health`. To serve the API at `/api`, mount the router without a prefix: `app.use(remote.router)`.
+The prefix is up to you. With `/my-game`, the [HTTP API](../reference/http-api.md) is at `/my-game/api/…`, including the health check at `/my-game/api/health`. To serve the API at `/api`, mount the router without a prefix: `app.use(remote.router)`.
 
 The socket path doesn't follow the router's prefix, so set it with the `socket` option. Without it, the socket is at `/socket.io`. Call `attach` once. Until you do, the API works but no updates are pushed.
 

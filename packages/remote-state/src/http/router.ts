@@ -1,7 +1,8 @@
 /**
  * The library's HTTP API as an Express router, which a host mounts in its own app
  * or the standalone server mounts in a new one. It has no endpoints for creating
- * or joining games (decision 0020) and no operational endpoints (0028).
+ * or joining games (decision 0020), and its only operational endpoint is a health
+ * check (0049). Everything it serves is under `/api`.
  */
 
 import cors, { type CorsOptions } from 'cors';
@@ -17,14 +18,13 @@ export const createRouter = (context: EngineContext, corsOptions: CorsOptions) =
   const router = Router();
   const player = requirePlayer(context.orm);
 
-  router.use(['/api', '/health'], cors(corsOptions));
+  router.use('/api', cors(corsOptions));
   router.use('/api', express.json());
   router.post('/api/tokens', postToken(context));
   router.post('/api/games/:gameId/actions', player, postAction(context));
   router.get('/api/games/:gameId/state', player, getState(context));
   router.get('/api/games/:gameId/updates', player, getUpdates(context));
-
-  router.get('/health', (_req: Request, res: Response) => {
+  router.get('/api/health', (_req: Request, res: Response) => {
     res.json({ status: 'ok', game: context.plugin.gameConfig?.name ?? 'Unknown Game' });
   });
 

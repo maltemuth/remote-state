@@ -33,7 +33,7 @@ Records aren't edited after the fact, except to update their status. A decision 
 | [0025](0025-default-audiences.md)                                      | Default audiences depend on whether the game filters views                     | Accepted                                                              |
 | [0026](0026-join-hook-is-a-state-transition.md)                        | Joining a game is a state transition run by the game                           | Accepted                                                              |
 | [0027](0027-audiences-set-by-join-hook-and-actions.md)                 | Audiences are set by the join hook and by actions                              | Accepted                                                              |
-| [0028](0028-no-operational-endpoints.md)                               | The library installs no operational endpoints                                  | Accepted                                                              |
+| [0028](0028-no-operational-endpoints.md)                               | The library installs no operational endpoints                                  | Superseded by 0049                                                    |
 | [0029](0029-sequence-is-the-cursor.md)                                 | The `sequence` is the client's cursor                                          | Accepted                                                              |
 | [0030](0030-updates-in-one-jump.md)                                    | `GET …/updates` answers in one jump, from any `since`                          | Accepted                                                              |
 | [0031](0031-socket-sends-state-on-connect.md)                          | The socket sends the current state on connect                                  | Accepted                                                              |
@@ -54,6 +54,7 @@ Records aren't edited after the fact, except to update their status. A decision 
 | [0046](0046-reserved-keys-documented.md)                               | Reserved keys in states are documented, not handled                            | Superseded by 0047                                                    |
 | [0047](0047-reserved-keys-dropped-with-warning.md)                     | Reserved keys are dropped from states, with a warning                          | Accepted                                                              |
 | [0048](0048-no-database-upgrades-before-1-0.md)                        | No database upgrades before 1.0                                                | Accepted                                                              |
+| [0049](0049-health-check-under-the-api.md)                             | One operational endpoint: a health check under the API                         | Accepted                                                              |
 
 ## Writing a record
 

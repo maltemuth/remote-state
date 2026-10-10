@@ -131,7 +131,7 @@ Independent of question 1, some improvements apply to any token:
 
 ### 6. What protects the service itself?
 
-Decided: rate limiting is the host's job ([0016](../decisions/0016-authentication-in-library-authorization-by-implementer.md)). The library installs no operational endpoints ([0028](../decisions/0028-no-operational-endpoints.md)).
+Decided: rate limiting is the host's job ([0016](../decisions/0016-authentication-in-library-authorization-by-implementer.md)). The library's only operational endpoint is a read-only health check ([0028](../decisions/0028-no-operational-endpoints.md), [0049](../decisions/0049-health-check-under-the-api.md)).
 
 - **Operational endpoints,** such as `/admin/log-level`: remove them, or authenticate them through the host. Also listed in the [backlog](../../../BACKLOG.md).
 - **Rate limiting,** at least for creating games and registering players, which today can be called without limit by anyone.

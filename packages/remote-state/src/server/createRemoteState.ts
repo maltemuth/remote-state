@@ -22,7 +22,7 @@ import { type Admission, admit, createGame } from './host.js';
 import { defaultCors, type RemoteStateOptions } from './options.js';
 
 export interface RemoteState<StateType> {
-  /** The HTTP API (`/api/…`, `/health`), to mount in the host's Express app */
+  /** The HTTP API (`/api/…`), to mount in the host's Express app */
   router: Router;
   /** Serve the socket on the host's HTTP server; at most once, and not with `socket: false` */
   attach: (httpServer: HTTPServer) => void;

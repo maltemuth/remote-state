@@ -125,9 +125,9 @@ Returns one set of patches that turns the player's view at `since` into their cu
 - **303:** no patch can be built, because a state the server needs is missing. Fetch the whole state instead. The `Location` is relative, so it leads to the state endpoint under any prefix.
 - **404:** `since` is after the latest sequence, or before the player joined. The first sequence a player can use is the one their join produced.
 
-## GET /health
+## GET /api/health
 
-Unauthenticated.
+Unauthenticated. Answers while the process runs; it doesn't check the database ([0049](../explanation/decisions/0049-health-check-under-the-api.md)).
 
 ```json
 { "status": "ok", "game": "<gameConfig.name or Unknown Game>" }

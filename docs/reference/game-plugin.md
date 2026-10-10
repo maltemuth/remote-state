@@ -100,7 +100,7 @@ The filter is called once per audience with members on every transition, for the
 
 ### gameConfig
 
-`name` is reported by `GET /health`. `description` is not used.
+`name` is reported by `GET /api/health`. `description` is not used.
 
 ## Timers
 

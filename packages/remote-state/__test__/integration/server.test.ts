@@ -14,7 +14,7 @@ describe('standalone server', () => {
     const server = await startCounterServer();
     try {
       expect(server.port).toBeGreaterThan(0);
-      await request(`http://localhost:${server.port}`).get('/health').expect(200);
+      await request(`http://localhost:${server.port}`).get('/api/health').expect(200);
     } finally {
       await server.close();
     }

@@ -23,7 +23,7 @@ const serverScript = path.join(
 const waitUntilUp = async (url: string, attempts = 100) => {
   for (let i = 0; i < attempts; i++) {
     try {
-      if ((await fetch(`${url}/battleship/health`)).ok) return;
+      if ((await fetch(`${url}/battleship/api/health`)).ok) return;
     } catch {
       // Not listening yet
     }

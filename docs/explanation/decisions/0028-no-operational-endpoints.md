@@ -1,6 +1,6 @@
 # 0028. The library installs no operational endpoints
 
-Status: Accepted
+Status: Superseded by [0049](0049-health-check-under-the-api.md)
 Date: 2026-09-29
 
 ## Context
