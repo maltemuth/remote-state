@@ -28,8 +28,4 @@ export const battleshipPlugin: GamePlugin<BattleshipState, BattleshipAction> = {
   executeAction,
   // The default audience of each player is named by their player ID
   filterStateForAudience: filterStateForPlayer,
-  gameConfig: {
-    name: "Battleship",
-    description: "Battleship by the classic rules: 10×10, five ships each",
-  },
 };

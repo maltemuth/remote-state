@@ -24,8 +24,4 @@ export const ticTacToePlugin: GamePlugin<TicTacToeState, TicTacToeAction> = {
   },
   validateAction: checkAction,
   executeAction: (state, action) => withTurnTimer(applyAction(state, action)),
-  gameConfig: {
-    name: "Tic-Tac-Toe",
-    description: "Two players take turns placing X and O on a 3×3 board",
-  },
 };

@@ -55,6 +55,5 @@ export const counterGame = (
     count: state.count,
     mine: audience === 'spectators' ? null : (state.increments[audience] ?? null),
   }),
-  gameConfig: { name: 'Counter' },
   ...overrides,
 });

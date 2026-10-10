@@ -54,11 +54,6 @@ export interface GamePlugin<StateType, ActionType, ViewType = StateType> {
    * filter, everyone sees the full state.
    */
   filterStateForAudience?: (state: StateType, audience: string) => Awaitable<ViewType>;
-
-  gameConfig?: {
-    name: string;
-    description?: string;
-  };
 }
 
 /** A plugin as the library handles it, independent of the game's types */

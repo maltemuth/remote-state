@@ -24,7 +24,6 @@ interface GamePlugin<StateType, ActionType, ViewType = StateType> {
     state: StateType,
     audience: string,
   ) => Awaitable<ViewType>;
-  gameConfig?: { name: string; description?: string };
 }
 
 type Awaitable<T> = T | Promise<T>;
@@ -97,10 +96,6 @@ Each player belongs to one audience ([0025](../explanation/decisions/0025-defaul
 - **Either way,** `onJoin` and `executeAction` can move players to other audiences with `transition` or `withAudiences`, such as `spectators`.
 
 The filter is called once per audience with members on every transition, for the previous and the new state, and again on reads. Views of past states are rebuilt from stored states, so the result must depend only on `state` and `audience`: no clocks, randomness or other side effects. Return JSON-compatible values.
-
-### gameConfig
-
-`name` is reported by `GET /api/health`. `description` is not used.
 
 ## Timers
 

@@ -24,9 +24,7 @@ export const createRouter = (context: EngineContext, corsOptions: CorsOptions) =
   router.post('/api/games/:gameId/actions', player, postAction(context));
   router.get('/api/games/:gameId/state', player, getState(context));
   router.get('/api/games/:gameId/updates', player, getUpdates(context));
-  router.get('/api/health', (_req: Request, res: Response) => {
-    res.json({ status: 'ok', game: context.plugin.gameConfig?.name ?? 'Unknown Game' });
-  });
+  router.get('/api/health', (_req: Request, res: Response) => void res.end());
 
   // 404 for unknown API routes; other paths stay free for the host
   router.use('/api', (_req: Request, res: Response) => {

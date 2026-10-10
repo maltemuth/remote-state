@@ -127,8 +127,4 @@ Returns one set of patches that turns the player's view at `since` into their cu
 
 ## GET /api/health
 
-Unauthenticated. Answers while the process runs; it doesn't check the database ([0049](../explanation/decisions/0049-health-check-under-the-api.md)).
-
-```json
-{ "status": "ok", "game": "<gameConfig.name or Unknown Game>" }
-```
+Unauthenticated. Answers 200 with an empty body while the process runs; it doesn't check the database ([0049](../explanation/decisions/0049-health-check-under-the-api.md)).
