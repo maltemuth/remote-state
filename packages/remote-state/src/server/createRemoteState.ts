@@ -6,7 +6,7 @@
 
 import { type Server as HTTPServer } from 'http';
 import { type Router } from 'express';
-import { initializeDatabase, UnsupportedDatabaseError } from '../database/orm.js';
+import { initializeDatabase } from '../database/orm.js';
 import { type EngineContext } from '../engine/context.js';
 import { createGameLock } from '../engine/gameLock.js';
 import { createScheduler } from '../engine/scheduler.js';
@@ -42,11 +42,7 @@ export const createRemoteState = async <StateType, ActionType, ViewType>(
 ): Promise<RemoteState<StateType>> => {
   const logger = options.logger ?? consoleLogger();
   const cors = options.cors ?? defaultCors;
-  const orm = await initializeDatabase(options.database ?? ':memory:', logger).catch(err => {
-    // Hosts may handle this one, for example by deleting the file
-    if (err instanceof UnsupportedDatabaseError) throw err;
-    throw new Error('Failed to initialize database', { cause: err });
-  });
+  const orm = await initializeDatabase(options.database ?? ':memory:', logger);
 
   const context: EngineContext = {
     orm,

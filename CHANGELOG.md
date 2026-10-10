@@ -15,6 +15,7 @@ Databases from 0.8.0 have to be deleted: the schema's version is now 2.
 
 ### Changed
 
+- `createRemoteState` and `createRemoteStateServer` reject with the database driver's own error when the database can't be opened, instead of wrapping it in `Error("Failed to initialize database")`.
 - `GET /health` moved to `GET /api/health`, so everything the router serves is under `/api` (0049, superseding 0028). It answers 200 with an empty body. CORS applies to `/api` only.
 - Example: battleship follows the classic rules, a 10×10 board with a carrier (5), a battleship (4), a cruiser (3), a submarine (3) and a destroyer (2) per player. Players are seated on admission only; `join` and `leave` are no longer actions. Its engine validates with `true | string` and applies actions with Immer, and the unused timestamps, action `playerId` and validation codes are gone.
 - Load test: games follow the classic rules, 43 actions each instead of 17, so results can't be compared with earlier ones. The scripted game lives in `src/games/battleship/script.ts`.

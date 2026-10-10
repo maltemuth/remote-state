@@ -15,7 +15,7 @@ A standalone server for one game. It opens the database, creates an Express app 
 
 To serve a game from an Express app and HTTP server you already have, use [`createRemoteState`](#createremotestate) instead.
 
-Rejects with `Error("Failed to initialize database", { cause })` if the database can't be opened.
+Rejects with an [`UnsupportedDatabaseError`](#unsupporteddatabaseerror) for a database from another schema version, and with the database driver's own error if the database can't be opened.
 
 ## RemoteStateServer
 
@@ -132,7 +132,7 @@ createRemoteState<StateType, ActionType, ViewType>(
 
 The embeddable core for one game, for a host that has its own Express app and HTTP server. It opens the database and creates the router. It doesn't create a server, listen on a port or attach a socket ([0037](../explanation/decisions/0037-embeddable-core-and-server-options.md)). See [Embed in an existing app](../how-to/embed-in-an-existing-app.md).
 
-Rejects with `Error("Failed to initialize database", { cause })` if the database can't be opened.
+Rejects with an [`UnsupportedDatabaseError`](#unsupporteddatabaseerror) for a database from another schema version, and with the database driver's own error if the database can't be opened.
 
 ## RemoteState
 

@@ -1,6 +1,7 @@
 /**
  * The database's schema version (0048): a new database gets the schema and its
- * version, reopening it works, and databases from other versions are refused.
+ * version, reopening it works, databases from other versions are refused, and
+ * other failures arrive as the driver raised them.
  */
 
 import { describe, expect, it } from '@jest/globals';
@@ -47,5 +48,11 @@ describe('database', () => {
     const database = databaseNamed('other.db');
     await sql(database, `pragma user_version = ${SCHEMA_VERSION + 1}`);
     await expect(open(database)).rejects.toThrow(UnsupportedDatabaseError);
+  });
+
+  it("passes on the driver's error for a file it can't open", async () => {
+    await expect(open(databaseNamed('missing/directory/games.db'))).rejects.toThrow(
+      /unable to open database file|directory does not exist/
+    );
   });
 });
