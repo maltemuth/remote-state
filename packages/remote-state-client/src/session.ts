@@ -16,7 +16,6 @@ export interface Session {
 export interface RedeemOptions {
   /** Where the game's library routes are mounted; the page's origin by default */
   baseUrl?: string;
-  fetch?: typeof fetch;
 }
 
 /**
@@ -24,7 +23,7 @@ export interface RedeemOptions {
  * for a used or expired code, and 403 with the game's reason if it refuses the player.
  */
 export const redeemCode = (code: string, options: RedeemOptions = {}): Promise<Session> =>
-  requestJson<Session>(options.fetch ?? fetch, resolveEndpoints(options.baseUrl).api('/tokens'), {
+  requestJson<Session>(resolveEndpoints(options.baseUrl).api('/tokens'), {
     method: 'POST',
     body: { code },
   });

@@ -9,6 +9,7 @@ Databases from 0.8.0 have to be deleted: the schema's version is now 2.
 ### Removed
 
 - The `last_activity_at` column of players, which was written on every action and never read.
+- Client: the `fetch` option of `createClient` and `redeemCode`. Both use the global `fetch`.
 
 ### Changed
 

@@ -20,7 +20,6 @@ redeemCode(code: string, options?: RedeemOptions): Promise<Session>
 
 interface RedeemOptions {
   baseUrl?: string; // where the game's library routes are mounted
-  fetch?: typeof fetch;
 }
 
 interface Session {
@@ -55,7 +54,6 @@ Connects to the game right away. `View` is what the player sees, as returned by 
 | `baseUrl`    | the page's origin            | Where the game's library routes are mounted, such as `/tic-tac-toe` or `https://games.example.com/tic-tac-toe` |
 | `socketPath` | `<baseUrl's path>/socket.io` | The socket's path, if the host set another                                                                     |
 | `format`     | `"immer"`                    | What the socket sends: `"immer"` patches, which the client applies, or whole views as `"state"`                |
-| `fetch`      | the global `fetch`           | For requests                                                                                                   |
 | `onError`    | ignore                       | Called with errors the client can't report elsewhere, such as a failed catch-up                                |
 
 Outside a browser, `baseUrl` must be an absolute URL.

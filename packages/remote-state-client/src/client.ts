@@ -20,7 +20,6 @@ export interface ClientOptions {
   socketPath?: string;
   /** What the socket sends; `immer` patches by default, applied by the client */
   format?: Format;
-  fetch?: typeof fetch;
   /** Errors the client can't report anywhere else, such as a failed catch-up */
   onError?: (error: unknown) => void;
 }
@@ -59,10 +58,9 @@ export const createClient = <View = unknown, Action = unknown>(
   options: ClientOptions
 ): RemoteStateClient<View, Action> => {
   const { session } = options;
-  const fetchImpl = options.fetch ?? fetch;
   const endpoints = resolveEndpoints(options.baseUrl, options.socketPath);
   const game = (path: string) => endpoints.api(`/games/${session.gameId}${path}`);
-  const get = <T>(path: string) => requestJson<T>(fetchImpl, game(path), { token: session.token });
+  const get = <T>(path: string) => requestJson<T>(game(path), { token: session.token });
 
   const catchUp: CatchUp<View> = {
     state: () => get('/state'),
@@ -101,7 +99,7 @@ export const createClient = <View = unknown, Action = unknown>(
     waitFor: store.waitFor,
     send: async action => {
       try {
-        return await requestJson<{ sequence: number }>(fetchImpl, game('/actions'), {
+        return await requestJson<{ sequence: number }>(game('/actions'), {
           method: 'POST',
           body: { action },
           token: session.token,

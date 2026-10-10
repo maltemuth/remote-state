@@ -11,13 +11,6 @@ import { fileURLToPath } from "url";
 const installed = (specifier: string) =>
   fileURLToPath(import.meta.resolve(specifier));
 
-/** The paths the page's import map points to */
-export const browserModules = {
-  "@malte.muth/remote-state-client": "/modules/remote-state-client/index.js",
-  immer: "/modules/immer.mjs",
-  "socket.io-client": "/modules/socket.io-client.mjs",
-};
-
 export const serveBrowserModules = (): Router => {
   const router = express.Router();
   const clientDirectory = path.dirname(

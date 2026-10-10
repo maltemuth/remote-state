@@ -20,11 +20,10 @@ export interface RequestOptions {
 }
 
 export const requestJson = async <T>(
-  fetchImpl: typeof fetch,
   url: string,
   { method = 'GET', body, token }: RequestOptions = {}
 ): Promise<T> => {
-  const response = await fetchImpl(url, {
+  const response = await fetch(url, {
     method,
     headers: {
       ...(body === undefined ? {} : { 'Content-Type': 'application/json' }),

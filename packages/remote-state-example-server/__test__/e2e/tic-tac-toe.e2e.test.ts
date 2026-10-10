@@ -6,6 +6,7 @@
 import { afterAll, beforeAll, describe, expect, it } from "@jest/globals";
 import { silentLogger, type StateEvent } from "@malte.muth/remote-state";
 import { io as connect, type Socket } from "socket.io-client";
+import request from "supertest";
 import {
   createExampleServer,
   type ExampleServer,
@@ -51,6 +52,13 @@ describe("Tic-tac-toe E2E", () => {
     const code = await client.codeFor(gameId, "Third");
     const refused = await client.redeem(code).expect(403);
     expect(refused.body.error).toBe("Both seats are taken");
+  });
+
+  it("answers 404 for codes to an unknown game", async () => {
+    await request(example.app)
+      .post("/tic-tac-toe/lobby/games/nope/codes")
+      .send({ name: "Nobody" })
+      .expect(404);
   });
 
   it("waits for an opponent and enforces turns and free cells", async () => {

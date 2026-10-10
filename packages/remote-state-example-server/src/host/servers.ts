@@ -6,7 +6,11 @@
 
 import express, { type Express } from "express";
 import { createServer, type Server } from "http";
-import { consoleLogger, type Logger } from "@malte.muth/remote-state";
+import {
+  consoleLogger,
+  type Logger,
+  type RemoteState,
+} from "@malte.muth/remote-state";
 import {
   battleshipPlugin,
   newBattleshipGame,
@@ -16,7 +20,7 @@ import { newTicTacToeGame } from "../games/tic-tac-toe/rules.js";
 import { ticTacToePlugin } from "../games/tic-tac-toe/plugin.js";
 import type { TicTacToeState } from "../games/tic-tac-toe/types.js";
 import { serveBrowserModules } from "./browserModules.js";
-import { type MountedGame, mountGame } from "./mountGame.js";
+import { mountGame } from "./mountGame.js";
 
 /** Seconds per tic-tac-toe move before the player to move loses */
 export const TURN_SECONDS = 60;
@@ -32,8 +36,8 @@ export interface ExampleServerOptions {
 export interface ExampleServer {
   app: Express;
   server: Server;
-  ticTacToe: MountedGame<TicTacToeState>;
-  battleship: MountedGame<BattleshipState>;
+  ticTacToe: RemoteState<TicTacToeState>;
+  battleship: RemoteState<BattleshipState>;
   /** Listen; resolves with the port */
   listen: (port: number) => Promise<number>;
   close: () => Promise<void>;

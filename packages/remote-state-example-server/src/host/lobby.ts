@@ -14,20 +14,6 @@ import express, {
 } from "express";
 import { type RemoteState, UnknownGameError } from "@malte.muth/remote-state";
 
-type Handler = (
-  req: Request<{ gameId: string }>,
-  res: Response,
-) => Promise<void>;
-
-const handle =
-  (handler: Handler) =>
-  (req: Request<{ gameId: string }>, res: Response, next: NextFunction) =>
-    handler(req, res).catch((err) =>
-      err instanceof UnknownGameError
-        ? res.status(404).json({ error: err.message })
-        : next(err),
-    );
-
 export const createLobby = <StateType>(
   remote: Pick<RemoteState<StateType>, "createGame" | "admit">,
   newGame: () => StateType,
@@ -36,24 +22,25 @@ export const createLobby = <StateType>(
   lobby.use(express.json());
 
   // A new game, with nobody in it yet
-  lobby.post(
-    "/games",
-    handle(async (_req, res) => {
-      res.status(201).json({ gameId: await remote.createGame(newGame()) });
-    }),
-  );
+  lobby.post("/games", async (_req, res) => {
+    res.status(201).json({ gameId: await remote.createGame(newGame()) });
+  });
 
   // A code for the client to exchange at POST …/api/tokens
-  lobby.post(
-    "/games/:gameId/codes",
-    handle(async (req, res) => {
-      const name = typeof req.body?.name === "string" ? req.body.name : "";
-      const code = await remote.admit({
-        gameId: req.params.gameId,
-        identity: { id: randomUUID(), name },
-      });
-      res.status(201).json({ code });
-    }),
+  lobby.post("/games/:gameId/codes", async (req, res) => {
+    const name = typeof req.body?.name === "string" ? req.body.name : "";
+    const code = await remote.admit({
+      gameId: req.params.gameId,
+      identity: { id: randomUUID(), name },
+    });
+    res.status(201).json({ code });
+  });
+
+  // Express 5 passes rejected handlers here
+  lobby.use((err: unknown, _req: Request, res: Response, next: NextFunction) =>
+    err instanceof UnknownGameError
+      ? res.status(404).json({ error: err.message })
+      : next(err),
   );
 
   return lobby;

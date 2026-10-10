@@ -4,8 +4,10 @@
  * arrived, so latency can be measured up to the moment another player sees it.
  */
 
+import { setTimeout as sleep } from "timers/promises";
 import { io, type Socket } from "socket.io-client";
 import type { Format } from "@malte.muth/remote-state";
+import { redeemCode } from "@malte.muth/remote-state-client";
 
 export interface Player {
   token: string;
@@ -13,6 +15,16 @@ export interface Player {
   arrival: (sequence: number) => Promise<number>;
   disconnect: () => void;
 }
+
+/** Long enough for any update under load; a lost one fails the run instead of hanging it */
+const WAIT_MS = 30_000;
+const within = <T>(promise: Promise<T>, what: string): Promise<T> =>
+  Promise.race([
+    promise,
+    sleep(WAIT_MS, undefined, { ref: false }).then(() => {
+      throw new Error(`No ${what} within ${WAIT_MS} ms`);
+    }),
+  ]);
 
 export const postJson = async (
   url: string,
@@ -41,9 +53,8 @@ export const joinPlayer = async (
 ): Promise<Player> => {
   const { code } = (
     await postJson(`${base}/battleship/lobby/games/${gameId}/codes`, { name })
-  ).body;
-  const { token } = (await postJson(`${base}/battleship/api/tokens`, { code }))
-    .body as { token: string };
+  ).body as { code: string };
+  const { token } = await redeemCode(code, { baseUrl: `${base}/battleship` });
 
   const arrivals = new Map<number, number>();
   const waiting = new Map<number, (time: number) => void>();
@@ -60,14 +71,20 @@ export const joinPlayer = async (
   };
   socket.on("state", received);
   socket.on("patches", received);
-  await new Promise((resolve) => socket.once("state", resolve));
+  await within(
+    new Promise((resolve) => socket.once("state", resolve)),
+    "first view",
+  );
 
   return {
     token,
     arrival: (sequence) =>
       arrivals.has(sequence)
         ? Promise.resolve(arrivals.get(sequence)!)
-        : new Promise((resolve) => waiting.set(sequence, resolve)),
+        : within(
+            new Promise((resolve) => waiting.set(sequence, resolve)),
+            `update ${sequence}`,
+          ),
     disconnect: () => socket.disconnect(),
   };
 };

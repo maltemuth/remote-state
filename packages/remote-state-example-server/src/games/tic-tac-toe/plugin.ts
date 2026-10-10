@@ -22,8 +22,7 @@ export const ticTacToePlugin: GamePlugin<TicTacToeState, TicTacToeAction> = {
       seats: { ...state.seats, [mark]: { playerId, name } },
     });
   },
-  validateAction: (state, action, playerId) =>
-    checkAction(state, action, playerId),
+  validateAction: checkAction,
   executeAction: (state, action) => withTurnTimer(applyAction(state, action)),
   gameConfig: {
     name: "Tic-Tac-Toe",

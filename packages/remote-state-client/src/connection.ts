@@ -29,7 +29,6 @@ export const connect = <View>({
     auth: { gameId: session.gameId, token: session.token },
     query: { format },
   });
-  const ofThisGame = (gameId: string) => gameId === session.gameId;
 
   socket.on('connect', () => onState({ status: 'connected' }));
   socket.on('disconnect', reason => onState({ status: 'disconnected', reason }));
@@ -41,12 +40,13 @@ export const connect = <View>({
         : { status: 'refused', error: error.message }
     )
   );
-  socket.on('state', (event: { gameId: string; sequence: number; state: View }) => {
-    if (ofThisGame(event.gameId)) onUpdate({ sequence: event.sequence, state: event.state });
-  });
-  socket.on('patches', (event: { gameId: string; sequence: number; patches: Patch[] }) => {
-    if (ofThisGame(event.gameId)) onUpdate({ sequence: event.sequence, patches: event.patches });
-  });
+  // The socket is authenticated for this one game, so every event is about it
+  socket.on('state', (event: { sequence: number; state: View }) =>
+    onUpdate({ sequence: event.sequence, state: event.state })
+  );
+  socket.on('patches', (event: { sequence: number; patches: Patch[] }) =>
+    onUpdate({ sequence: event.sequence, patches: event.patches })
+  );
 
   return { close: () => void socket.disconnect() };
 };
