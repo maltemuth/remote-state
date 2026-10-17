@@ -14,7 +14,7 @@ As the next section, with patches from the library's own diff instead of `rfc690
 | `--games 100 --pause 0 --format immer --profile` | 1   | 4300    | 14.8 s   | 290       | 0      | 298.6    | 316.0    | 535.4    | 536.6    |
 | `--games 100 --pause 2000 --format immer`        | 1   | 4300    | 98.0 s   | 44        | 0      | 3.1      | 7.8      | 22.4     | 36.9     |
 
-The third run's duration includes a pause without errors, while its latencies match the others.
+The third run took longer, with the same latencies as the others; why wasn't investigated.
 
 Own time by package: remote-state 25.4%, kysely 19.8%, @mikro-orm/core 19.4%, @mikro-orm/sql 9.8%, better-sqlite3 5.9%. The largest functions are `toJson` (22.2%) and the driver's `executeQuery` (18.9%); the diff doesn't appear among them.
 
