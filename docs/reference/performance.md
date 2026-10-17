@@ -2,6 +2,22 @@
 
 Results of the load test, as measured. For how to run it, see [Measure performance](../how-to/measure-performance.md).
 
+## 2026-10-17, the library's own diff, after 0.9.1
+
+As the next section, with patches from the library's own diff instead of `rfc6902` ([0057](../explanation/decisions/0057-own-diff-arrays-by-position.md)), in the `immer` format.
+
+| Command                                          | Run | Actions | Duration | Actions/s | Errors | HTTP p50 | HTTP p95 | HTTP p99 | HTTP max |
+| ------------------------------------------------ | --- | ------- | -------- | --------- | ------ | -------- | -------- | -------- | -------- |
+| `--games 100 --pause 0 --runs 3 --format immer`  | 1   | 4300    | 13.3 s   | 324       | 0      | 277.1    | 287.1    | 290.0    | 356.4    |
+|                                                  | 2   | 4300    | 13.1 s   | 327       | 0      | 276.9    | 282.9    | 286.3    | 515.0    |
+|                                                  | 3   | 4300    | 16.0 s   | 269       | 0      | 278.0    | 286.0    | 288.2    | 465.8    |
+| `--games 100 --pause 0 --format immer --profile` | 1   | 4300    | 14.8 s   | 290       | 0      | 298.6    | 316.0    | 535.4    | 536.6    |
+| `--games 100 --pause 2000 --format immer`        | 1   | 4300    | 98.0 s   | 44        | 0      | 3.1      | 7.8      | 22.4     | 36.9     |
+
+The third run's duration includes a pause without errors, while its latencies match the others.
+
+Own time by package: remote-state 25.4%, kysely 19.8%, @mikro-orm/core 19.4%, @mikro-orm/sql 9.8%, better-sqlite3 5.9%. The largest functions are `toJson` (22.2%) and the driver's `executeQuery` (18.9%); the diff doesn't appear among them.
+
 ## 2026-10-17, views and patches computed when sent, after 0.9.1
 
 The same machine as the next sections, with WAL, and without stored per-audience diffs: views and patches are computed after the commit, only for connected sockets ([0056](../explanation/decisions/0056-views-and-patches-computed-when-sent.md)). The load test's clients use the `state` format, so they get views and no patches are computed.

@@ -40,7 +40,7 @@ Some requirements already follow from decisions made elsewhere.
 - **`rfc6902`'s `applyPatch`** changes the target in place. The root and every changed object stay the same objects, so an identity-based store sees no change and doesn't re-render. On frozen state, which Redux Toolkit uses in development, it throws.
 - **Immer's `applyPatches`** returns a new state with structural sharing: the root and the changed parts are new, the unchanged parts keep their identity, the original stays untouched, and frozen state works.
 
-So the client package applies patches with Immer. Since Immer's format is the only external patch format ([0014](../decisions/0014-immer-patches-only-external-format.md)), it applies them directly, with no conversion. The server uses `rfc6902` only to compute diffs ([0011](../decisions/0011-patches-are-diffs-of-views.md)). Immer is a dependency of the client package, not something clients must use: the patches are plain JSON.
+So the client package applies patches with Immer. Since Immer's format is the only external patch format ([0014](../decisions/0014-immer-patches-only-external-format.md)), it applies them directly, with no conversion. The server computes diffs in Immer's format directly ([0057](../decisions/0057-own-diff-arrays-by-position.md)). Immer is a dependency of the client package, not something clients must use: the patches are plain JSON.
 
 ## Questions to answer when it's taken up
 

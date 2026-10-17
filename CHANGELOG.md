@@ -9,6 +9,7 @@ Databases from 0.9.x have to be deleted: the schema's version is now 3.
 ### Changed
 
 - Views and patches are computed when a transition is sent, only for the audiences of connected sockets, and per-audience diffs aren't stored any more; the `audience_diffs` table is gone. `GET …/updates` builds its patch from the stored states. A view filter that throws no longer fails the action; the error is logged when the transition is sent. Under full load, a Windows desktop handled about 283 actions per second instead of 133 (0056).
+- Patches come from the library's own diff, which writes Immer's paths directly and compares arrays position by position, so a move on a board is the squares that changed. Inserting into the middle of a list now patches every item after it. `rfc6902` is no longer a dependency. With the `immer` format under full load, a Windows desktop handled about 325 actions per second instead of 193 (0057).
 
 - Databases are opened in WAL mode with `synchronous = NORMAL`, so a commit no longer waits for the disk. A power loss or an operating system crash can lose the last actions; the database stays consistent, and a crash of the server process loses nothing. Under full load, a Windows desktop handled 133 actions per second instead of 49. Back up the `-wal` and `-shm` files along with the database, or use SQLite's backup (0054).
 
