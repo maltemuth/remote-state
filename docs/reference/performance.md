@@ -18,6 +18,18 @@ The same machine as the next sections, with WAL, and without stored per-audience
 
 **CPU profile,** own time by package: @mikro-orm/core 21.7%, remote-state 19.5%, kysely 16.8%, @mikro-orm/sql 11.3%, better-sqlite3 6.0%, node 5.3%. `rfc6902` doesn't appear. The largest functions are `toJson` (17.8%) and the driver's `executeQuery` (15.8%).
 
+**With `--format immer`,** the same commit, so each connected player's patch is computed:
+
+| Command                                          | Run | Actions | Duration | Actions/s | Errors | HTTP p50 | HTTP p95 | HTTP p99 | HTTP max |
+| ------------------------------------------------ | --- | ------- | -------- | --------- | ------ | -------- | -------- | -------- | -------- |
+| `--games 100 --pause 0 --runs 3 --format immer`  | 1   | 4300    | 22.3 s   | 193       | 0      | 468.7    | 653.7    | 735.1    | 773.8    |
+|                                                  | 2   | 4300    | 22.2 s   | 194       | 0      | 467.8    | 653.4    | 750.0    | 806.5    |
+|                                                  | 3   | 4300    | 22.6 s   | 190       | 0      | 461.9    | 705.7    | 771.8    | 921.2    |
+| `--games 100 --pause 0 --format immer --profile` | 1   | 4300    | 23.9 s   | 180       | 0      | 497.2    | 695.1    | 803.9    | 847.1    |
+| `--games 100 --pause 2000 --format immer`        | 1   | 4300    | 95.0 s   | 45        | 0      | 5.8      | 16.6     | 29.8     | 54.9     |
+
+Own time by package: rfc6902 38.6%, remote-state 16.7%, @mikro-orm/core 12.1%, kysely 10.3%, @mikro-orm/sql 5.7%. About 20% of the time goes to rfc6902's JSON Pointers (`Pointer.add`, `escapeToken`, `Pointer.toString`), which the library then converts to Immer's paths.
+
 ## 2026-10-17, WAL without syncing every commit, after 0.9.1
 
 The same machine as the next section, with databases opened with `journal_mode = WAL` and `synchronous = NORMAL` ([0054](../explanation/decisions/0054-wal-without-syncing-every-commit.md)), compared with 0.9.1 and SQLite's defaults.
