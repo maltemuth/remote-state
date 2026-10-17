@@ -4,6 +4,8 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ## Unreleased
 
+## 0.9.0 - 2026-10-17
+
 Databases from 0.8.0 have to be deleted: the schema's version is now 2.
 
 ### Added
