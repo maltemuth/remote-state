@@ -2,6 +2,46 @@
 
 Results of the load test, as measured. For how to run it, see [Measure performance](../how-to/measure-performance.md).
 
+## 2026-10-17, classic battleship on Windows, after 0.8.0
+
+At commit `faa1760`: unreleased changes since 0.8.0, among them that full-state diffs are no longer computed or stored ([0050](../explanation/decisions/0050-full-state-diffs-derived-not-stored.md)). A different machine and operating system from the results below, so the numbers can't be compared with theirs.
+
+**Environment**
+
+|                  |                                                                              |
+| ---------------- | ---------------------------------------------------------------------------- |
+| Machine          | Desktop, AMD Ryzen 7 5800X3D, 8 cores, 16 threads, 3.4 GHz, 128 GB           |
+| Disk             | Samsung SSD 870 EVO 1 TB (SATA), holding the temporary directory             |
+| Operating system | Windows 11 Pro 10.0.26200                                                    |
+| Node.js          | 24.16.0                                                                      |
+| SQLite           | 3.53.4, through `better-sqlite3` 13.0.3, with SQLite's defaults              |
+| Server           | The example server in its own process, SQLite files in a temporary directory |
+| Client           | The load test, in a second process on the same machine                       |
+
+**Results** (latencies in milliseconds)
+
+| Command                             | Run | Actions | Duration | Actions/s | Errors | HTTP p50 | HTTP p95 | HTTP p99 | HTTP max | End-to-end p50 | End-to-end p95 | End-to-end p99 | End-to-end max |
+| ----------------------------------- | --- | ------- | -------- | --------- | ------ | -------- | -------- | -------- | -------- | -------------- | -------------- | -------------- | -------------- |
+| `--games 100 --pause 2000 --runs 3` | 1   | 4300    | 109.2 s  | 39        | 0      | 64.1     | 211.4    | 323.7    | 509.2    | 63.8           | 210.8          | 323.4          | 509.0          |
+|                                     | 2   | 4300    | 109.8 s  | 39        | 0      | 59.8     | 181.0    | 229.5    | 470.3    | 59.5           | 180.8          | 229.1          | 470.0          |
+|                                     | 3   | 4300    | 112.3 s  | 38        | 0      | 56.4     | 180.9    | 289.6    | 568.1    | 56.2           | 180.7          | 289.3          | 567.8          |
+| `--games 100 --pause 0 --runs 3`    | 1   | 4300    | 90.5 s   | 47        | 0      | 1808.6   | 2113.4   | 2288.5   | 3237.1   | 1808.4         | 2113.1         | 2288.0         | 3236.9         |
+|                                     | 2   | 4300    | 90.5 s   | 47        | 0      | 1809.2   | 2082.2   | 2239.6   | 2864.2   | 1808.8         | 2081.9         | 2239.2         | 2864.0         |
+|                                     | 3   | 4300    | 90.2 s   | 48        | 0      | 1802.6   | 2112.3   | 2331.1   | 2623.9   | 1802.4         | 2112.1         | 2330.9         | 2623.7         |
+
+Run as `npm run perf -- <command>` from the repository root. A fourth `--pause 0` run, started with `--profile`, also reached 47 actions/s; it wrote no profile (see below).
+
+**Commits limit throughput on this machine, not the CPU.** Timed apart from the server, with the same driver in the same temporary directory, 300 transactions of one 1.2 kB insert each took:
+
+| SQLite settings                                         | Per commit | Commits/s    |
+| ------------------------------------------------------- | ---------- | ------------ |
+| Defaults: `journal_mode = DELETE`, `synchronous = FULL` | 9.7 ms     | about 100    |
+| `journal_mode = WAL`, `synchronous = NORMAL`            | 0.05 ms    | about 18,000 |
+
+With the defaults, every commit waits for the disk, and 47 actions/s is about 21 ms per action. WAL was one of the persistence experiments on 0.6.0, below.
+
+**Profiling doesn't work on Windows.** The load test stops the server it started with `SIGTERM`, which on Windows ends the process at once, before Node writes the profile that `--profile` asks for.
+
 ## 2026-10-05, classic battleship, after 0.8.0
 
 The example's battleship now follows the classic rules: a 10×10 board and five ships per player, 43 actions per game instead of 17. Same environment as for version 0.4.2, below.
