@@ -1,11 +1,11 @@
-# 0053. What a game does on a restart is its own logic
+# 0053. What a game does on a server restart is its own logic
 
 Status: Accepted
 Date: 2026-10-17
 
 ## Context
 
-[0052](0052-games-pause-on-restart.md) added `onRestart`, and said a game with timers is expected to pause there until a person resumes it. That's one policy, taken from the games in sight, whose turn timers shouldn't run before everyone is back. Other games want something else: a game clock might carry on, a computer opponent might move right away, a game might end. Who counts as back, and who may resume, depends on the game and its host too.
+[0052](0052-games-pause-on-restart.md) added `onRestart`, and said a game with timers is expected to pause there until a person resumes it. That's one policy, taken from the games in sight, whose turn timers shouldn't run before everyone is back. A server restart here means the process stopping and starting again on the same database, not a game starting over, such as battleship's `restart` action. Other games want something else: a game clock might carry on, a computer opponent might move right away, a game might end. Who counts as back, and who may resume, depends on the game and its host too.
 
 ## Decision
 
@@ -19,5 +19,5 @@ Date: 2026-10-17
 
 ## Consequences
 
-- The docs present pausing as one way to handle a restart, next to scheduling timers again or doing nothing.
+- The docs present pausing as one way to handle a server restart, next to scheduling timers again or doing nothing.
 - If the library reports connections to the plugin, as the [Game lifecycle](../designs/game-lifecycle.md) proposal discusses, that's a hook like `onRestart`; what a connection means stays with the game.
