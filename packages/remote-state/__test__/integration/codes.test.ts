@@ -2,7 +2,8 @@
  * Spent admission codes, used or expired, are deleted when a new code is issued.
  */
 
-import { afterAll, beforeAll, describe, expect, it, jest } from '@jest/globals';
+import assert from 'node:assert/strict';
+import { describe, it, before, after, mock } from 'node:test';
 import { CODE_LIFETIME_MS } from '../../src/index.js';
 import { AdmissionCode } from '../../src/database/entities/index.js';
 import { tempDatabases, withOrm } from '../helpers/tempDatabase.js';
@@ -11,10 +12,10 @@ import { type CounterServer, join, newGame, startCounterServer } from '../helper
 
 describe('admission codes', () => {
   let server: CounterServer;
-  afterAll(() => server.close());
+  after(() => server.close());
   const database = tempDatabases('codes')();
 
-  beforeAll(async () => {
+  before(async () => {
     server = await startCounterServer(counterGame(), { database });
   });
 
@@ -26,15 +27,15 @@ describe('admission codes', () => {
     const gameId = await newGame(server);
     await join(server, gameId, 'used');
     await server.admit({ gameId, identity: { id: 'expired' } });
-    expect(await storedCodes()).toEqual(['expired']);
+    assert.deepEqual(await storedCodes(), ['expired']);
 
     const later = Date.now() + CODE_LIFETIME_MS + 1;
-    const clock = jest.spyOn(Date, 'now').mockReturnValue(later);
+    const clock = mock.method(Date, 'now', () => later);
     try {
       await server.admit({ gameId, identity: { id: 'fresh' } });
     } finally {
-      clock.mockRestore();
+      clock.mock.restore();
     }
-    expect(await storedCodes()).toEqual(['fresh']);
+    assert.deepEqual(await storedCodes(), ['fresh']);
   });
 });

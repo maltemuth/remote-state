@@ -3,7 +3,8 @@
  * several tokens per player (decisions 0019, 0020, 0021, 0026).
  */
 
-import { afterAll, beforeAll, describe, expect, it, jest } from '@jest/globals';
+import assert from 'node:assert/strict';
+import { describe, it, before, after, mock } from 'node:test';
 import request from 'supertest';
 import { CODE_LIFETIME_MS, UnknownGameError } from '../../src/index.js';
 import { counterGame, MAX_PLAYERS } from '../helpers/counterGame.js';
@@ -23,7 +24,7 @@ describe('admission', () => {
   let server: CounterServer;
   /** What the join hook was given, per call */
   const joins: { playerId: string; details: Record<string, unknown> }[] = [];
-  beforeAll(async () => {
+  before(async () => {
     const game = counterGame();
     server = await startCounterServer({
       ...game,
@@ -33,7 +34,7 @@ describe('admission', () => {
       },
     });
   });
-  afterAll(() => server.close());
+  after(() => server.close());
 
   it('has no public endpoints for creating or joining games', async () => {
     await request(server.app).post('/api/games').send({}).expect(404);
@@ -45,7 +46,10 @@ describe('admission', () => {
     const gameId = await newGame(server);
     const code = await server.admit({ gameId, identity: { id: 'alice', name: 'Alice' } });
     const first = await redeem(server, code).expect(201);
-    expect(first.body).toEqual({ gameId, playerId: expect.any(String), token: expect.any(String) });
+    const { playerId, token, ...rest } = first.body;
+    assert.deepEqual(rest, { gameId });
+    assert.equal(typeof playerId, 'string');
+    assert.equal(typeof token, 'string');
     await redeem(server, code).expect(401);
   });
 
@@ -55,36 +59,35 @@ describe('admission', () => {
     await redeem(server, 'not-a-code').expect(401);
     const code = await server.admit({ gameId, identity: { id: 'late' } });
     const now = Date.now();
-    const clock = jest.spyOn(Date, 'now').mockReturnValue(now + CODE_LIFETIME_MS + 1);
+    const clock = mock.method(Date, 'now', () => now + CODE_LIFETIME_MS + 1);
     try {
       await redeem(server, code).expect(401);
     } finally {
-      clock.mockRestore();
+      clock.mock.restore();
     }
   });
 
   it('validates admissions', async () => {
-    await expect(server.admit({ gameId: 'nope', identity: { id: 'x' } })).rejects.toThrow(
-      UnknownGameError
-    );
+    await assert.rejects(server.admit({ gameId: 'nope', identity: { id: 'x' } }), UnknownGameError);
     const gameId = await newGame(server);
-    await expect(server.admit({ gameId, identity: { id: '' } })).rejects.toThrow();
+    await assert.rejects(server.admit({ gameId, identity: { id: '' } }));
   });
 
   it('runs the join hook once per identity, with the host details', async () => {
     const gameId = await newGame(server);
     const first = await join(server, gameId, 'alice', { name: 'Alice' });
     const again = await join(server, gameId, 'alice', { name: 'Ignored' });
-    expect(again.playerId).toBe(first.playerId);
-    expect(joins.filter(({ playerId }) => playerId === first.playerId)).toEqual([
-      { playerId: first.playerId, details: { name: 'Alice' } },
-    ]);
-    expect(again.token).not.toBe(first.token);
+    assert.equal(again.playerId, first.playerId);
+    assert.deepEqual(
+      joins.filter(({ playerId }) => playerId === first.playerId),
+      [{ playerId: first.playerId, details: { name: 'Alice' } }]
+    );
+    assert.notEqual(again.token, first.token);
 
     // Both tokens stay valid (0019); the join is the only transition so far
     const view = await getState(server, gameId, first.token).expect(200);
     await getState(server, gameId, again.token).expect(200);
-    expect(view.body).toEqual({ gameId, sequence: 1, state: { count: 0, mine: 0 } });
+    assert.deepEqual(view.body, { gameId, sequence: 1, state: { count: 0, mine: 0 } });
   });
 
   it('refuses a join with the game reason, using up the code', async () => {
@@ -92,7 +95,7 @@ describe('admission', () => {
     for (let i = 0; i < MAX_PLAYERS; i++) await join(server, gameId, `player-${i}`);
     const code = await server.admit({ gameId, identity: { id: 'one-too-many' } });
     const refused = await redeem(server, code).expect(403);
-    expect(refused.body.error).toBe('Game is full');
+    assert.equal(refused.body.error, 'Game is full');
     await redeem(server, code).expect(401);
   });
 

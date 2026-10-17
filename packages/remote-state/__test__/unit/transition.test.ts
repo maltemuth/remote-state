@@ -3,11 +3,12 @@
  * undefined.
  */
 
-import { expect, it } from '@jest/globals';
+import assert from 'node:assert/strict';
+import { it } from 'node:test';
 import { transition, unwrapTransition } from '../../src/plugin/transition.js';
 
 it('defaults missing and undefined changes', () => {
-  expect(unwrapTransition(transition(1, { schedule: undefined, cancel: undefined }))).toEqual({
+  assert.deepEqual(unwrapTransition(transition(1, { schedule: undefined, cancel: undefined })), {
     state: 1,
     changes: { audiences: {}, schedule: [], cancel: [] },
   });

@@ -4,7 +4,8 @@
  * and recorded with their author's audience (0039).
  */
 
-import { afterAll, beforeAll, describe, expect, it } from '@jest/globals';
+import assert from 'node:assert/strict';
+import { describe, it, before, after } from 'node:test';
 import { setTimeout as sleep } from 'timers/promises';
 import { type Logger, type RemoteStateServer, UnknownGameError } from '../../src/index.js';
 import { GameState } from '../../src/database/entities/index.js';
@@ -15,13 +16,13 @@ import { waitUntil } from '../helpers/waitUntil.js';
 
 describe('timers', () => {
   let server: RemoteStateServer<TimerState>;
-  afterAll(() => server.close());
+  after(() => server.close());
   const database = tempDatabases('timers')();
   const logged: string[] = [];
   const record = (message: string) => void logged.push(message);
   const logger: Logger = { debug: () => undefined, info: record, warn: record, error: record };
 
-  beforeAll(async () => {
+  before(async () => {
     server = await startServer(timerGame, { logger, database });
   });
 
@@ -36,9 +37,9 @@ describe('timers', () => {
   it('runs a due timer as the system', async () => {
     const { send, fired } = await newPlayer();
     await send({ type: 'arm', name: 'turn', ms: 300, label: 'timeout' }).expect(201);
-    expect(await fired()).toEqual([]);
+    assert.deepEqual(await fired(), []);
     await waitUntil(async () => (await fired()).length > 0, 'the timer');
-    expect(await fired()).toEqual(['timeout']);
+    assert.deepEqual(await fired(), ['timeout']);
   });
 
   it('replaces a timer scheduled again under the same name', async () => {
@@ -47,7 +48,7 @@ describe('timers', () => {
     await send({ type: 'arm', name: 'turn', ms: 300, label: 'second' }).expect(201);
     await send({ type: 'arm', name: 'clock', ms: 300, label: 'clock' }).expect(201);
     await waitUntil(async () => (await fired()).length === 2, 'two timers');
-    expect((await fired()).sort()).toEqual(['clock', 'second']);
+    assert.deepEqual((await fired()).sort(), ['clock', 'second']);
   });
 
   it('drops a cancelled timer', async () => {
@@ -56,7 +57,7 @@ describe('timers', () => {
     await send({ type: 'cancel', name: 'turn' }).expect(201);
     // Nothing to wait for: give the timer time to fire if it weren't cancelled
     await sleep(300);
-    expect(await fired()).toEqual([]);
+    assert.deepEqual(await fired(), []);
   });
 
   it("doesn't let players act as the system", async () => {
@@ -66,14 +67,12 @@ describe('timers', () => {
 
   it('lets the host act as the system', async () => {
     const { gameId, fired } = await newPlayer();
-    expect(await server.act(gameId, { type: 'fire', label: 'host' })).toEqual({ sequence: 2 });
-    expect(await server.act(gameId, { type: 'arm', name: 'x', ms: 1, label: 'x' })).toEqual({
+    assert.deepEqual(await server.act(gameId, { type: 'fire', label: 'host' }), { sequence: 2 });
+    assert.deepEqual(await server.act(gameId, { type: 'arm', name: 'x', ms: 1, label: 'x' }), {
       rejected: "system can't arm",
     });
-    expect(await fired()).toEqual(['host']);
-    await expect(server.act('nope', { type: 'fire', label: 'x' })).rejects.toThrow(
-      UnknownGameError
-    );
+    assert.deepEqual(await fired(), ['host']);
+    await assert.rejects(server.act('nope', { type: 'fire', label: 'x' }), UnknownGameError);
   });
 
   it('logs and records who acted, from which audience', async () => {
@@ -81,16 +80,19 @@ describe('timers', () => {
     await send({ type: 'arm', name: 'turn', ms: 1, label: 'late' }).expect(201);
     const fire = `fire by system in game ${gameId}, now at 3`;
     await waitUntil(() => logged.includes(fire), 'the timer');
-    expect(logged).toContain(`arm by everyone:${playerId} in game ${gameId}, now at 2`);
+    assert.ok(logged.includes(`arm by everyone:${playerId} in game ${gameId}, now at 2`));
 
     const rows = await withOrm(database, em =>
       em.find(GameState, { game: gameId }, { orderBy: { sequence: 'asc' } })
     );
-    expect(rows.map(row => [row.actionType, row.player?.id ?? null, row.audience])).toEqual([
-      ['initial', null, null],
-      ['join', playerId, 'everyone'],
-      ['arm', playerId, 'everyone'],
-      ['fire', null, null],
-    ]);
+    assert.deepEqual(
+      rows.map(row => [row.actionType, row.player?.id ?? null, row.audience]),
+      [
+        ['initial', null, null],
+        ['join', playerId, 'everyone'],
+        ['arm', playerId, 'everyone'],
+        ['fire', null, null],
+      ]
+    );
   });
 });

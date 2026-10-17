@@ -4,7 +4,8 @@
  * restart, sockets reconnect by themselves, and pending timers are dropped (0042).
  */
 
-import { afterAll, describe, expect, it, jest } from '@jest/globals';
+import assert from 'node:assert/strict';
+import { describe, it, after } from 'node:test';
 import { applyPatches, enablePatches } from 'immer';
 import { type Socket } from 'socket.io-client';
 import request from 'supertest';
@@ -24,12 +25,10 @@ import { waitUntil } from '../helpers/waitUntil.js';
 
 enablePatches();
 
-jest.setTimeout(20_000);
-
 describe('restart', () => {
   const databaseNamed = tempDatabases('restart');
   const sockets: Socket[] = [];
-  afterAll(() => sockets.forEach(socket => socket.disconnect()));
+  after(() => sockets.forEach(socket => socket.disconnect()));
 
   it('carries games, tokens, codes and sequences over a restart', async () => {
     const database = databaseNamed('counter.db');
@@ -56,7 +55,7 @@ describe('restart', () => {
 
     await act(alice.token);
     const before = (await getState(alice.token)).body;
-    expect(before).toMatchObject({ sequence: 2, state: { count: 1, mine: 1 } });
+    assert.partialDeepStrictEqual(before, { sequence: 2, state: { count: 1, mine: 1 } });
 
     const socket = openSocket(
       url,
@@ -72,16 +71,16 @@ describe('restart', () => {
     server = await startCounterServer(undefined, { database, port });
     try {
       // The same view, under the same token
-      expect((await getState(alice.token)).body).toEqual(before);
+      assert.deepEqual((await getState(alice.token)).body, before);
       // A code issued before the restart still works, once
       const bob = await redeem(pendingCode);
-      expect(bob.playerId).not.toBe(alice.playerId);
+      assert.notEqual(bob.playerId, alice.playerId);
       // Admitting a known identity again finds its player, without a new join
       const again = await redeem(await server.admit({ gameId, identity: { id: 'alice' } }));
-      expect(again.playerId).toBe(alice.playerId);
+      assert.equal(again.playerId, alice.playerId);
 
       // Sequences continue
-      expect((await act(again.token)).body).toEqual({ sequence: 4 });
+      assert.deepEqual((await act(again.token)).body, { sequence: 4 });
 
       // Catching up reaches back before the restart
       const since = await request(url)
@@ -89,12 +88,12 @@ describe('restart', () => {
         .set('Authorization', `Bearer ${alice.token}`)
         .expect(200);
       const now = (await getState(alice.token)).body;
-      expect(since.body.sequence).toBe(4);
-      expect(applyPatches(before.state, since.body.patches)).toEqual(now.state);
+      assert.equal(since.body.sequence, 4);
+      assert.deepEqual(applyPatches(before.state, since.body.patches), now.state);
 
       // The socket reconnected by itself and got the latest view
       await waitUntil(() => views.at(-1)?.sequence === 4, 'the socket to reconnect');
-      expect(views.at(-1)!.state).toEqual(now.state);
+      assert.deepEqual(views.at(-1)!.state, now.state);
     } finally {
       await server.close();
     }
@@ -119,7 +118,7 @@ describe('restart', () => {
       const fired = async () =>
         (await getState(server, gameId, token)).body.state.fired as string[];
       await waitUntil(async () => (await fired()).length > 0, 'the new timer');
-      expect(await fired()).toEqual(['after']);
+      assert.deepEqual(await fired(), ['after']);
     } finally {
       await server.close();
     }

@@ -35,7 +35,7 @@
   },
   "scripts": {
     "build": "npm run clean && tsc",
-    "test": "npm run typecheck && NODE_OPTIONS=--experimental-vm-modules jest",
+    "test": "npm run typecheck && node --import tsx --test \"__test__/**/*.test.ts\"",
     "typecheck": "tsc -p tsconfig.test.json",
     "lint": "eslint src __test__",
     "lint:fix": "eslint src __test__ --fix",

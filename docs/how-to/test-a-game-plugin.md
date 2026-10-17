@@ -6,9 +6,11 @@ The examples use the rock-paper-scissors game from the [tutorial](../tutorials/b
 
 ## Unit-test the rules
 
-Call the functions directly:
+Call the functions directly. The examples use Node's test runner, as this repository's own tests do:
 
 ```ts
+import assert from "node:assert/strict";
+import { it } from "node:test";
 import { GameRefusal } from "@malte.muth/remote-state";
 import { rockPaperScissors } from "../src/rps.js";
 
@@ -16,19 +18,21 @@ const playing = { players: ["a", "b"], names: {}, choices: {}, winner: null };
 
 it("rejects a second choice", async () => {
   const state = { ...playing, choices: { a: "rock" as const } };
-  expect(
+  assert.equal(
     await rockPaperScissors.validateAction(
       state,
       { type: "choose", choice: "paper" },
       "a",
     ),
-  ).toBe("You already chose");
+    "You already chose",
+  );
 });
 
 it("refuses a third player", () => {
-  expect(() =>
-    rockPaperScissors.onJoin!(playing, { playerId: "c", details: {} }),
-  ).toThrow(GameRefusal);
+  assert.throws(
+    () => rockPaperScissors.onJoin!(playing, { playerId: "c", details: {} }),
+    GameRefusal,
+  );
 });
 ```
 
@@ -41,6 +45,8 @@ Create a server with an in-memory database, the default, and drive it with [supe
 Your tests act as the host: they create games and admit players by calling the server directly, then use the HTTP API as a client would.
 
 ```ts
+import assert from "node:assert/strict";
+import { after, before, it } from "node:test";
 import request from "supertest";
 import {
   createRemoteStateServer,
@@ -51,13 +57,13 @@ import { newGame, rockPaperScissors, type RpsState } from "../src/rps.js";
 
 let server: RemoteStateServer<RpsState>;
 
-beforeAll(async () => {
+before(async () => {
   server = await createRemoteStateServer(rockPaperScissors, {
     logger: silentLogger,
   });
 });
 
-afterAll(() => server.close());
+after(() => server.close());
 
 // What a host and its client do together: admit someone and redeem the code
 const join = async (gameId, name) => {
@@ -82,8 +88,8 @@ it("hides the opponent's choice", async () => {
     .get(`/api/games/${gameId}/state`)
     .set("Authorization", `Bearer ${bob.token}`)
     .expect(200);
-  expect(bobView.body.state.choices).toEqual({});
-  expect(bobView.body.state.opponentHasChosen).toBe(true);
+  assert.deepEqual(bobView.body.state.choices, {});
+  assert.equal(bobView.body.state.opponentHasChosen, true);
 });
 ```
 
@@ -99,5 +105,5 @@ Create the server with `port: 0`, call `startServer()`, which resolves to the po
 
 - [tic-tac-toe.e2e.test.ts](../../packages/remote-state-example-server/__test__/e2e/tic-tac-toe.e2e.test.ts): a full game through the example's lobby and the library's API, using the library through its package name as your project would. Its [client helpers](../../packages/remote-state-example-server/__test__/helpers/client.ts) do what a browser client does.
 - [rules.test.ts](../../packages/remote-state-example-server/__test__/games/tic-tac-toe/rules.test.ts): tic-tac-toe's rules, tested without a server
-- [jest.config.base.js](../../jest.config.base.js), which the example's `jest.config.js` re-exports: Jest running TypeScript as native ESM. The tests run with `NODE_OPTIONS=--experimental-vm-modules`, which Jest's ESM mode needs.
+- The example's [package.json](../../packages/remote-state-example-server/package.json): its `test` script runs the TypeScript tests on Node's test runner, loaded through [tsx](https://tsx.is) (`node --import tsx --test`).
 - [admission.test.ts](../../packages/remote-state/__test__/integration/admission.test.ts) and [updates.test.ts](../../packages/remote-state/__test__/integration/updates.test.ts): codes, the join hook, refusals, audiences and catch-up, using a small [counter game](../../packages/remote-state/__test__/helpers/counterGame.ts)

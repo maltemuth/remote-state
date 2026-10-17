@@ -1,5 +1,5 @@
 {
-  // Type-checks the tests, which ts-jest only transpiles (isolatedModules)
+  // Type-checks the tests, which tsx only transpiles (isolatedModules)
   "extends": "./tsconfig.json",
   "compilerOptions": {
     "noEmit": true,

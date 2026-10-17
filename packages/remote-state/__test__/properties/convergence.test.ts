@@ -6,7 +6,8 @@
  * socket or HTTP, carries another player's marker.
  */
 
-import { afterAll, beforeAll, describe, expect, it } from '@jest/globals';
+import assert from 'node:assert/strict';
+import { describe, it, before, after } from 'node:test';
 import fc from 'fast-check';
 import { applyPatches } from 'immer';
 import { getState, getUpdates, socketViews } from '../helpers/routes.js';
@@ -22,13 +23,14 @@ import {
 describe('convergence and hidden information', () => {
   let server: ModelServer;
 
-  beforeAll(async () => {
+  before(async () => {
     server = await startModelServer();
   });
-  afterAll(() => server.close());
+  after(() => server.close());
 
   it(
     "gives every player the same view by every route, and no one else's notes",
+    { timeout: 30 * 60_000 },
     async () => {
       await fc.assert(
         fc.asyncProperty(scenarioArbitrary, async scenario => {
@@ -36,14 +38,14 @@ describe('convergence and hidden information', () => {
           for (const player of players) {
             const views = socketViews(player);
             const current = await getState(server, gameId, player);
-            expect(current.sequence).toBe(latest);
-            expect(views.get(latest)).toEqual(current.state);
+            assert.equal(current.sequence, latest);
+            assert.deepEqual(views.get(latest), current.state);
 
             for (const [since, view] of views) {
               const response = await getUpdates(server, gameId, player, since);
-              expect(response.status).toBe(200);
-              expect(response.body.sequence).toBe(latest);
-              expect(applyPatches(view as object, response.body.patches)).toEqual(current.state);
+              assert.equal(response.status, 200);
+              assert.equal(response.body.sequence, latest);
+              assert.deepEqual(applyPatches(view as object, response.body.patches), current.state);
             }
           }
 
@@ -51,13 +53,12 @@ describe('convergence and hidden information', () => {
           players.forEach((player, index) => {
             const others = players.map((_, i) => markerOf(i)).filter((_, i) => i !== index);
             for (const payload of player.payloads) {
-              for (const marker of others) expect(payload).not.toContain(marker);
+              for (const marker of others) assert.ok(!payload.includes(marker));
             }
           });
         }),
         { numRuns: PROPERTY_RUNS }
       );
-    },
-    30 * 60_000
+    }
   );
 });

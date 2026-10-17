@@ -3,7 +3,8 @@
  * disabled socket, and a logger that receives the library's and MikroORM's output.
  */
 
-import { describe, expect, it } from '@jest/globals';
+import assert from 'node:assert/strict';
+import { describe, it } from 'node:test';
 import request from 'supertest';
 import { type Logger } from '../../src/index.js';
 import { counterGame } from '../helpers/counterGame.js';
@@ -13,12 +14,12 @@ describe('standalone server', () => {
   it('reports the port it listens on', async () => {
     const server = await startCounterServer();
     try {
-      expect(server.port).toBeGreaterThan(0);
+      assert.ok(server.port > 0);
       await request(`http://localhost:${server.port}`).get('/api/health').expect(200, '');
     } finally {
       await server.close();
     }
-    expect(server.server.listening).toBe(false);
+    assert.equal(server.server.listening, false);
   });
 
   it('applies the CORS options to the API', async () => {
@@ -30,7 +31,7 @@ describe('standalone server', () => {
         .options('/api/tokens')
         .set('Origin', 'https://games.example')
         .set('Access-Control-Request-Method', 'POST');
-      expect(response.headers['access-control-allow-origin']).toBe('https://games.example');
+      assert.equal(response.headers['access-control-allow-origin'], 'https://games.example');
     } finally {
       await server.close();
     }
@@ -53,7 +54,13 @@ describe('standalone server', () => {
     const logger: Logger = { debug: record, info: record, warn: record, error: record };
     const server = await startCounterServer(counterGame(), { logger });
     await server.close();
-    expect(messages.some(message => message.includes('Created the schema'))).toBe(true);
-    expect(messages.some(message => message.includes('listening'))).toBe(true);
+    assert.equal(
+      messages.some(message => message.includes('Created the schema')),
+      true
+    );
+    assert.equal(
+      messages.some(message => message.includes('listening')),
+      true
+    );
   });
 });

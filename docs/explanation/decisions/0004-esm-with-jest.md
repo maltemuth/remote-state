@@ -1,6 +1,6 @@
 # 0004. ESM throughout, tested with Jest
 
-Status: Accepted
+Status: Accepted, superseded for tests by [0051](0051-tests-on-nodes-test-runner.md)
 Date: 2026-09-29
 
 ## Context

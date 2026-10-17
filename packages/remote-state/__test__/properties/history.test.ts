@@ -4,7 +4,8 @@
  * next (0012, 0024).
  */
 
-import { afterAll, beforeAll, describe, expect, it } from '@jest/globals';
+import assert from 'node:assert/strict';
+import { describe, it, before, after } from 'node:test';
 import { MikroORM } from '@mikro-orm/sqlite';
 import fc from 'fast-check';
 import { applyPatches, enablePatches, type Patch } from 'immer';
@@ -24,40 +25,40 @@ enablePatches();
 describe('history', () => {
   let server: ModelServer;
   let orm: MikroORM;
-  afterAll(async () => {
+  after(async () => {
     await orm.close();
     await server.close();
   });
   const database = tempDatabases('history')();
 
-  beforeAll(async () => {
+  before(async () => {
     server = await startModelServer({ database });
     orm = await MikroORM.init({ dbName: database, entities });
   });
 
-  it(
-    'replays every stored diff',
-    async () => {
-      await fc.assert(
-        fc.asyncProperty(scenarioArbitrary, async scenario => {
-          const { gameId, latest } = await playScenario(server, scenario);
-          const em = orm.em.fork();
-          const rows = await em.find(GameState, { game: gameId }, { orderBy: { sequence: 'asc' } });
-          expect(rows.map(row => row.sequence)).toEqual([...Array(latest + 1).keys()]);
-          const states = rows.map(row => row.state as ModelState);
+  it('replays every stored diff', { timeout: 30 * 60_000 }, async () => {
+    await fc.assert(
+      fc.asyncProperty(scenarioArbitrary, async scenario => {
+        const { gameId, latest } = await playScenario(server, scenario);
+        const em = orm.em.fork();
+        const rows = await em.find(GameState, { game: gameId }, { orderBy: { sequence: 'asc' } });
+        assert.deepEqual(
+          rows.map(row => row.sequence),
+          [...Array(latest + 1).keys()]
+        );
+        const states = rows.map(row => row.state as ModelState);
 
-          const diffs = await em.find(AudienceDiff, { game: gameId });
-          expect(diffs.length).toBeGreaterThan(0);
-          for (const { audience, sequence, patches } of diffs) {
-            const before = viewOf(states[sequence - 1], audience);
-            expect(applyPatches(before, patches as Patch[])).toEqual(
-              viewOf(states[sequence], audience)
-            );
-          }
-        }),
-        { numRuns: PROPERTY_RUNS }
-      );
-    },
-    30 * 60_000
-  );
+        const diffs = await em.find(AudienceDiff, { game: gameId });
+        assert.ok(diffs.length > 0);
+        for (const { audience, sequence, patches } of diffs) {
+          const before = viewOf(states[sequence - 1], audience);
+          assert.deepEqual(
+            applyPatches(before, patches as Patch[]),
+            viewOf(states[sequence], audience)
+          );
+        }
+      }),
+      { numRuns: PROPERTY_RUNS }
+    );
+  });
 });

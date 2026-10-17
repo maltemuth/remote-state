@@ -3,7 +3,8 @@
  * game's filter may return.
  */
 
-import { describe, expect, it } from '@jest/globals';
+import assert from 'node:assert/strict';
+import { describe, it } from 'node:test';
 import { diff } from '../../src/patches/diff.js';
 import { viewFor } from '../../src/plugin/views.js';
 
@@ -16,8 +17,8 @@ describe('viewFor', () => {
     };
     const before = await viewFor(plugin, { at: 0 }, 'a');
     const after = await viewFor(plugin, { at: 1000 }, 'a');
-    expect(before).toEqual({ at: '1970-01-01T00:00:00.000Z' });
-    expect(diff(before, after)).toEqual([
+    assert.deepEqual(before, { at: '1970-01-01T00:00:00.000Z' });
+    assert.deepEqual(diff(before, after), [
       { op: 'replace', path: ['at'], value: '1970-01-01T00:00:01.000Z' },
     ]);
   });

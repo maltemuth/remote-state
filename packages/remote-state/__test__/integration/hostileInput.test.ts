@@ -6,7 +6,8 @@
  * `Object.prototype`.
  */
 
-import { afterAll, afterEach, beforeAll, describe, expect, it } from '@jest/globals';
+import assert from 'node:assert/strict';
+import { describe, it, before, after, afterEach } from 'node:test';
 import { applyPatches, enablePatches } from 'immer';
 import { type Socket } from 'socket.io-client';
 import request from 'supertest';
@@ -53,15 +54,15 @@ describe('hostile input', () => {
     error: ignore,
   };
 
-  beforeAll(async () => {
+  before(async () => {
     server = await startServer(bagGame, { logger });
     url = serverUrl(server);
   });
   afterEach(() => {
     sockets.splice(0).forEach(socket => socket.disconnect());
-    expect(Object.prototype).not.toHaveProperty('polluted');
+    assert.ok(!('polluted' in Object.prototype));
   });
-  afterAll(() => server.close());
+  after(() => server.close());
 
   const player = async () => {
     const gameId = await server.createGame({ bag: null });
@@ -99,16 +100,17 @@ describe('hostile input', () => {
         201
       );
       const { body: current } = await state().expect(200);
-      expect(JSON.stringify(current.state)).not.toMatch(/__proto__|constructor/);
+      assert.doesNotMatch(JSON.stringify(current.state), /__proto__|constructor/);
       const since = await updates(String(answer.sequence - 1)).expect(200);
-      expect(JSON.stringify(since.body)).not.toMatch(/__proto__|constructor/);
+      assert.doesNotMatch(JSON.stringify(since.body), /__proto__|constructor/);
       const reserved = /__proto__|constructor/.test(JSON.stringify(bag));
-      expect(warnings.length - before).toBe(reserved ? 1 : 0);
+      assert.equal(warnings.length - before, reserved ? 1 : 0);
 
       await waitUntil(() => sequence >= answer.sequence, 'the update');
-      expect(view).toEqual(current.state);
+      assert.deepEqual(view, current.state);
     }
-    expect(warnings[0]).toMatch(
+    assert.match(
+      warnings[0],
       new RegExp(`^Dropped keys named __proto__ from the state of game ${gameId} at \\d+`)
     );
   });
@@ -134,8 +136,9 @@ describe('hostile input', () => {
     const { act, gameId, token } = await player();
     const huge = JSON.stringify({ action: { type: 'put', bag: 'x'.repeat(200_000) } });
     const tooLarge = await act(huge);
-    expect(tooLarge.status).toBe(413);
-    expect(tooLarge.body).toEqual({ error: expect.any(String) });
+    assert.equal(tooLarge.status, 413);
+    assert.deepEqual(Object.keys(tooLarge.body), ['error']);
+    assert.equal(typeof tooLarge.body.error, 'string');
 
     await request(url)
       .post(`/api/games/${gameId}/actions`)
@@ -152,13 +155,13 @@ describe('hostile input', () => {
     }
     for (const code of [123, {}, [], null, '', 'x'.repeat(10_000)]) {
       const { status } = await request(url).post('/api/tokens').send({ code });
-      expect([400, 401]).toContain(status);
+      assert.ok([400, 401].includes(status));
     }
     for (const since of ['-1', '1.5', '1e3', ' 1', '', 'abc']) {
-      expect((await updates(encodeURIComponent(since))).status).toBe(400);
+      assert.equal((await updates(encodeURIComponent(since))).status, 400);
     }
     // A number, but in the future
-    expect((await updates('99999999999999999999')).status).toBe(404);
+    assert.equal((await updates('99999999999999999999')).status, 404);
     await request(url)
       .get('/api/games/..%2F..%2Fetc/state')
       .set('Authorization', 'Bearer x')
@@ -174,10 +177,11 @@ describe('hostile input', () => {
         socket.once('connect_error', error => resolve(error.message))
       );
     };
-    expect(await refusal({ gameId: { $ne: null }, token })).toMatch(/Invalid token/);
-    expect(await refusal({ gameId, token: 12345 })).toMatch(/Invalid token/);
-    expect(await refusal({ gameId: [gameId], token: [token] })).toMatch(/Invalid token/);
-    expect(await refusal({ gameId, token }, { format: ['state', 'immer'] })).toMatch(
+    assert.match(await refusal({ gameId: { $ne: null }, token }), /Invalid token/);
+    assert.match(await refusal({ gameId, token: 12345 }), /Invalid token/);
+    assert.match(await refusal({ gameId: [gameId], token: [token] }), /Invalid token/);
+    assert.match(
+      await refusal({ gameId, token }, { format: ['state', 'immer'] }),
       /Unknown format/
     );
   });

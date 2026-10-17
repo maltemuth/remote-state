@@ -4,7 +4,8 @@
  * other failures arrive as the driver raised them.
  */
 
-import { describe, expect, it } from '@jest/globals';
+import assert from 'node:assert/strict';
+import { describe, it } from 'node:test';
 import { createRemoteState, silentLogger, UnsupportedDatabaseError } from '../../src/index.js';
 import { tempDatabases, withOrm } from '../helpers/tempDatabase.js';
 import { SCHEMA_VERSION } from '../../src/database/orm.js';
@@ -25,13 +26,11 @@ describe('database', () => {
     const first = await open(database);
     const gameId = await first.createGame(initialCounterState());
     await first.close();
-    expect(await userVersion(database)).toBe(SCHEMA_VERSION);
+    assert.equal(await userVersion(database), SCHEMA_VERSION);
 
     const second = await open(database);
     try {
-      await expect(second.admit({ gameId, identity: { id: 'alice' } })).resolves.toEqual(
-        expect.any(String)
-      );
+      assert.equal(typeof (await second.admit({ gameId, identity: { id: 'alice' } })), 'string');
     } finally {
       await second.close();
     }
@@ -40,18 +39,19 @@ describe('database', () => {
   it('refuses a database with tables but no version, as earlier versions created', async () => {
     const database = databaseNamed('migrated.db');
     await sql(database, 'create table mikro_orm_migrations (id integer primary key, name text)');
-    await expect(open(database)).rejects.toThrow(UnsupportedDatabaseError);
-    await expect(open(database)).rejects.toThrow(/Delete it/);
+    await assert.rejects(open(database), UnsupportedDatabaseError);
+    await assert.rejects(open(database), /Delete it/);
   });
 
   it('refuses a database with another version', async () => {
     const database = databaseNamed('other.db');
     await sql(database, `pragma user_version = ${SCHEMA_VERSION + 1}`);
-    await expect(open(database)).rejects.toThrow(UnsupportedDatabaseError);
+    await assert.rejects(open(database), UnsupportedDatabaseError);
   });
 
   it("passes on the driver's error for a file it can't open", async () => {
-    await expect(open(databaseNamed('missing/directory/games.db'))).rejects.toThrow(
+    await assert.rejects(
+      open(databaseNamed('missing/directory/games.db')),
       /unable to open database file|directory does not exist/
     );
   });

@@ -3,7 +3,8 @@
  * seating on admission, setup, hidden fleets per player, turns, and a win.
  */
 
-import { afterAll, beforeAll, describe, expect, it } from "@jest/globals";
+import assert from "node:assert/strict";
+import { describe, it, before, after } from "node:test";
 import { silentLogger } from "@malte.muth/remote-state";
 import {
   createExampleServer,
@@ -17,11 +18,11 @@ describe("Battleship E2E", () => {
   let example: ExampleServer;
   let client: ReturnType<typeof clientFor>;
 
-  beforeAll(async () => {
+  before(async () => {
     example = await createExampleServer({ logger: silentLogger });
     client = clientFor(example.app, "/battleship");
   });
-  afterAll(() => example.close());
+  after(() => example.close());
 
   const act = (gameId: string, token: string, action: unknown) =>
     client.act(gameId, token, action as object);
@@ -52,25 +53,27 @@ describe("Battleship E2E", () => {
 
   it("seats players on admission and refuses a third", async () => {
     const { gameId, p1 } = await seatedGame();
-    expect((await view(gameId, p1)).players).toEqual({
+    assert.deepEqual((await view(gameId, p1)).players, {
       player1: p1.playerId,
       player2: "opponent",
     });
-    expect(
+    assert.equal(
       (await act(gameId, p1.token, { type: "join" }).expect(400)).body.error,
-    ).toBe("Unknown action type join");
+      "Unknown action type join",
+    );
     await client.redeem(await client.codeFor(gameId, "Carol")).expect(403);
   });
 
   it("stays in setup until both fleets are placed", async () => {
     const { gameId, p1, p2 } = await seatedGame();
     await placeFleet(gameId, p1.token);
-    expect((await view(gameId, p1)).status).toBe("setup");
-    expect((await fire(gameId, p1.token, 0, 0).expect(400)).body.error).toBe(
+    assert.equal((await view(gameId, p1)).status, "setup");
+    assert.equal(
+      (await fire(gameId, p1.token, 0, 0).expect(400)).body.error,
       "Game is not in playing state",
     );
     await placeFleet(gameId, p2.token);
-    expect(await view(gameId, p1)).toMatchObject({
+    assert.partialDeepStrictEqual(await view(gameId, p1), {
       status: "playing",
       currentPlayer: "player1",
     });
@@ -92,16 +95,20 @@ describe("Battleship E2E", () => {
     await place("carrier", [0, 0]).expect(201);
     const error = async (request: ReturnType<typeof place>) =>
       (await request.expect(400)).body.error;
-    expect(await error(place("battleship", [0, 2], "vertical"))).toBe(
+    assert.equal(
+      await error(place("battleship", [0, 2], "vertical")),
       "Invalid ship placement",
     );
-    expect(await error(place("battleship", [9, 7]))).toBe(
+    assert.equal(
+      await error(place("battleship", [9, 7])),
       "Invalid ship placement",
     );
-    expect(await error(place("toString", [5, 0]))).toBe(
+    assert.equal(
+      await error(place("toString", [5, 0])),
       "Unknown ship type toString",
     );
-    expect(await error(place("cruiser", [0.5, 0]))).toBe(
+    assert.equal(
+      await error(place("cruiser", [0.5, 0])),
       "Position must be [row, col] between 0 and 9",
     );
     for (const action of [null, 42, "fire_shot", []]) {
@@ -116,26 +123,28 @@ describe("Battleship E2E", () => {
     await fire(gameId, p1.token, 0, 0).expect(201);
 
     const p1View = await view(gameId, p1);
-    expect(p1View.lastMove?.result).toBe("hit");
-    expect(p1View.currentPlayer).toBe("player2");
-    expect(p1View.boards.player2[0][0]).toBe("hit");
-    expect(p1View.boards.player2.flat()).not.toContain("ship");
-    expect(p1View.ships.player2).toEqual([]);
+    assert.equal(p1View.lastMove?.result, "hit");
+    assert.equal(p1View.currentPlayer, "player2");
+    assert.equal(p1View.boards.player2[0][0], "hit");
+    assert.ok(!p1View.boards.player2.flat().includes("ship"));
+    assert.deepEqual(p1View.ships.player2, []);
 
     const p2View = await view(gameId, p2);
-    expect(p2View.boards.player2[0][0]).toBe("hit");
-    expect(p2View.boards.player2[0][1]).toBe("ship");
-    expect(p2View.ships.player2).toHaveLength(FLEET.length);
+    assert.equal(p2View.boards.player2[0][0], "hit");
+    assert.equal(p2View.boards.player2[0][1], "ship");
+    assert.equal(p2View.ships.player2.length, FLEET.length);
   });
 
   it("enforces turns and rejects repeat shots", async () => {
     const { gameId, p1, p2 } = await startedGame();
-    expect((await fire(gameId, p2.token, 0, 0).expect(400)).body.error).toBe(
+    assert.equal(
+      (await fire(gameId, p2.token, 0, 0).expect(400)).body.error,
       `It's not ${p2.playerId}'s turn`,
     );
     await fire(gameId, p1.token, 0, 0).expect(201);
     await fire(gameId, p2.token, 9, 9).expect(201);
-    expect((await fire(gameId, p1.token, 0, 0).expect(400)).body.error).toBe(
+    assert.equal(
+      (await fire(gameId, p1.token, 0, 0).expect(400)).body.error,
       "Position already fired at",
     );
   });
@@ -149,16 +158,20 @@ describe("Battleship E2E", () => {
     }
 
     const p2View = await view(gameId, p2);
-    expect(p2View).toMatchObject({ status: "finished", winner: "player1" });
-    expect(p2View.lastMove?.result).toBe("sunk");
-    expect(p2View.boards.player2[1].slice(0, 5)).toEqual([
+    assert.partialDeepStrictEqual(p2View, {
+      status: "finished",
+      winner: "player1",
+    });
+    assert.equal(p2View.lastMove?.result, "sunk");
+    assert.deepEqual(p2View.boards.player2[1].slice(0, 5), [
       "sunk",
       "sunk",
       "sunk",
       "sunk",
       "empty",
     ]);
-    expect((await fire(gameId, p2.token, 5, 5).expect(400)).body.error).toBe(
+    assert.equal(
+      (await fire(gameId, p2.token, 5, 5).expect(400)).body.error,
       "Game is already finished",
     );
   });

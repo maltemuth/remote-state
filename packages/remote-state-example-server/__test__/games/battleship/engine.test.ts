@@ -4,7 +4,8 @@
  * what each player sees.
  */
 
-import { describe, expect, it } from "@jest/globals";
+import assert from "node:assert/strict";
+import { describe, it } from "node:test";
 import { GameRefusal } from "@malte.muth/remote-state";
 import {
   executeAction,
@@ -55,17 +56,18 @@ const place = (
 describe("battleship rules", () => {
   it("seats players in admission order and refuses a third", () => {
     const state = seated();
-    expect(state.players).toEqual({ player1: "alice", player2: "bob" });
-    expect(() => seat(state, "carol")).toThrow(GameRefusal);
+    assert.deepEqual(state.players, { player1: "alice", player2: "bob" });
+    assert.throws(() => seat(state, "carol"), GameRefusal);
   });
 
   it("only lets seated players act", () => {
-    expect(validateAction(seated(), FLEET[0], "carol")).toBe(
+    assert.equal(
+      validateAction(seated(), FLEET[0], "carol"),
       "Only seated players can act",
     );
   });
 
-  it.each<[string, unknown, string]>([
+  for (const [name, action, reason] of [
     ["an unknown ship", place("canoe", [5, 0]), "Unknown ship type canoe"],
     [
       "an inherited name",
@@ -99,53 +101,58 @@ describe("battleship rules", () => {
     ],
     ["the same ship twice", place("carrier", [5, 0]), "carrier already placed"],
     ["a non-action", null, "Unknown action type undefined"],
-  ])("rejects placing %s", (_name, action, reason) => {
-    const state = play(seated(), "alice", FLEET[0]);
-    expect(validateAction(state, action as BattleshipAction, "alice")).toBe(
-      reason,
-    );
-  });
+  ] as [string, unknown, string][])
+    it(`rejects placing ${name}`, () => {
+      const state = play(seated(), "alice", FLEET[0]);
+      assert.equal(
+        validateAction(state, action as BattleshipAction, "alice"),
+        reason,
+      );
+    });
 
   it("lets ships touch, and starts once both fleets are complete", () => {
     const touching = play(play(seated(), "alice", FLEET[0]), "alice", FLEET[1]);
-    expect(touching.boards.player1[1].slice(0, 5)).toEqual([
+    assert.deepEqual(touching.boards.player1[1].slice(0, 5), [
       "ship",
       "ship",
       "ship",
       "ship",
       "empty",
     ]);
-    expect(touching.status).toBe("setup");
+    assert.equal(touching.status, "setup");
 
     const state = started();
-    expect(state).toMatchObject({
+    assert.partialDeepStrictEqual(state, {
       status: "playing",
       currentPlayer: "player1",
     });
-    expect(
+    assert.equal(
       validateAction(
         state,
         place("carrier", [5, 0]) as BattleshipAction,
         "alice",
       ),
-    ).toBe("Ships can only be placed during setup");
+      "Ships can only be placed during setup",
+    );
   });
 
   it("takes turns, marks hits and misses, and rejects repeat shots", () => {
     let state = play(started(), "alice", shot(0, 0));
-    expect(state.boards.player2[0][0]).toBe("hit");
-    expect(state.lastMove).toEqual({
+    assert.equal(state.boards.player2[0][0], "hit");
+    assert.deepEqual(state.lastMove, {
       player: "player1",
       action: "fire_shot",
       position: [0, 0],
       result: "hit",
     });
-    expect(validateAction(state, shot(9, 9) as BattleshipAction, "alice")).toBe(
+    assert.equal(
+      validateAction(state, shot(9, 9) as BattleshipAction, "alice"),
       "It's not alice's turn",
     );
     state = play(state, "bob", shot(9, 9));
-    expect(state.boards.player1[9][9]).toBe("miss");
-    expect(validateAction(state, shot(0, 0) as BattleshipAction, "alice")).toBe(
+    assert.equal(state.boards.player1[9][9], "miss");
+    assert.equal(
+      validateAction(state, shot(0, 0) as BattleshipAction, "alice"),
       "Position already fired at",
     );
   });
@@ -155,13 +162,14 @@ describe("battleship rules", () => {
     let state = play(started(), "alice", shot(4, 0));
     state = play(state, "bob", shot(9, 9));
     state = play(state, "alice", shot(4, 1));
-    expect(state.lastMove?.result).toBe("sunk");
-    expect(state.boards.player2[4].slice(0, 3)).toEqual([
+    assert.equal(state.lastMove?.result, "sunk");
+    assert.deepEqual(state.boards.player2[4].slice(0, 3), [
       "sunk",
       "sunk",
       "empty",
     ]);
-    expect(state.ships.player2.find((s) => s.type === "destroyer")?.sunk).toBe(
+    assert.equal(
+      state.ships.player2.find((s) => s.type === "destroyer")?.sunk,
       true,
     );
   });
@@ -172,13 +180,17 @@ describe("battleship rules", () => {
       state = play(state, "alice", shot(row, col));
       if (i < MISSES.length) state = play(state, "bob", shot(...MISSES[i]));
     }
-    expect(state).toMatchObject({ status: "finished", winner: "player1" });
-    expect(validateAction(state, shot(5, 5) as BattleshipAction, "bob")).toBe(
+    assert.partialDeepStrictEqual(state, {
+      status: "finished",
+      winner: "player1",
+    });
+    assert.equal(
+      validateAction(state, shot(5, 5) as BattleshipAction, "bob"),
       "Game is already finished",
     );
 
     const restarted = play(state, "bob", { type: "restart" });
-    expect(restarted).toEqual({
+    assert.deepEqual(restarted, {
       ...newBattleshipGame(),
       players: state.players,
     });
@@ -188,22 +200,30 @@ describe("battleship rules", () => {
     const state = started();
     const before = JSON.stringify(state);
     play(state, "alice", shot(0, 0));
-    expect(JSON.stringify(state)).toBe(before);
+    assert.equal(JSON.stringify(state), before);
   });
 
   it("shows each player their own ships, and the opponent's only when hit", () => {
     const state = play(started(), "alice", shot(0, 0));
     const alice = filterStateForPlayer(state, "alice");
-    expect(alice.boards.player1).toEqual(state.boards.player1);
-    expect(alice.boards.player2.flat()).not.toContain("ship");
-    expect(alice.boards.player2[0][0]).toBe("hit");
-    expect(alice.ships).toEqual({ player1: state.ships.player1, player2: [] });
-    expect(alice.players).toEqual({ player1: "alice", player2: "opponent" });
+    assert.deepEqual(alice.boards.player1, state.boards.player1);
+    assert.ok(!alice.boards.player2.flat().includes("ship"));
+    assert.equal(alice.boards.player2[0][0], "hit");
+    assert.deepEqual(alice.ships, {
+      player1: state.ships.player1,
+      player2: [],
+    });
+    assert.deepEqual(alice.players, { player1: "alice", player2: "opponent" });
 
     const carol = filterStateForPlayer(state, "carol");
-    expect(
-      [...carol.boards.player1, ...carol.boards.player2].flat(),
-    ).not.toContain("ship");
-    expect(carol.players).toEqual({ player1: "opponent", player2: "opponent" });
+    assert.ok(
+      ![...carol.boards.player1, ...carol.boards.player2]
+        .flat()
+        .includes("ship"),
+    );
+    assert.deepEqual(carol.players, {
+      player1: "opponent",
+      player2: "opponent",
+    });
   });
 });

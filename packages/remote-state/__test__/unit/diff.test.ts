@@ -3,7 +3,9 @@
  * Immer's `applyPatches`, keeping unchanged parts.
  */
 
-import { describe, expect, it } from '@jest/globals';
+import assert from 'node:assert/strict';
+import { describe, it } from 'node:test';
+import { isDeepStrictEqual } from 'node:util';
 import { applyPatches, enablePatches, freeze } from 'immer';
 import { diff } from '../../src/patches/diff.js';
 
@@ -31,33 +33,44 @@ describe('diff', () => {
       '0': 'changed',
     };
     const { patches, result } = roundTrip(base, target);
-    expect(patches).toContainEqual({ op: 'replace', path: ['board', 0, 1], value: 'X' });
-    expect(patches).toContainEqual({ op: 'replace', path: ['0'], value: 'changed' });
-    expect(result).toEqual(target);
+    assert.ok(
+      patches.some(item =>
+        isDeepStrictEqual(item, { op: 'replace', path: ['board', 0, 1], value: 'X' })
+      )
+    );
+    assert.ok(
+      patches.some(item =>
+        isDeepStrictEqual(item, { op: 'replace', path: ['0'], value: 'changed' })
+      )
+    );
+    assert.deepEqual(result, target);
   });
 
   it('turns appends into explicit indices', () => {
     const { patches, result } = roundTrip({ log: ['a'] }, { log: ['a', 'b', 'c'] });
-    expect(patches.every(patch => typeof patch.path[1] === 'number')).toBe(true);
-    expect(result).toEqual({ log: ['a', 'b', 'c'] });
+    assert.equal(
+      patches.every(patch => typeof patch.path[1] === 'number'),
+      true
+    );
+    assert.deepEqual(result, { log: ['a', 'b', 'c'] });
   });
 
   it('handles removals, nesting and escaped keys', () => {
     const base = { list: [1, 2, 3, 4], 'a/b~c': { deep: [{ x: 1 }] } };
     const target = { list: [1, 4], 'a/b~c': { deep: [{ x: 2 }, { y: 3 }] } };
-    expect(roundTrip(base, target).result).toEqual(target);
+    assert.deepEqual(roundTrip(base, target).result, target);
   });
 
   it('keeps unchanged parts as the same objects', () => {
     const base = freeze({ changed: { n: 1 }, unchanged: { n: 2 } }, true);
     const result = applyPatches(base, diff(base, { changed: { n: 3 }, unchanged: { n: 2 } }));
-    expect(result.unchanged).toBe(base.unchanged);
+    assert.equal(result.unchanged, base.unchanged);
   });
 
   it('is empty for equal values and leaves its inputs alone', () => {
     const base = { a: [1, 2] };
-    expect(diff(base, { a: [1, 2] })).toEqual([]);
+    assert.deepEqual(diff(base, { a: [1, 2] }), []);
     diff(base, { a: [3] });
-    expect(base).toEqual({ a: [1, 2] });
+    assert.deepEqual(base, { a: [1, 2] });
   });
 });

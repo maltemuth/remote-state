@@ -64,7 +64,7 @@ const bobView = await request(server.app)
   .set("Authorization", `Bearer ${bob.token}`)
   .expect(200);
 
-expect(JSON.stringify(bobView.body)).not.toContain("rock");
+assert.doesNotMatch(JSON.stringify(bobView.body), /rock/);
 ```
 
 ## Limits

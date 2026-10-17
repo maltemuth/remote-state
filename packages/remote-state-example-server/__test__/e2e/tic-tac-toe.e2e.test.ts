@@ -3,7 +3,8 @@
  * seating, turns, wins, draws, rematches, and live updates on the socket.
  */
 
-import { afterAll, beforeAll, describe, expect, it } from "@jest/globals";
+import assert from "node:assert/strict";
+import { describe, it, before, after } from "node:test";
 import { silentLogger, type StateEvent } from "@malte.muth/remote-state";
 import { io as connect, type Socket } from "socket.io-client";
 import request from "supertest";
@@ -21,12 +22,12 @@ describe("Tic-tac-toe E2E", () => {
   let port: number;
   const sockets: Socket[] = [];
 
-  beforeAll(async () => {
+  before(async () => {
     example = await createExampleServer({ logger: silentLogger });
     port = await example.listen(0);
     client = clientFor(example.app, "/tic-tac-toe");
   });
-  afterAll(async () => {
+  after(async () => {
     sockets.forEach((socket) => socket.disconnect());
     await example.close();
   });
@@ -44,14 +45,14 @@ describe("Tic-tac-toe E2E", () => {
   it("seats two players and refuses a third", async () => {
     const { gameId, x, o } = await seatedGame();
     const state = await client.stateFor<TicTacToeState>(gameId, x.token);
-    expect(state.seats).toEqual({
+    assert.deepEqual(state.seats, {
       X: { playerId: x.playerId, name: "Xena" },
       O: { playerId: o.playerId, name: "Otto" },
     });
 
     const code = await client.codeFor(gameId, "Third");
     const refused = await client.redeem(code).expect(403);
-    expect(refused.body.error).toBe("Both seats are taken");
+    assert.equal(refused.body.error, "Both seats are taken");
   });
 
   it("answers 404 for codes to an unknown game", async () => {
@@ -64,18 +65,22 @@ describe("Tic-tac-toe E2E", () => {
   it("waits for an opponent and enforces turns and free cells", async () => {
     const gameId = await client.createGame();
     const x = await client.joinAs(gameId, "Xena");
-    expect((await place(gameId, x.token, 0, 0).expect(400)).body.error).toBe(
+    assert.equal(
+      (await place(gameId, x.token, 0, 0).expect(400)).body.error,
       "Waiting for an opponent",
     );
     const o = await client.joinAs(gameId, "Otto");
-    expect((await place(gameId, o.token, 0, 0).expect(400)).body.error).toBe(
+    assert.equal(
+      (await place(gameId, o.token, 0, 0).expect(400)).body.error,
       "It's not your turn",
     );
     await place(gameId, x.token, 0, 0).expect(201);
-    expect((await place(gameId, o.token, 0, 0).expect(400)).body.error).toBe(
+    assert.equal(
+      (await place(gameId, o.token, 0, 0).expect(400)).body.error,
       "That cell is taken",
     );
-    expect((await place(gameId, o.token, 3, 0).expect(400)).body.error).toBe(
+    assert.equal(
+      (await place(gameId, o.token, 3, 0).expect(400)).body.error,
       "That's not a cell",
     );
   });
@@ -93,7 +98,7 @@ describe("Tic-tac-toe E2E", () => {
       await place(gameId, seat.token, row, col).expect(201);
 
     const won = await client.stateFor<TicTacToeState>(gameId, o.token);
-    expect(won.outcome).toEqual({
+    assert.deepEqual(won.outcome, {
       winner: "X",
       line: [
         [0, 0],
@@ -101,14 +106,22 @@ describe("Tic-tac-toe E2E", () => {
         [0, 2],
       ],
     });
-    expect((await place(gameId, o.token, 2, 2).expect(400)).body.error).toBe(
+    assert.equal(
+      (await place(gameId, o.token, 2, 2).expect(400)).body.error,
       "The game is over",
     );
 
     await client.act(gameId, o.token, { type: "rematch" }).expect(201);
     const rematch = await client.stateFor<TicTacToeState>(gameId, x.token);
-    expect(rematch).toMatchObject({ outcome: null, starter: "O", turn: "O" });
-    expect(rematch.board.flat().every((cell) => cell === null)).toBe(true);
+    assert.partialDeepStrictEqual(rematch, {
+      outcome: null,
+      starter: "O",
+      turn: "O",
+    });
+    assert.equal(
+      rematch.board.flat().every((cell) => cell === null),
+      true,
+    );
   });
 
   it("detects a draw", async () => {
@@ -128,7 +141,7 @@ describe("Tic-tac-toe E2E", () => {
     for (const [seat, row, col] of moves)
       await place(gameId, seat.token, row, col).expect(201);
     const state = await client.stateFor<TicTacToeState>(gameId, x.token);
-    expect(state.outcome).toEqual({ winner: null, draw: true });
+    assert.deepEqual(state.outcome, { winner: null, draw: true });
   });
 
   it("sends both players every move over the socket", async () => {
@@ -145,13 +158,13 @@ describe("Tic-tac-toe E2E", () => {
         socket.once("state", resolve),
       );
 
-    expect((await next()).sequence).toBe(2);
+    assert.equal((await next()).sequence, 2);
     const update = next();
     await place(gameId, x.token, 1, 1).expect(201);
     const { sequence, state } = await update;
-    expect(sequence).toBe(3);
-    expect(state.board[1][1]).toBe("X");
-    expect(state.turn).toBe("O");
+    assert.equal(sequence, 3);
+    assert.equal(state.board[1][1], "X");
+    assert.equal(state.turn, "O");
   });
 
   it("ends the game when the player to move runs out of time", async () => {
@@ -167,6 +180,6 @@ describe("Tic-tac-toe E2E", () => {
     for (let i = 0; i < 100 && !(await outcome()); i++) {
       await new Promise((resolve) => setTimeout(resolve, 20));
     }
-    expect(await outcome()).toEqual({ winner: "O", timeout: true });
+    assert.deepEqual(await outcome(), { winner: "O", timeout: true });
   });
 });

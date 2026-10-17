@@ -4,7 +4,8 @@
  * server running.
  */
 
-import { afterAll, beforeAll, describe, expect, it } from '@jest/globals';
+import assert from 'node:assert/strict';
+import { describe, it, before, after } from 'node:test';
 import express from 'express';
 import { createServer, type Server } from 'http';
 import request from 'supertest';
@@ -23,7 +24,7 @@ describe('embedding', () => {
   let remote: RemoteState<CounterState>;
   let port: number;
 
-  beforeAll(async () => {
+  before(async () => {
     remote = await createRemoteState(counterGame(), {
       logger: silentLogger,
       socket: { path: '/counter/socket.io' },
@@ -34,7 +35,7 @@ describe('embedding', () => {
     await new Promise<void>(resolve => httpServer.listen(0, resolve));
     port = (httpServer.address() as { port: number }).port;
   });
-  afterAll(() => new Promise<void>(resolve => httpServer.close(() => resolve())));
+  after(() => new Promise<void>(resolve => httpServer.close(() => resolve())));
 
   const joinGame = async () => {
     const gameId = await remote.createGame(initialCounterState());
@@ -50,7 +51,7 @@ describe('embedding', () => {
       .get(`/counter/api/games/${gameId}/state`)
       .set('Authorization', `Bearer ${token}`)
       .expect(200);
-    expect(state.body.state).toEqual({ count: 0, mine: 0 });
+    assert.deepEqual(state.body.state, { count: 0, mine: 0 });
     await request(app).get('/counter/api/nothing').expect(404);
   });
 
@@ -63,16 +64,16 @@ describe('embedding', () => {
     );
     const event = await new Promise<StateEvent>(resolve => socket.once('state', resolve));
     socket.disconnect();
-    expect(event.sequence).toBe(1);
+    assert.equal(event.sequence, 1);
   });
 
   it('only attaches once', () => {
-    expect(() => remote.attach(httpServer)).toThrow('already attached');
+    assert.throws(() => remote.attach(httpServer), { message: 'The socket is already attached' });
   });
 
   it('closes without closing the host server', async () => {
     await remote.close();
-    expect(httpServer.listening).toBe(true);
+    assert.equal(httpServer.listening, true);
     await request(app).get('/').expect(200, 'host');
   });
 });

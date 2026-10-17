@@ -3,7 +3,8 @@
  * action checks, without a server.
  */
 
-import { describe, expect, it } from "@jest/globals";
+import assert from "node:assert/strict";
+import { describe, it } from "node:test";
 import { SYSTEM, transition } from "@malte.muth/remote-state";
 import {
   applyAction,
@@ -29,7 +30,7 @@ const seated = () => ({
 });
 
 describe("tic-tac-toe rules", () => {
-  it.each<[string, Position[]]>([
+  for (const [name, line] of [
     [
       "a row",
       [
@@ -62,59 +63,70 @@ describe("tic-tac-toe rules", () => {
         [2, 0],
       ],
     ],
-  ])("finds a win on %s", (_name, line) => {
-    expect(outcomeOf(boardWith(line))).toEqual({ winner: "O", line });
-  });
+  ] as [string, Position[]][])
+    it(`finds a win on ${name}`, () => {
+      assert.deepEqual(outcomeOf(boardWith(line)), { winner: "O", line });
+    });
 
   it("finds no outcome on an open board", () => {
-    expect(
+    assert.equal(
       outcomeOf(
         boardWith([
           [0, 0],
           [1, 1],
         ]),
       ),
-    ).toBeNull();
+      null,
+    );
   });
 
   it("doesn't modify the board it places on", () => {
     const board = emptyBoard();
     placeMark(board, 1, 1, "X");
-    expect(board[1][1]).toBeNull();
+    assert.equal(board[1][1], null);
   });
 
   it("rejects strangers and non-integer cells", () => {
-    expect(
+    assert.equal(
       checkAction(seated(), { type: "place", row: 0, col: 0 }, "stranger"),
-    ).toBe("Only seated players can play");
-    expect(
+      "Only seated players can play",
+    );
+    assert.equal(
       checkAction(seated(), { type: "place", row: 0.5, col: 0 }, "x"),
-    ).toBe("That's not a cell");
+      "That's not a cell",
+    );
   });
 
   it("alternates turns until the game is decided", () => {
     const state = applyAction(seated(), { type: "place", row: 0, col: 0 });
-    expect(state.turn).toBe("O");
-    expect(checkAction(state, { type: "rematch" }, "x")).toBe(
+    assert.equal(state.turn, "O");
+    assert.equal(
+      checkAction(state, { type: "rematch" }, "x"),
       "The game isn't over yet",
     );
   });
 
   it("only accepts a timeout from the system, for the current turn", () => {
     const state = applyAction(seated(), { type: "place", row: 0, col: 0 });
-    expect(checkAction(state, { type: "timeout", moves: 1 }, "x")).toBe(
+    assert.equal(
+      checkAction(state, { type: "timeout", moves: 1 }, "x"),
       "Only the system can end a turn",
     );
-    expect(checkAction(state, { type: "timeout", moves: 0 }, SYSTEM)).toBe(
+    assert.equal(
+      checkAction(state, { type: "timeout", moves: 0 }, SYSTEM),
       "That turn is over",
     );
-    expect(checkAction(state, { type: "timeout", moves: 1 }, SYSTEM)).toBe(
+    assert.equal(
+      checkAction(state, { type: "timeout", moves: 1 }, SYSTEM),
       true,
     );
-    expect(applyAction(state, { type: "timeout", moves: 1 }).outcome).toEqual({
-      winner: "X",
-      timeout: true,
-    });
+    assert.deepEqual(
+      applyAction(state, { type: "timeout", moves: 1 }).outcome,
+      {
+        winner: "X",
+        timeout: true,
+      },
+    );
   });
 
   it("restarts the turn timer on every move, and cancels it at the end", () => {
@@ -122,7 +134,8 @@ describe("tic-tac-toe rules", () => {
       { ...seated(), turnSeconds: 0.1 },
       { type: "place", row: 0, col: 0 },
     );
-    expect(withTurnTimer(moved)).toEqual(
+    assert.deepEqual(
+      withTurnTimer(moved),
       transition(moved, {
         schedule: [
           { name: "turn", in: 100, action: { type: "timeout", moves: 1 } },
@@ -130,8 +143,11 @@ describe("tic-tac-toe rules", () => {
       }),
     );
     const over = applyAction(moved, { type: "timeout", moves: 1 });
-    expect(withTurnTimer(over)).toEqual(transition(over, { cancel: ["turn"] }));
+    assert.deepEqual(
+      withTurnTimer(over),
+      transition(over, { cancel: ["turn"] }),
+    );
     const unlimited = seated();
-    expect(withTurnTimer(unlimited)).toBe(unlimited);
+    assert.equal(withTurnTimer(unlimited), unlimited);
   });
 });

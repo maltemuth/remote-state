@@ -4,7 +4,8 @@
  * parts of a view, and a refused connection.
  */
 
-import { afterAll, afterEach, beforeAll, describe, expect, it } from '@jest/globals';
+import assert from 'node:assert/strict';
+import { describe, it, before, after, afterEach } from 'node:test';
 import {
   ActionRejectedError,
   type ConnectionState,
@@ -20,11 +21,11 @@ describe('client', () => {
   let server: NotesServer;
   const clients: RemoteStateClient<unknown, unknown>[] = [];
 
-  beforeAll(async () => {
+  before(async () => {
     server = await startNotesServer();
   });
   afterEach(() => clients.splice(0).forEach(client => client.close()));
-  afterAll(() => server.close());
+  after(() => server.close());
 
   const joinAs = async (gameId: string, id: string, format?: Format) => {
     const client = await server.join(gameId, id, format);
@@ -36,27 +37,31 @@ describe('client', () => {
     const gameId = await server.newGame();
     const code = await server.admit(gameId, 'alice');
     const session = await redeemCode(code, { baseUrl: server.baseUrl });
-    expect(session).toEqual({ gameId, playerId: expect.any(String), token: expect.any(String) });
+    const { playerId, token, ...rest } = session;
+    assert.deepEqual(rest, { gameId });
+    assert.equal(typeof playerId, 'string');
+    assert.equal(typeof token, 'string');
     const again = redeemCode(code, { baseUrl: server.baseUrl });
-    await expect(again).rejects.toThrow(RequestError);
-    await expect(again).rejects.toMatchObject({ status: 401 });
+    await assert.rejects(again, RequestError);
+    await assert.rejects(again, { status: 401 });
   });
 
-  it.each(['immer', 'state'] as const)('keeps players in step with %s updates', async format => {
-    const gameId = await server.newGame();
-    const alice = await joinAs(gameId, 'alice', format);
-    const bob = await joinAs(gameId, 'bob', format);
-    await bob.waitFor(2);
+  for (const format of ['immer', 'state'] as const)
+    it(`keeps players in step with ${format} updates`, async () => {
+      const gameId = await server.newGame();
+      const alice = await joinAs(gameId, 'alice', format);
+      const bob = await joinAs(gameId, 'bob', format);
+      await bob.waitFor(2);
 
-    const { sequence } = await alice.send({ type: 'note', text: 'hello' });
-    await alice.send({ type: 'count' });
-    expect((await alice.waitFor(sequence + 1)).view).toEqual({
-      board: { count: 1 },
-      mine: ['hello'],
+      const { sequence } = await alice.send({ type: 'note', text: 'hello' });
+      await alice.send({ type: 'count' });
+      assert.deepEqual((await alice.waitFor(sequence + 1)).view, {
+        board: { count: 1 },
+        mine: ['hello'],
+      });
+      assert.deepEqual((await bob.waitFor(sequence + 1)).view, { board: { count: 1 }, mine: [] });
+      assert.deepEqual(alice.getConnection(), { status: 'connected' });
     });
-    expect((await bob.waitFor(sequence + 1)).view).toEqual({ board: { count: 1 }, mine: [] });
-    expect(alice.getConnection()).toEqual({ status: 'connected' });
-  });
 
   it('tells subscribers about every new view', async () => {
     const gameId = await server.newGame();
@@ -67,7 +72,7 @@ describe('client', () => {
     await alice.waitFor((await alice.send({ type: 'count' })).sequence);
     unsubscribe();
     await alice.waitFor((await alice.send({ type: 'count' })).sequence);
-    expect(seen).toEqual([2]);
+    assert.deepEqual(seen, [2]);
   });
 
   it('keeps unchanged parts of the view, and freezes views', async () => {
@@ -76,18 +81,18 @@ describe('client', () => {
     const before = (await alice.waitFor(1)).view;
     const after = (await alice.waitFor((await alice.send({ type: 'note', text: 'x' })).sequence))
       .view;
-    expect(after).not.toBe(before);
-    expect(after.board).toBe(before.board);
-    expect(after.mine).not.toBe(before.mine);
-    expect(Object.isFrozen(after.mine)).toBe(true);
+    assert.notEqual(after, before);
+    assert.equal(after.board, before.board);
+    assert.notEqual(after.mine, before.mine);
+    assert.equal(Object.isFrozen(after.mine), true);
   });
 
   it("throws the game's reason for a rejected action", async () => {
     const gameId = await server.newGame();
     const alice = await joinAs(gameId, 'alice');
     const sent = alice.send({ type: 'bad' });
-    await expect(sent).rejects.toThrow(ActionRejectedError);
-    await expect(sent).rejects.toThrow('Bad move');
+    await assert.rejects(sent, ActionRejectedError);
+    await assert.rejects(sent, { message: 'Bad move' });
   });
 
   it('reports a refused connection', async () => {
@@ -100,8 +105,10 @@ describe('client', () => {
     const refused = await new Promise<ConnectionState>(resolve =>
       client.onConnection(state => state.status === 'refused' && resolve(state))
     );
-    expect(refused).toEqual({ status: 'refused', error: 'Invalid token or game' });
-    expect(client.getSnapshot()).toBeNull();
-    await expect(client.waitFor(1)).rejects.toThrow('Connection refused: Invalid token or game');
+    assert.deepEqual(refused, { status: 'refused', error: 'Invalid token or game' });
+    assert.equal(client.getSnapshot(), null);
+    await assert.rejects(client.waitFor(1), {
+      message: 'Connection refused: Invalid token or game',
+    });
   });
 });

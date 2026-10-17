@@ -4,7 +4,8 @@
  * strictly increasing sequences (0044).
  */
 
-import { afterAll, beforeAll, describe, expect, it } from '@jest/globals';
+import assert from 'node:assert/strict';
+import { describe, it, before, after } from 'node:test';
 import fc from 'fast-check';
 import { ActionRejectedError, type Format, type RemoteStateClient } from '../../src/index.js';
 import { type NotesAction, type NotesView } from '../helpers/notesGame.js';
@@ -30,12 +31,12 @@ const scenarioArbitrary = fc
 describe('client convergence', () => {
   let server: NotesServer;
 
-  beforeAll(async () => {
+  before(async () => {
     server = await startNotesServer();
   });
-  afterAll(() => server.close());
+  after(() => server.close());
 
-  it("ends every client at the server's view", async () => {
+  it("ends every client at the server's view", { timeout: 600_000 }, async () => {
     await fc.assert(
       fc.asyncProperty(scenarioArbitrary, async ({ formats, steps }) => {
         const gameId = await server.newGame();
@@ -66,10 +67,13 @@ describe('client convergence', () => {
               headers: { Authorization: `Bearer ${client.session.token}` },
             });
             const current = (await response.json()) as { sequence: number; state: NotesView };
-            expect(current.sequence).toBe(latest);
-            expect(view).toEqual(current.state);
-            expect(seen[index]).toEqual([...seen[index]].sort((a, b) => a - b));
-            expect(new Set(seen[index]).size).toBe(seen[index].length);
+            assert.equal(current.sequence, latest);
+            assert.deepEqual(view, current.state);
+            assert.deepEqual(
+              seen[index],
+              [...seen[index]].sort((a, b) => a - b)
+            );
+            assert.equal(new Set(seen[index]).size, seen[index].length);
           }
         } finally {
           clients.forEach(client => client.close());
@@ -77,5 +81,5 @@ describe('client convergence', () => {
       }),
       { numRuns: RUNS }
     );
-  }, 600_000);
+  });
 });

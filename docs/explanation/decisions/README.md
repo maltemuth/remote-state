@@ -9,7 +9,7 @@ Records aren't edited after the fact, except to update their status. A decision 
 | [0001](0001-http-actions-socket-updates.md)                            | Actions over HTTP, updates over Socket.IO                                      | Accepted                                                              |
 | [0002](0002-node-24.md)                                                | Require Node.js 24                                                             | Accepted                                                              |
 | [0003](0003-no-known-vulnerabilities.md)                               | Ship with no known dependency vulnerabilities                                  | Accepted                                                              |
-| [0004](0004-esm-with-jest.md)                                          | ESM throughout, tested with Jest                                               | Accepted                                                              |
+| [0004](0004-esm-with-jest.md)                                          | ESM throughout, tested with Jest                                               | Accepted, superseded for tests by 0051                                |
 | [0005](0005-mikro-orm.md)                                              | MikroORM with standard decorators for the data layer                           | Accepted; migrations dropped by 0048                                  |
 | [0006](0006-single-process.md)                                         | Run as a single process for now                                                | Accepted                                                              |
 | [0007](0007-client-chosen-update-format.md)                            | Clients choose the format of state updates                                     | Accepted, refined by 0009 and 0014                                    |
@@ -56,6 +56,7 @@ Records aren't edited after the fact, except to update their status. A decision 
 | [0048](0048-no-database-upgrades-before-1-0.md)                        | No database upgrades before 1.0                                                | Accepted                                                              |
 | [0049](0049-health-check-under-the-api.md)                             | One operational endpoint: a health check under the API                         | Accepted                                                              |
 | [0050](0050-full-state-diffs-derived-not-stored.md)                    | Full-state diffs are derived, not stored                                       | Accepted                                                              |
+| [0051](0051-tests-on-nodes-test-runner.md)                             | Tests run on Node's test runner, through tsx                                   | Accepted                                                              |
 
 ## Writing a record
 

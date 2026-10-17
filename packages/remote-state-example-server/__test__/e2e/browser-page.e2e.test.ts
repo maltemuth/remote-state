@@ -3,7 +3,8 @@
  * host serves, and each path serves JavaScript from the installed packages.
  */
 
-import { afterAll, beforeAll, describe, expect, it } from "@jest/globals";
+import assert from "node:assert/strict";
+import { describe, it, before, after } from "node:test";
 import { silentLogger } from "@malte.muth/remote-state";
 import path from "path";
 import request from "supertest";
@@ -21,13 +22,13 @@ const publicDirectory = path.join(
 describe("Browser page", () => {
   let example: ExampleServer;
 
-  beforeAll(async () => {
+  before(async () => {
     example = await createExampleServer({
       logger: silentLogger,
       publicDirectory,
     });
   });
-  afterAll(() => example.close());
+  after(() => example.close());
 
   it("serves every module of the page's import map as JavaScript", async () => {
     const { text } = await request(example.app).get("/").expect(200);
@@ -35,14 +36,14 @@ describe("Browser page", () => {
       /<script type="importmap">([\s\S]*?)<\/script>/,
     );
     const imports: Record<string, string> = JSON.parse(importMap![1]).imports;
-    expect(Object.keys(imports).sort()).toEqual([
+    assert.deepEqual(Object.keys(imports).sort(), [
       "@malte.muth/remote-state-client",
       "immer",
       "socket.io-client",
     ]);
     for (const modulePath of Object.values(imports)) {
       const response = await request(example.app).get(modulePath).expect(200);
-      expect(response.headers["content-type"]).toMatch(/javascript/);
+      assert.match(response.headers["content-type"], /javascript/);
     }
   });
 
@@ -50,6 +51,6 @@ describe("Browser page", () => {
     const response = await request(example.app)
       .get("/modules/remote-state-client/viewStore.js")
       .expect(200);
-    expect(response.text).toContain("from 'immer'");
+    assert.ok(response.text.includes("from 'immer'"));
   });
 });

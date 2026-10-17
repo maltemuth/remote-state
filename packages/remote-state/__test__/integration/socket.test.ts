@@ -4,7 +4,8 @@
  * changes (0035).
  */
 
-import { afterAll, beforeAll, describe, expect, it } from '@jest/globals';
+import assert from 'node:assert/strict';
+import { describe, it, before, after } from 'node:test';
 import { applyPatches, enablePatches } from 'immer';
 import { type Socket } from 'socket.io-client';
 import { type PatchesEvent, type StateEvent } from '../../src/index.js';
@@ -25,10 +26,10 @@ describe('socket', () => {
   let server: CounterServer;
   const sockets: Socket[] = [];
 
-  beforeAll(async () => {
+  before(async () => {
     server = await startCounterServer();
   });
-  afterAll(async () => {
+  after(async () => {
     sockets.forEach(socket => socket.disconnect());
     await server.close();
   });
@@ -48,22 +49,22 @@ describe('socket', () => {
   it('refuses invalid tokens and unknown formats', async () => {
     const gameId = await newGame(server);
     const { token } = await join(server, gameId, 'alice');
-    expect(await connectError(open({ gameId, token: 'wrong' }))).toMatch(/Invalid token/);
-    expect(await connectError(open({ gameId, token }, 'json-patch'))).toMatch(/Unknown format/);
+    assert.match(await connectError(open({ gameId, token: 'wrong' })), /Invalid token/);
+    assert.match(await connectError(open({ gameId, token }, 'json-patch')), /Unknown format/);
   });
 
   it('sends the whole view on connect, then whole views', async () => {
     const gameId = await newGame(server);
     const { token } = await join(server, gameId, 'alice');
     const socket = open({ gameId, token });
-    expect(await next<StateEvent>(socket, 'state')).toEqual({
+    assert.deepEqual(await next<StateEvent>(socket, 'state'), {
       gameId,
       sequence: 1,
       state: { count: 0, mine: 0 },
     });
     const update = next<StateEvent>(socket, 'state');
     await sendAction(server, gameId, token, { type: 'increment' }).expect(201);
-    expect(await update).toEqual({ gameId, sequence: 2, state: { count: 1, mine: 1 } });
+    assert.deepEqual(await update, { gameId, sequence: 2, state: { count: 1, mine: 1 } });
   });
 
   it('sends patches in order, also across an audience change', async () => {
@@ -83,8 +84,11 @@ describe('socket', () => {
     await sendAction(server, gameId, alice.token, { type: 'spectate' }).expect(201);
     await waitUntil(() => received.length === 4, 'four updates');
 
-    expect(received.map(event => event.sequence)).toEqual([3, 4, 5, 6]);
+    assert.deepEqual(
+      received.map(event => event.sequence),
+      [3, 4, 5, 6]
+    );
     for (const event of received) view = applyPatches(view as object, event.patches);
-    expect(view).toEqual({ count: 3, mine: null });
+    assert.deepEqual(view, { count: 3, mine: null });
   });
 });

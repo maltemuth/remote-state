@@ -13,7 +13,7 @@
 
     "declaration": true,
     "skipLibCheck": true,
-    // Each file must compile on its own; ts-jest transpiles files in isolation
+    // Each file must compile on its own; tsx transpiles files in isolation in tests
     "isolatedModules": true,
 
     // TypeScript 6 enables strict by default; the library is not strict-clean yet

@@ -4,7 +4,8 @@
  * built (0035).
  */
 
-import { afterAll, beforeAll, describe, expect, it } from '@jest/globals';
+import assert from 'node:assert/strict';
+import { describe, it, before, after } from 'node:test';
 import { applyPatches, enablePatches } from 'immer';
 import { GameState } from '../../src/database/entities/index.js';
 import { tempDatabases, withOrm } from '../helpers/tempDatabase.js';
@@ -23,10 +24,10 @@ enablePatches();
 
 describe('updates', () => {
   let server: CounterServer;
-  afterAll(() => server.close());
+  after(() => server.close());
   const databaseFilename = tempDatabases('updates')();
 
-  beforeAll(async () => {
+  before(async () => {
     server = await startCounterServer(counterGame(), { database: databaseFilename });
   });
 
@@ -45,14 +46,14 @@ describe('updates', () => {
   it('joins the stored diffs into one patch', async () => {
     const { gameId, alice, aliceAtOne } = await playedGame();
     const response = await getUpdates(server, gameId, alice.token, 1).expect(200);
-    expect(response.body).toMatchObject({ gameId, since: 1, sequence: 5 });
-    expect(applyPatches(aliceAtOne, response.body.patches)).toEqual({ count: 3, mine: 2 });
+    assert.partialDeepStrictEqual(response.body, { gameId, since: 1, sequence: 5 });
+    assert.deepEqual(applyPatches(aliceAtOne, response.body.patches), { count: 3, mine: 2 });
   });
 
   it('answers an empty patch when nothing changed', async () => {
     const { gameId, alice } = await playedGame();
     const response = await getUpdates(server, gameId, alice.token, 5).expect(200);
-    expect(response.body.patches).toEqual([]);
+    assert.deepEqual(response.body.patches, []);
   });
 
   it('rejects malformed, future and pre-join sequences', async () => {
@@ -69,8 +70,8 @@ describe('updates', () => {
     await sendAction(server, gameId, alice.token, { type: 'increment' }).expect(400);
 
     const response = await getUpdates(server, gameId, alice.token, 5).expect(200);
-    expect(response.body.sequence).toBe(6);
-    expect(applyPatches(aliceAtFive, response.body.patches)).toEqual({ count: 3, mine: null });
+    assert.equal(response.body.sequence, 6);
+    assert.deepEqual(applyPatches(aliceAtFive, response.body.patches), { count: 3, mine: null });
   });
 
   it('redirects to the state when the view at `since` is gone', async () => {
@@ -81,7 +82,7 @@ describe('updates', () => {
     );
 
     const redirect = await getUpdates(server, gameId, alice.token, 3).expect(303);
-    expect(redirect.headers.location).toBe('state');
+    assert.equal(redirect.headers.location, 'state');
     // Without an audience change, stored diffs don't need the old state
     await getUpdates(server, gameId, bob.token, 3).expect(200);
   });
