@@ -1,6 +1,6 @@
 # 0044. The client hands out whole views and catches up by sequence
 
-Status: Accepted
+Status: Accepted, refined by [0055](0055-the-view-on-connect-replaces-the-clients.md): a whole view on connect replaces the client's
 Date: 2026-10-04
 
 ## Context

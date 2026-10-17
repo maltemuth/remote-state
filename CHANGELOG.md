@@ -8,6 +8,10 @@ All notable changes to this project are documented here. The format follows [Kee
 
 - Databases are opened in WAL mode with `synchronous = NORMAL`, so a commit no longer waits for the disk. A power loss or an operating system crash can lose the last actions; the database stays consistent, and a crash of the server process loses nothing. Under full load, a Windows desktop handled 133 actions per second instead of 49. Back up the `-wal` and `-shm` files along with the database, or use SQLite's backup (0054).
 
+### Fixed
+
+- Client: after a restart that took a game back to an earlier sequence, the client ignored the restored view and applied later patches to its old one. The whole view sent on a (re)connect, and one fetched while catching up, now replace the view whatever its sequence. `Update` has an optional `reset` for the view sent on connect (0055).
+
 ## 0.9.1 - 2026-10-17
 
 ### Added

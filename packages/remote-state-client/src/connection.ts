@@ -1,7 +1,8 @@
 /**
  * The Socket.IO connection to a game: authenticates with the session, passes the
  * game's `state` and `patches` events on as updates, and reports the connection's
- * state. Socket.IO reconnects by itself; every (re)connect starts with a whole view.
+ * state. Socket.IO reconnects by itself; every (re)connect starts with a whole view,
+ * marked as a reset, since a restarted server may have gone back to an earlier state.
  */
 
 import { io } from 'socket.io-client';
@@ -30,7 +31,12 @@ export const connect = <View>({
     query: { format },
   });
 
-  socket.on('connect', () => onState({ status: 'connected' }));
+  // The first view after each (re)connect replaces whatever the client holds
+  let connected = false;
+  socket.on('connect', () => {
+    connected = true;
+    onState({ status: 'connected' });
+  });
   socket.on('disconnect', reason => onState({ status: 'disconnected', reason }));
   socket.on('connect_error', error =>
     onState(
@@ -41,9 +47,10 @@ export const connect = <View>({
     )
   );
   // The socket is authenticated for this one game, so every event is about it
-  socket.on('state', (event: { sequence: number; state: View }) =>
-    onUpdate({ sequence: event.sequence, state: event.state })
-  );
+  socket.on('state', (event: { sequence: number; state: View }) => {
+    onUpdate({ sequence: event.sequence, state: event.state, reset: connected });
+    connected = false;
+  });
   socket.on('patches', (event: { sequence: number; patches: Patch[] }) =>
     onUpdate({ sequence: event.sequence, patches: event.patches })
   );

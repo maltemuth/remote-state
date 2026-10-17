@@ -40,7 +40,7 @@ A player may have several sockets open at once, for example in several tabs or w
 
 ## On connect
 
-Right after connecting, and after every reconnect, the server sends the player's current view as a [`state`](#state) event, in either format ([0031](../explanation/decisions/0031-socket-sends-state-on-connect.md)). Updates follow from the next sequence on, with none missed or repeated in between.
+Right after connecting, and after every reconnect, the server sends the player's current view as a [`state`](#state) event, in either format ([0031](../explanation/decisions/0031-socket-sends-state-on-connect.md)). Updates follow from the next sequence on, with none missed or repeated in between. This view replaces whatever the client held, even at a lower sequence: a restarted server may have gone back to an earlier state ([0055](../explanation/decisions/0055-the-view-on-connect-replaces-the-clients.md)).
 
 Updates are only sent while a socket is connected; they aren't replayed. A reconnecting client gets the current view again, so it doesn't need to catch up separately.
 

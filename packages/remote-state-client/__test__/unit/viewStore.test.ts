@@ -1,7 +1,8 @@
 /**
  * The view store's ordering rules (decision 0044): stale updates are ignored,
  * patches for the next sequence are applied, and gaps or patches that don't apply
- * are caught up through the server, with updates from meanwhile applied after.
+ * are caught up through the server, with updates from meanwhile applied after. A
+ * server that went back replaces the view, on a reconnect or when catching up.
  */
 
 import assert from 'node:assert/strict';
@@ -105,6 +106,44 @@ describe('view store, catching up and closing', () => {
     fail(new Error('offline'));
     await settle();
     assert.deepEqual(store.getSnapshot(), { sequence: 4, view: view('reconnected') });
+  });
+
+  it('takes the view sent on a reconnect, also an earlier one, and goes on from it', () => {
+    const { store, updates } = storeWith();
+    store.receive({ sequence: 1, state: view('a') });
+    store.receive({ sequence: 2, patches: add(1, 'lost') });
+    store.receive({ sequence: 3, patches: add(2, 'lost too') });
+    // The restarted server went back to 1, and the game went on differently
+    store.receive({ sequence: 1, state: view('a'), reset: true });
+    store.receive({ sequence: 2, patches: add(1, 'b') });
+    assert.deepEqual(store.getSnapshot(), { sequence: 2, view: view('a', 'b') });
+    assert.equal(updates.mock.callCount(), 0);
+  });
+
+  it('takes an earlier whole view when catching up, since the server went back', async () => {
+    const { store } = storeWith({
+      // Asked for updates since 3, which the server doesn't have; it answers with its view
+      updates: async () => ({ sequence: 2, state: view('a', 'b') }),
+    });
+    store.receive({ sequence: 1, state: view('a') });
+    store.receive({ sequence: 2, patches: add(1, 'lost') });
+    store.receive({ sequence: 3, patches: add(2, 'lost too') });
+    store.receive({ sequence: 5, patches: add(3, 'gap') });
+    await settle();
+    assert.deepEqual(store.getSnapshot(), { sequence: 2, view: view('a', 'b') });
+  });
+
+  it('drops what arrived before a reconnect while catching up', async () => {
+    const { store } = storeWith({
+      updates: async () => ({ sequence: 3, patches: [...add(1, 'old'), ...add(2, 'history')] }),
+    });
+    store.receive({ sequence: 1, state: view('a') });
+    store.receive({ sequence: 3, patches: add(2, 'history') });
+    store.receive({ sequence: 4, patches: add(3, 'before the restart') });
+    store.receive({ sequence: 2, state: view('a', 'new'), reset: true });
+    store.receive({ sequence: 3, patches: add(2, 'after') });
+    await settle();
+    assert.deepEqual(store.getSnapshot(), { sequence: 3, view: view('a', 'new', 'after') });
   });
 
   it('rejects waiters and stops telling subscribers once closed', async () => {

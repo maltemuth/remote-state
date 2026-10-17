@@ -36,9 +36,7 @@ Admitting a player, and issuing tokens and admission codes, are written before t
 
 Sequences alone can't tell a client that a game went back. After a restart at sequence 40, a client holding 45 ignores the whole view at 40, since it's older than its own, and the next actions reuse 41 to 45, so a patch at 46 would be applied to the wrong view.
 
-So every state a client gets carries a **generation** along with the sequence: a value that changes whenever a game is restored from the database. A client that sees another generation drops its view and takes the whole view it's given. `GET …/updates` answers with the whole view when `since` belongs to another generation.
-
-This is needed already: with 0054, a power loss can take a game back a few actions today.
+A game only goes back when the server restarts, which drops every socket, so clients reconcile when they reconnect: the whole view sent on connect replaces theirs, whatever its sequence ([0055](../decisions/0055-the-view-on-connect-replaces-the-clients.md)). That's built, since with 0054 a power loss can take a game back a few actions already. Clients that only poll over HTTP aren't covered; a generation in every update would cover them.
 
 ## Open: when transitions are written, and what a restart goes back to
 
@@ -67,7 +65,7 @@ Every game stays in memory once loaded. A bound, by count or size, and dropping 
 ## Consequences
 
 - An action no longer waits for the database. What it costs is the game's rules, filtering views and diffing.
-- A crash loses the transitions not yet written. Players may have seen them; the generation takes their clients back to the restored state.
+- A crash loses the transitions not yet written. Players may have seen them; their clients go back to the restored state when they reconnect.
 - The host's `act` and timers behave as today, against the state in memory.
 - Several options of [Throughput and persistence](throughput-and-persistence.md) are covered: B (games in memory) and D (group commit), and E's separation of executing from writing, without changing the API.
 
@@ -75,5 +73,5 @@ Every game stays in memory once loaded. A bound, by count or size, and dropping 
 
 - Which of A to D, or which combination, and whether the game or the host chooses.
 - With C, what happens to transitions after the last restore point.
-- Whether a generation belongs to a game, changing when it's restored, or to a server start.
+- Whether clients that only poll over HTTP need a generation.
 - How long recent diffs stay in memory for `GET …/updates`, and when catching up reads the database instead.

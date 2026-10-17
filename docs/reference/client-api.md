@@ -84,7 +84,7 @@ interface Snapshot<View> {
 
 - **Views are frozen.** Copy a view before changing it.
 - **Unchanged parts keep their identity** from one snapshot to the next, so stores and components that compare by identity see only what changed ([0044](../explanation/decisions/0044-client-hands-out-whole-views.md)).
-- **Sequences only increase.** Updates at or before the current sequence are ignored.
+- **Sequences only increase, until the server goes back.** Updates at or before the current sequence are ignored, except the whole view sent on every (re)connect, and a whole view fetched while catching up: those replace the view even at a lower sequence, since a restarted server may have gone back to an earlier state ([0055](../explanation/decisions/0055-the-view-on-connect-replaces-the-clients.md)).
 - **After a gap,** or patches that don't apply, the client catches up with [`GET …/updates`](http-api.md#get-apigamesgameidupdates), or with the whole state when the server can't build a patch. Updates that arrive meanwhile are applied afterwards. If catching up fails, the error goes to `onError`. Whole views that arrived meanwhile still apply, and the next update tries again.
 
 ### send

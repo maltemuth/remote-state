@@ -17,9 +17,13 @@ export interface Snapshot<View> {
 /** How the socket sends updates: whole views, or Immer patches */
 export type Format = 'state' | 'immer';
 
-/** An update from the server: a whole view, or patches from the view at `sequence - 1` */
+/**
+ * An update from the server: a whole view, or patches from the view at `sequence - 1`.
+ * `reset` marks the whole view sent on every (re)connect, which replaces the view held
+ * whatever its sequence: a restarted server may have gone back to an earlier one.
+ */
 export type Update<View> =
-  { sequence: number; state: View } | { sequence: number; patches: Patch[] };
+  { sequence: number; state: View; reset?: boolean } | { sequence: number; patches: Patch[] };
 
 export type ConnectionState =
   /** Connecting for the first time, or reconnecting */

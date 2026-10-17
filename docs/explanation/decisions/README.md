@@ -49,7 +49,7 @@ Records aren't edited after the fact, except to update their status. A decision 
 | [0041](0041-named-timers.md)                                           | Timers are named, stored, and restart with the server                          | Accepted in part; restarts reopened by 0042                           |
 | [0042](0042-timer-restarts-open.md)                                    | What happens to timers on a restart is still open                              | Accepted, refined by 0052                                             |
 | [0043](0043-client-core-without-state-library.md)                      | The client package starts as a core without a state library                    | Accepted                                                              |
-| [0044](0044-client-hands-out-whole-views.md)                           | The client hands out whole views and catches up by sequence                    | Accepted                                                              |
+| [0044](0044-client-hands-out-whole-views.md)                           | The client hands out whole views and catches up by sequence                    | Accepted, refined by 0055                                             |
 | [0045](0045-client-generic-over-game-types.md)                         | The client is generic over the game's types                                    | Accepted                                                              |
 | [0046](0046-reserved-keys-documented.md)                               | Reserved keys in states are documented, not handled                            | Superseded by 0047                                                    |
 | [0047](0047-reserved-keys-dropped-with-warning.md)                     | Reserved keys are dropped from states, with a warning                          | Accepted                                                              |
@@ -60,6 +60,7 @@ Records aren't edited after the fact, except to update their status. A decision 
 | [0052](0052-games-pause-on-restart.md)                                 | On a restart, every game is offered to the plugin, which pauses itself         | Accepted, refined by 0053                                             |
 | [0053](0053-restarts-are-game-logic.md)                                | What a game does on a server restart is its own logic                          | Accepted                                                              |
 | [0054](0054-wal-without-syncing-every-commit.md)                       | Commits go to a write-ahead log, not synced one by one                         | Accepted                                                              |
+| [0055](0055-the-view-on-connect-replaces-the-clients.md)               | The view sent on connect replaces the client's, whatever its sequence          | Accepted                                                              |
 
 ## Writing a record
 
