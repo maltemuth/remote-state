@@ -8,6 +8,7 @@ import express, { type Express } from "express";
 import { createServer, type Server } from "http";
 import {
   consoleLogger,
+  type DiffName,
   type Logger,
   type RemoteState,
 } from "@malte.muth/remote-state";
@@ -31,6 +32,8 @@ export interface ExampleServerOptions {
   logger?: Logger;
   /** Serve static files from this directory, for example the browser client */
   publicDirectory?: string;
+  /** How patches are computed; the library's default if unset */
+  diff?: DiffName;
 }
 
 export interface ExampleServer {
@@ -46,6 +49,7 @@ export interface ExampleServer {
 export const createExampleServer = async ({
   databaseDirectory,
   logger = consoleLogger(),
+  diff,
   publicDirectory,
 }: ExampleServerOptions = {}): Promise<ExampleServer> => {
   const app = express();
@@ -62,14 +66,14 @@ export const createExampleServer = async ({
       newGame: () => newTicTacToeGame({ turnSeconds: TURN_SECONDS }),
       resume: { type: "resume" },
     },
-    { database: database("tic-tac-toe"), logger },
+    { database: database("tic-tac-toe"), logger, diff },
   );
   const battleship = await mountGame(
     app,
     server,
     "/battleship",
     { plugin: battleshipPlugin, newGame: newBattleshipGame },
-    { database: database("battleship"), logger },
+    { database: database("battleship"), logger, diff },
   );
   if (publicDirectory) {
     app.use(express.static(publicDirectory));

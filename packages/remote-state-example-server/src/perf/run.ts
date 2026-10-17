@@ -4,6 +4,7 @@
  * other player receives each update.
  *
  *   npm run perf -- --games 100 --pause 0 --format state [--runs 3]
+ *                   [--diff positional|rfc6902]
  *                   [--profile dir] [--url http://…] [--max-p95 50]
  *
  * Without `--url`, each run starts the example server on a free port with databases
@@ -13,7 +14,7 @@
  */
 
 import { parseArgs } from "util";
-import type { Format } from "@malte.muth/remote-state";
+import type { DiffName, Format } from "@malte.muth/remote-state";
 import {
   describeRun,
   formatResult,
@@ -26,6 +27,7 @@ const { values } = parseArgs({
     games: { type: "string", default: "100" },
     pause: { type: "string", default: "0" },
     format: { type: "string", default: "state" },
+    diff: { type: "string", default: "positional" },
     runs: { type: "string", default: "1" },
     profile: { type: "string" },
     url: { type: "string" },
@@ -41,6 +43,7 @@ const options: RunOptions = {
   games: Number(values.games),
   pause: Number(values.pause),
   format: values.format as Format,
+  diff: values.diff as DiffName,
   url: values.url,
   port: Number(values.port),
   profileDirectory: values.profile,

@@ -36,6 +36,7 @@ const waitUntilUp = async (url: string, attempts = 100) => {
 
 export const startServer = async (
   port: number,
+  diff: string,
   profileDirectory?: string,
 ): Promise<RunningServer> => {
   const directory = mkdtempSync(path.join(tmpdir(), "remote-state-perf-"));
@@ -44,7 +45,7 @@ export const startServer = async (
     : [];
   const child = spawn(process.execPath, [...profiling, serverScript], {
     cwd: directory,
-    env: { ...process.env, PORT: String(port) },
+    env: { ...process.env, PORT: String(port), DIFF: diff },
     stdio: ["ignore", "ignore", "ignore", "ipc"],
   });
   const url = `http://localhost:${port}`;

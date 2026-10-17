@@ -20,6 +20,7 @@ import { closeSocketServer, createSocketServer, type SocketServer } from '../soc
 import { act, type ActResult } from '../engine/act.js';
 import { SYSTEM } from '../plugin/system.js';
 import { type Admission, admit, createGame } from './host.js';
+import { diffs } from '../patches/diff.js';
 import { defaultCors, type RemoteStateOptions } from './options.js';
 
 export interface RemoteState<StateType> {
@@ -43,6 +44,10 @@ export const createRemoteState = async <StateType, ActionType, ViewType>(
 ): Promise<RemoteState<StateType>> => {
   const logger = options.logger ?? consoleLogger();
   const cors = options.cors ?? defaultCors;
+  const diffName = options.diff ?? 'positional';
+  if (!Object.hasOwn(diffs, diffName)) {
+    throw new Error(`Unknown diff ${diffName}; use one of ${Object.keys(diffs).join(', ')}`);
+  }
   const orm = await initializeDatabase(options.database ?? ':memory:', logger);
 
   const context: EngineContext = {
@@ -52,6 +57,7 @@ export const createRemoteState = async <StateType, ActionType, ViewType>(
     withGameLock: createGameLock(),
     publisher: { publish: async () => undefined },
     scheduler: createScheduler(timer => runDueTimer(context, timer)),
+    diff: diffs[diffName],
   };
   // Before anything is served, so no action can come in between (0052)
   await restartGames(context);
@@ -61,7 +67,7 @@ export const createRemoteState = async <StateType, ActionType, ViewType>(
     if (options.socket === false) throw new Error('The socket is disabled');
     if (io) throw new Error('The socket is already attached');
     io = createSocketServer(httpServer, context, { cors, path: options.socket?.path });
-    context.publisher = createPublisher(io, plugin, logger);
+    context.publisher = createPublisher(io, plugin, context.diff, logger);
   };
 
   return {

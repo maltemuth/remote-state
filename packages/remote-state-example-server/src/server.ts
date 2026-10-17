@@ -4,7 +4,7 @@
  * decides when the process exits.
  */
 
-import { consoleLogger } from "@malte.muth/remote-state";
+import { consoleLogger, type DiffName } from "@malte.muth/remote-state";
 import path from "path";
 import process from "process";
 import { fileURLToPath } from "url";
@@ -17,6 +17,7 @@ const publicDirectory = path.join(
 const logger = consoleLogger({ scope: "example" });
 
 const example = await createExampleServer({
+  diff: process.env.DIFF as DiffName | undefined,
   databaseDirectory: process.cwd(),
   logger,
   publicDirectory,

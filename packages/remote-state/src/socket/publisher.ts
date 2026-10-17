@@ -7,7 +7,7 @@
 
 import { type RemoteSocket, type Server } from 'socket.io';
 import { type Publisher, type TransitionOutcome } from '../engine/context.js';
-import { diff, type Patch } from '../patches/diff.js';
+import { type Diff, type Patch } from '../patches/diff.js';
 import { type AnyGamePlugin } from '../plugin/types.js';
 import { viewFor } from '../plugin/views.js';
 import { type Logger } from '../logging/logger.js';
@@ -25,7 +25,7 @@ const memoized = <T>(compute: (key: string) => Promise<T>) => {
 };
 
 /** Views and patches of one transition, per audience, computed when first needed */
-const viewsOf = (plugin: AnyGamePlugin, outcome: TransitionOutcome) => {
+const viewsOf = (plugin: AnyGamePlugin, diff: Diff, outcome: TransitionOutcome) => {
   const viewBefore = memoized(audience => viewFor(plugin, outcome.previousState, audience));
   const viewAfter = memoized(audience => viewFor(plugin, outcome.state, audience));
   const patches = memoized<Patch[]>(async key => {
@@ -42,6 +42,7 @@ const viewsOf = (plugin: AnyGamePlugin, outcome: TransitionOutcome) => {
 export const createPublisher = (
   io: Server<never, ServerToClientEvents>,
   plugin: AnyGamePlugin,
+  diff: Diff,
   { error }: Logger
 ): Publisher => {
   const send = async (
@@ -64,7 +65,7 @@ export const createPublisher = (
   return {
     publish: async outcome => {
       const sockets = (await io.in(outcome.gameId).fetchSockets()) as GameSocket[];
-      const views = viewsOf(plugin, outcome);
+      const views = viewsOf(plugin, diff, outcome);
       await Promise.all(
         sockets.map(socket =>
           send(socket, outcome, views).catch(err =>

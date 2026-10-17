@@ -3,7 +3,7 @@
  * run unless a URL is given, and reports what was measured.
  */
 
-import type { Format } from "@malte.muth/remote-state";
+import type { DiffName, Format } from "@malte.muth/remote-state";
 import { ACTIONS_PER_GAME, playGame, type Samples } from "./battleshipGame.js";
 import { startServer } from "./startServer.js";
 import { formatSummary, summarize, type Summary } from "./stats.js";
@@ -12,6 +12,8 @@ export interface RunOptions {
   games: number;
   pause: number;
   format: Format;
+  /** How the started server computes patches */
+  diff: DiffName;
   /** A running server to test; without it, one is started for the run */
   url?: string;
   port: number;
@@ -30,7 +32,7 @@ export interface RunResult {
 export const runOnce = async (options: RunOptions): Promise<RunResult> => {
   const server = options.url
     ? null
-    : await startServer(options.port, options.profileDirectory);
+    : await startServer(options.port, options.diff, options.profileDirectory);
   const base = options.url ?? server!.url;
   const { games, format, pause } = options;
 
@@ -54,8 +56,8 @@ export const runOnce = async (options: RunOptions): Promise<RunResult> => {
   };
 };
 
-export const describeRun = ({ games, pause, format }: RunOptions) =>
-  `${games} battleship games at once, ${ACTIONS_PER_GAME} actions each, pause ${pause} ms, format ${format}`;
+export const describeRun = ({ games, pause, format, diff }: RunOptions) =>
+  `${games} battleship games at once, ${ACTIONS_PER_GAME} actions each, pause ${pause} ms, format ${format}, diff ${diff}`;
 
 export const formatResult = (result: RunResult) =>
   [

@@ -1,6 +1,6 @@
 # 0011. Patches are diffs of player views; only full states are stored
 
-Status: Accepted; storage extended by [0012](0012-store-player-diffs.md), which also stores each player's diffs; views are per audience by [0024](0024-views-per-audience.md); computed by the library's own diff, comparing arrays by position, per [0057](0057-own-diff-arrays-by-position.md)
+Status: Accepted; storage extended by [0012](0012-store-player-diffs.md), which also stores each player's diffs; views are per audience by [0024](0024-views-per-audience.md); computed by default by the library's own diff, comparing arrays by position, per [0057](0057-own-diff-arrays-by-position.md), with `rfc6902` kept as the reference and an option, per [0058](0058-rfc6902-kept-as-reference-and-option.md)
 Date: 2026-09-29
 
 ## Context

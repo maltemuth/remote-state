@@ -1,7 +1,7 @@
 /**
  * The standalone server's deployment options: the reported port, CORS, a
- * disabled socket, a logger that receives the library's and MikroORM's output,
- * and WebSocket upgrades that nothing handles.
+ * disabled socket, the diff, a logger that receives the library's and MikroORM's
+ * output, and WebSocket upgrades that nothing handles.
  */
 
 import assert from 'node:assert/strict';
@@ -48,6 +48,13 @@ describe('standalone server', () => {
     } finally {
       await server.close();
     }
+  });
+
+  it("refuses a diff it doesn't know", async () => {
+    await assert.rejects(
+      startCounterServer(counterGame(), { diff: 'microdiff' as 'rfc6902' }),
+      /Unknown diff microdiff; use one of positional, rfc6902/
+    );
   });
 
   it('logs through the given logger, including the database setup', async () => {

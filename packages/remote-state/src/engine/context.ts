@@ -5,6 +5,7 @@
 
 import { type Orm } from '../database/orm.js';
 import { type Logger } from '../logging/logger.js';
+import { type Diff } from '../patches/diff.js';
 import { type AnyGamePlugin } from '../plugin/types.js';
 import { type TimerRequest } from '../plugin/transition.js';
 import { type GameLock } from './gameLock.js';
@@ -37,4 +38,6 @@ export interface EngineContext {
   logger: Logger;
   publisher: Publisher;
   scheduler: Scheduler;
+  /** Computes patches between two views */
+  diff: Diff;
 }

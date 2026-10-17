@@ -1,6 +1,6 @@
 # 0057. Patches come from a diff of our own, comparing arrays by position
 
-Status: Accepted
+Status: Accepted, refined by [0058](0058-rfc6902-kept-as-reference-and-option.md): `rfc6902` stays, as the reference and as an option
 Date: 2026-10-17
 
 ## Context

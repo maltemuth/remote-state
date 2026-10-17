@@ -28,7 +28,7 @@ export { SYSTEM } from './plugin/system.js';
 export { type ActResult } from './engine/act.js';
 export { GameRefusal } from './plugin/refusal.js';
 export { EVERYONE } from './plugin/views.js';
-export { type Patch } from './patches/diff.js';
+export { type DiffName, type Patch } from './patches/diff.js';
 export { type Format, type PatchesEvent, type StateEvent } from './socket/events.js';
 export {
   consoleLogger,

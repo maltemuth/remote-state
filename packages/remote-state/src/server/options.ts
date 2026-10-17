@@ -5,6 +5,7 @@
 
 import { type CorsOptions } from 'cors';
 import { type Logger } from '../logging/logger.js';
+import { type DiffName } from '../patches/diff.js';
 
 export interface RemoteStateOptions {
   /** SQLite file to keep games in; `:memory:` (the default) keeps them only while running */
@@ -15,6 +16,11 @@ export interface RemoteStateOptions {
   cors?: CorsOptions;
   /** Socket.IO settings, or `false` for no socket */
   socket?: false | { path?: string };
+  /**
+   * How patches between views are computed: `positional`, the library's own diff
+   * (the default), or `rfc6902`, the established library it's tested against (0058)
+   */
+  diff?: DiffName;
 }
 
 export interface RemoteStateServerOptions extends RemoteStateOptions {

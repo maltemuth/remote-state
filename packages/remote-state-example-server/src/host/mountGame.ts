@@ -8,6 +8,7 @@ import type { Express } from "express";
 import type { Server } from "http";
 import {
   createRemoteState,
+  type DiffName,
   type GamePlugin,
   type Logger,
   type RemoteState,
@@ -18,6 +19,8 @@ export interface MountOptions {
   /** SQLite file for this game, or `:memory:` */
   database: string;
   logger: Logger;
+  /** How patches are computed; the library's default if unset */
+  diff?: DiffName;
 }
 
 export const mountGame = async <StateType, ActionType, ViewType>(
@@ -30,11 +33,12 @@ export const mountGame = async <StateType, ActionType, ViewType>(
     /** The system action that resumes a game a restart paused */
     resume?: ActionType;
   },
-  { database, logger }: MountOptions,
+  { database, logger, diff }: MountOptions,
 ): Promise<RemoteState<StateType>> => {
   const remote = await createRemoteState(game.plugin, {
     database,
     logger,
+    diff,
     socket: { path: `${prefix}/socket.io` },
   });
   app.use(prefix, remote.router);

@@ -5,7 +5,7 @@
  */
 
 import { AudienceMembership } from '../database/entities/index.js';
-import { diff, type Patch } from '../patches/diff.js';
+import { type Patch } from '../patches/diff.js';
 import { effectiveAudience, viewFor } from '../plugin/views.js';
 import { type EngineContext } from './context.js';
 import { latestState, stateAt } from './states.js';
@@ -24,7 +24,7 @@ export const catchUp = (
   since: number
 ): Promise<CatchUpResult> =>
   context.withGameLock(gameId, async () => {
-    const { orm, plugin } = context;
+    const { orm, plugin, diff } = context;
     const em = orm.em.fork();
     const current = await latestState(em, gameId);
     const memberships = await em.find(
