@@ -10,6 +10,7 @@ import { consoleLogger } from '../logging/logger.js';
 import { type GamePlugin } from '../plugin/types.js';
 import { createRemoteState, type RemoteState } from './createRemoteState.js';
 import { type RemoteStateServerOptions } from './options.js';
+import { refuseUnhandledUpgrades } from './refuseUpgrades.js';
 
 export interface RemoteStateServer<StateType> extends Omit<RemoteState<StateType>, 'attach'> {
   app: Express;
@@ -32,6 +33,10 @@ export const createRemoteStateServer = async <StateType, ActionType, ViewType>(
   app.use(remote.router);
   const server = createServer(app);
   if (options.socket !== false) remote.attach(server);
+  refuseUnhandledUpgrades(
+    server,
+    options.socket === false ? null : (options.socket?.path ?? '/socket.io')
+  );
 
   const listeningPort = () => {
     const address = server.address();

@@ -10,6 +10,7 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ### Fixed
 
+- The standalone server left WebSocket upgrade requests for paths nothing handles open until the client gave up. It answers them with 404 now, unless the host has added an `upgrade` listener of its own. Embedded instances still leave them alone (0038).
 - Load test: `--profile` wrote no profile on Windows, where the signal that stopped the server ended it at once. The server is now asked to stop over IPC.
 
 ## 0.9.0 - 2026-10-17

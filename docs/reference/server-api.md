@@ -160,7 +160,7 @@ The router's JSON body parser, CORS and error handler apply only to its `/api` r
 
 Under a prefix, every path in the [HTTP API](http-api.md) gets that prefix, for example `/tic-tac-toe/api/tokens`. The socket path doesn't follow the prefix; set it with the `socket` option.
 
-The socket leaves upgrade requests for other paths alone, so several instances, or the host's own WebSockets, can share one HTTP server ([0038](../explanation/decisions/0038-several-games-by-mounting-several-instances.md)).
+The socket leaves upgrade requests for other paths alone, so several instances, or the host's own WebSockets, can share one HTTP server ([0038](../explanation/decisions/0038-several-games-by-mounting-several-instances.md)). The standalone server answers upgrade requests that nothing handles with 404; once the host adds an `upgrade` listener to `server`, it leaves them to the host.
 
 ## Options
 
