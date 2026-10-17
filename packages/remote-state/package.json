@@ -4,6 +4,15 @@
   "description": "TypeScript-based multiplayer game infrastructure library",
   "license": "MIT",
   "author": "Malte Muth",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/maltemuth/remote-state.git",
+    "directory": "packages/remote-state"
+  },
+  "homepage": "https://github.com/maltemuth/remote-state/tree/master/packages/remote-state#readme",
+  "bugs": {
+    "url": "https://github.com/maltemuth/remote-state/issues"
+  },
   "keywords": [
     "multiplayer",
     "game",

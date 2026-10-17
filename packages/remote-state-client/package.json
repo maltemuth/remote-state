@@ -4,6 +4,15 @@
   "description": "Client for Remote State games: keeps a player's view in step with the server and sends actions",
   "license": "MIT",
   "author": "Malte Muth",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/maltemuth/remote-state.git",
+    "directory": "packages/remote-state-client"
+  },
+  "homepage": "https://github.com/maltemuth/remote-state/tree/master/packages/remote-state-client#readme",
+  "bugs": {
+    "url": "https://github.com/maltemuth/remote-state/issues"
+  },
   "keywords": [
     "multiplayer",
     "game",

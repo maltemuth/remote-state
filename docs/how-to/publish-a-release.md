@@ -2,7 +2,7 @@
 
 This guide is for maintainers releasing `@malte.muth/remote-state` and `@malte.muth/remote-state-client` to npm, with the same version. The example server and the repository root aren't published.
 
-Neither package has been published yet. Before the first release, the remaining items under "Before the first release" in [BACKLOG.md](../../BACKLOG.md) must be done.
+Neither package has been published yet.
 
 ## 1. Start from a clean state
 

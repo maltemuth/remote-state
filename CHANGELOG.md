@@ -4,6 +4,14 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ## Unreleased
 
+### Added
+
+- `repository`, `homepage` and `bugs` in the library's and the client's `package.json`, pointing to GitHub.
+
+### Fixed
+
+- Load test: `--profile` wrote no profile on Windows, where the signal that stopped the server ended it at once. The server is now asked to stop over IPC.
+
 ## 0.9.0 - 2026-10-17
 
 Databases from 0.8.0 have to be deleted: the schema's version is now 2.
