@@ -28,6 +28,11 @@ const stop = async () => {
 };
 process.on("SIGINT", stop);
 process.on("SIGTERM", stop);
+// From a parent process, such as the load test: on Windows, SIGTERM ends the
+// process at once, before Node writes a CPU profile
+process.on("message", (message) => {
+  if (message === "stop") void stop();
+});
 
 const port = await example.listen(Number(process.env.PORT ?? 3000));
 logger.info(`Visit http://localhost:${port} to play tic-tac-toe`);

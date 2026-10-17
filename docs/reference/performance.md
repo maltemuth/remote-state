@@ -40,7 +40,7 @@ Run as `npm run perf -- <command>` from the repository root. A fourth `--pause 0
 
 With the defaults, every commit waits for the disk, and 47 actions/s is about 21 ms per action. WAL was one of the persistence experiments on 0.6.0, below.
 
-**Profiling doesn't work on Windows.** The load test stops the server it started with `SIGTERM`, which on Windows ends the process at once, before Node writes the profile that `--profile` asks for.
+**Profiling doesn't work on Windows.** The load test stops the server it started with `SIGTERM`, which on Windows ends the process at once, before Node writes the profile that `--profile` asks for. Fixed after 0.9.0: the load test asks the server to stop over IPC, and the server exits by itself and writes the profile.
 
 ## 2026-10-05, classic battleship, after 0.8.0
 

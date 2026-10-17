@@ -1,7 +1,9 @@
 /**
  * Starts the example server in its own process for a performance run, with its
  * databases in a fresh temporary directory, and waits until it answers. Optionally
- * the process writes a CPU profile when it stops.
+ * the process writes a CPU profile when it stops. It's asked to stop over IPC
+ * rather than with a signal, so that it exits by itself, and writes the profile,
+ * on Windows too.
  */
 
 import { spawn } from "child_process";
@@ -43,14 +45,14 @@ export const startServer = async (
   const child = spawn(process.execPath, [...profiling, serverScript], {
     cwd: directory,
     env: { ...process.env, PORT: String(port) },
-    stdio: "ignore",
+    stdio: ["ignore", "ignore", "ignore", "ipc"],
   });
   const url = `http://localhost:${port}`;
   await waitUntilUp(url);
 
   const stop = async () => {
     const exited = new Promise((resolve) => child.once("exit", resolve));
-    child.kill("SIGTERM");
+    child.send("stop");
     await exited;
     rmSync(directory, { recursive: true, force: true });
   };
