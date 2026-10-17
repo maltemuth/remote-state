@@ -10,13 +10,13 @@ import { counterGame } from '../helpers/counterGame.js';
 import { type CounterServer, join, newGame, startCounterServer } from '../helpers/testServer.js';
 
 describe('admission codes', () => {
-  const database = tempDatabases('codes')();
   let server: CounterServer;
+  afterAll(() => server.close());
+  const database = tempDatabases('codes')();
 
   beforeAll(async () => {
     server = await startCounterServer(counterGame(), { database });
   });
-  afterAll(() => server.close());
 
   /** The identities of the codes still stored */
   const storedCodes = () =>

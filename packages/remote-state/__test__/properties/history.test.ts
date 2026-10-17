@@ -22,17 +22,17 @@ import {
 enablePatches();
 
 describe('history', () => {
-  const database = tempDatabases('history')();
   let server: ModelServer;
   let orm: MikroORM;
+  afterAll(async () => {
+    await orm.close();
+    await server.close();
+  });
+  const database = tempDatabases('history')();
 
   beforeAll(async () => {
     server = await startModelServer({ database });
     orm = await MikroORM.init({ dbName: database, entities });
-  });
-  afterAll(async () => {
-    await orm.close();
-    await server.close();
   });
 
   it(

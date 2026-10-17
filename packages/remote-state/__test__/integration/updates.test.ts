@@ -22,13 +22,13 @@ import {
 enablePatches();
 
 describe('updates', () => {
-  const databaseFilename = tempDatabases('updates')();
   let server: CounterServer;
+  afterAll(() => server.close());
+  const databaseFilename = tempDatabases('updates')();
 
   beforeAll(async () => {
     server = await startCounterServer(counterGame(), { database: databaseFilename });
   });
-  afterAll(() => server.close());
 
   /** alice joins (1), bob joins (2), then alice, bob, alice increment (3–5) */
   const playedGame = async () => {

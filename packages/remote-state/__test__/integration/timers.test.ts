@@ -14,16 +14,16 @@ import { type TimerAction, timerGame, type TimerState } from '../helpers/timerGa
 import { waitUntil } from '../helpers/waitUntil.js';
 
 describe('timers', () => {
+  let server: RemoteStateServer<TimerState>;
+  afterAll(() => server.close());
   const database = tempDatabases('timers')();
   const logged: string[] = [];
   const record = (message: string) => void logged.push(message);
   const logger: Logger = { debug: () => undefined, info: record, warn: record, error: record };
-  let server: RemoteStateServer<TimerState>;
 
   beforeAll(async () => {
     server = await startServer(timerGame, { logger, database });
   });
-  afterAll(() => server.close());
 
   const newPlayer = async () => {
     const gameId = await server.createGame({ fired: [] });

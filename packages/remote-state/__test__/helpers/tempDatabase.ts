@@ -10,7 +10,12 @@ import { tmpdir } from 'os';
 import { join } from 'path';
 import { entities } from '../../src/database/entities/index.js';
 
-/** Call at the top of a `describe`; returns a path in the directory per file name */
+/**
+ * Call at the top of a `describe`, after the `afterAll` that closes the servers using
+ * the databases: Jest runs `afterAll` hooks in the order they're declared, and Windows
+ * can't remove a database file that's still open. Returns a path in the directory per
+ * file name.
+ */
 export const tempDatabases = (name: string) => {
   const directory = mkdtempSync(join(tmpdir(), `remote-state-${name}-`));
   afterAll(() => rmSync(directory, { recursive: true, force: true }));
