@@ -59,6 +59,7 @@ Records aren't edited after the fact, except to update their status. A decision 
 | [0051](0051-tests-on-nodes-test-runner.md)                             | Tests run on Node's test runner, through tsx                                   | Accepted                                                              |
 | [0052](0052-games-pause-on-restart.md)                                 | On a restart, every game is offered to the plugin, which pauses itself         | Accepted, refined by 0053                                             |
 | [0053](0053-restarts-are-game-logic.md)                                | What a game does on a server restart is its own logic                          | Accepted                                                              |
+| [0054](0054-wal-without-syncing-every-commit.md)                       | Commits go to a write-ahead log, not synced one by one                         | Accepted                                                              |
 
 ## Writing a record
 

@@ -2,6 +2,47 @@
 
 Results of the load test, as measured. For how to run it, see [Measure performance](../how-to/measure-performance.md).
 
+## 2026-10-17, WAL without syncing every commit, after 0.9.1
+
+The same machine as the next section, with databases opened with `journal_mode = WAL` and `synchronous = NORMAL` ([0054](../explanation/decisions/0054-wal-without-syncing-every-commit.md)), compared with 0.9.1 and SQLite's defaults.
+
+**Commits,** 300 transactions of one 1.2 kB insert each, timed apart from the server:
+
+| `journal_mode` | `synchronous` | Per commit | Commits/s |
+| -------------- | ------------- | ---------- | --------- |
+| `DELETE`       | `FULL`        | 8.9 ms     | 112       |
+| `TRUNCATE`     | `FULL`        | 10.6 ms    | 94        |
+| `PERSIST`      | `FULL`        | 9.6 ms     | 104       |
+| `DELETE`       | `NORMAL`      | 6.4 ms     | 156       |
+| `WAL`          | `FULL`        | 2.9 ms     | 341       |
+| `WAL`          | `NORMAL`      | 0.03 ms    | 34,603    |
+
+**Results** (latencies in milliseconds)
+
+| Command                           | Settings | Run | Actions | Duration | Actions/s | Errors | HTTP p50 | HTTP p95 | HTTP p99 | HTTP max |
+| --------------------------------- | -------- | --- | ------- | -------- | --------- | ------ | -------- | -------- | -------- | -------- |
+| `--games 100 --pause 0 --profile` | Defaults | 1   | 4300    | 87.2 s   | 49        | 0      | 1704.6   | 1919.9   | 1991.6   | 2576.9   |
+| `--games 100 --pause 0 --runs 3`  | WAL      | 1   | 4300    | 32.8 s   | 131       | 0      | 684.6    | 943.5    | 1094.8   | 1413.1   |
+|                                   |          | 2   | 4300    | 31.8 s   | 135       | 0      | 669.3    | 912.0    | 1015.4   | 1095.9   |
+|                                   |          | 3   | 4300    | 32.5 s   | 132       | 0      | 681.2    | 969.3    | 1109.5   | 1309.8   |
+| `--games 100 --pause 0 --profile` | WAL      | 1   | 4300    | 32.0 s   | 134       | 0      | 668.1    | 929.3    | 1065.0   | 1145.6   |
+| `--games 100 --pause 2000`        | WAL      | 1   | 4300    | 96.1 s   | 45        | 0      | 8.8      | 27.6     | 50.5     | 103.7    |
+
+End-to-end latencies were within 0.5 ms of the HTTP ones. With the defaults, `--pause 2000` had a p50 of about 60 ms (next section).
+
+**CPU profiles,** own time by package, from the two `--profile` runs:
+
+| Package         | Defaults | WAL   |
+| --------------- | -------- | ----- |
+| kysely          | 68.8%    | 14.0% |
+| rfc6902         | 11.8%    | 33.6% |
+| remote-state    | 5.6%     | 16.4% |
+| @mikro-orm/core | 4.8%     | 12.2% |
+| @mikro-orm/sql  | 2.4%     | 6.2%  |
+| better-sqlite3  | 1.5%     | 3.9%  |
+
+With the defaults, committing took 59% of the time including calls. With WAL, the largest functions by own time are `toJson` (14.1%), the driver's `executeQuery` (13.4%) and `rfc6902`'s array diff (about 30% across its functions).
+
 ## 2026-10-17, classic battleship on Windows, after 0.8.0
 
 At commit `faa1760`: unreleased changes since 0.8.0, among them that full-state diffs are no longer computed or stored ([0050](../explanation/decisions/0050-full-state-diffs-derived-not-stored.md)). A different machine and operating system from the results below, so the numbers can't be compared with theirs.

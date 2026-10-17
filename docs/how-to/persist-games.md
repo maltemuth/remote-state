@@ -16,6 +16,8 @@ The directory must already exist. The tables are created on first start.
 
 After a restart on the same file, everything stored carries on: games and their history, players, tokens, and admission codes that haven't expired. Sequences continue where they stopped, and clients can catch up with `GET …/updates` from before the restart.
 
+A crash of the server loses nothing that was stored. A power loss or an operating system crash can lose the last actions, but the database stays consistent: every game is as it was at some earlier action ([0054](../explanation/decisions/0054-wal-without-syncing-every-commit.md)).
+
 Stop the server with `close()`. Connected clients see a lost connection and reconnect by themselves once the server is back, and get the latest view on connect. Pending timers are lost, though ([0042](../explanation/decisions/0042-timer-restarts-open.md)). A game handles that in its plugin's `onRestart`, for example by pausing until it's resumed; see [Pause on a restart](schedule-actions.md#pause-on-a-restart).
 
 ## After changing your state type
@@ -42,6 +44,6 @@ const server = await start().catch((err) => {
 
 ## Back up
 
-The database is a single SQLite file. Copy it while the server is stopped, or use `sqlite3 games.db ".backup backup.db"` while it runs.
+The database is a single SQLite file. While it's open, SQLite keeps recent commits in two more files next to it, `games.db-wal` and `games.db-shm` ([0054](../explanation/decisions/0054-wal-without-syncing-every-commit.md)). Copy all three while the server is stopped, or use `sqlite3 games.db ".backup backup.db"` while it runs.
 
 The file holds every full state and action, including hidden information, so protect backups like the live file. Tokens and admission codes are stored only as hashes.

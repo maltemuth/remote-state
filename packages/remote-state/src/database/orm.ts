@@ -2,7 +2,9 @@
  * Opens the SQLite database through MikroORM. A new database gets the schema,
  * generated from the entities, and the schema's version; a database with another
  * version is refused, since databases aren't upgraded before 1.0 (decision 0048).
- * MikroORM's own output goes to the server's logger.
+ * Commits are written ahead to a log and not synced to disk one by one (WAL with
+ * `synchronous = NORMAL`, decision 0054). MikroORM's own output goes to the
+ * server's logger.
  */
 
 import { MikroORM } from '@mikro-orm/sqlite';
@@ -59,6 +61,10 @@ export const initializeDatabase = async (databasePath: string, logger: Logger): 
 
   try {
     await prepareSchema(orm, databasePath, logger);
+    // After the schema check, so a database that's refused is left as it was
+    const database = await orm.em.getConnection().getNativeClient();
+    database.pragma('journal_mode = WAL');
+    database.pragma('synchronous = NORMAL');
   } catch (err) {
     await orm.close();
     throw err;

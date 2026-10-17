@@ -1,14 +1,15 @@
 /**
  * The database's schema version (0048): a new database gets the schema and its
  * version, reopening it works, databases from other versions are refused, and
- * other failures arrive as the driver raised them.
+ * other failures arrive as the driver raised them. Commits go to a write-ahead log
+ * and aren't synced one by one (0054).
  */
 
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import { createRemoteState, silentLogger, UnsupportedDatabaseError } from '../../src/index.js';
 import { tempDatabases, withOrm } from '../helpers/tempDatabase.js';
-import { SCHEMA_VERSION } from '../../src/database/orm.js';
+import { initializeDatabase, SCHEMA_VERSION } from '../../src/database/orm.js';
 import { counterGame, initialCounterState } from '../helpers/counterGame.js';
 
 describe('database', () => {
@@ -43,10 +44,26 @@ describe('database', () => {
     await assert.rejects(open(database), /Delete it/);
   });
 
-  it('refuses a database with another version', async () => {
+  it('refuses a database with another version, and leaves its journal as it was', async () => {
     const database = databaseNamed('other.db');
     await sql(database, `pragma user_version = ${SCHEMA_VERSION + 1}`);
     await assert.rejects(open(database), UnsupportedDatabaseError);
+    assert.deepEqual(await sql(database, 'pragma journal_mode'), [{ journal_mode: 'delete' }]);
+  });
+
+  it('writes ahead to a log, without syncing every commit', async () => {
+    const database = databaseNamed('wal.db');
+    const orm = await initializeDatabase(database, silentLogger);
+    try {
+      const native = await orm.em.getConnection().getNativeClient();
+      assert.equal(native.pragma('journal_mode', { simple: true }), 'wal');
+      // 1 is NORMAL; it's set per connection, so only the library's own shows it
+      assert.equal(native.pragma('synchronous', { simple: true }), 1);
+    } finally {
+      await orm.close();
+    }
+    // The journal mode is kept in the file
+    assert.deepEqual(await sql(database, 'pragma journal_mode'), [{ journal_mode: 'wal' }]);
   });
 
   it("passes on the driver's error for a file it can't open", async () => {
