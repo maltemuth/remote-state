@@ -2,17 +2,18 @@
 
 Proposals for open design questions. A proposal explains a problem and the options for solving it, so the decision can be made with the trade-offs in view. Once decided, the outcome is recorded in [decisions](../decisions/README.md), and the proposal links to that record.
 
-| Proposal                                                    | About                                                                          | Status                            |
-| ----------------------------------------------------------- | ------------------------------------------------------------------------------ | --------------------------------- |
-| [State synchronization](state-synchronization.md)           | How clients keep their copy of the state in step with the server               | Open                              |
-| [Authorization](authorization.md)                           | Who may create, join and act in games, and how they prove it                   | Decided; limiting tokens deferred |
-| [Audiences](audiences.md)                                   | Views shared by groups of participants, such as spectators                     | Open                              |
-| [Player information](player-information.md)                 | Letting game logic see who has registered                                      | Decided                           |
-| [Game options](game-options.md)                             | Creating a game with settings                                                  | Decided                           |
-| [Game lifecycle](game-lifecycle.md)                         | Joining, leaving, disconnecting, and the end of a game                         | Open                              |
-| [Server-initiated actions](server-initiated-actions.md)     | Timers, computer players, scheduled events                                     | Mostly decided; restarts open     |
-| [Client package](client-package.md)                         | A library for game clients                                                     | Core decided; adapters open       |
-| [Throughput and persistence](throughput-and-persistence.md) | Storage settings, caching and splitting accept from execute, with measurements | Deferred                          |
+| Proposal                                                    | About                                                                          | Status                                                                    |
+| ----------------------------------------------------------- | ------------------------------------------------------------------------------ | ------------------------------------------------------------------------- |
+| [State synchronization](state-synchronization.md)           | How clients keep their copy of the state in step with the server               | Open                                                                      |
+| [Authorization](authorization.md)                           | Who may create, join and act in games, and how they prove it                   | Decided; limiting tokens deferred                                         |
+| [Audiences](audiences.md)                                   | Views shared by groups of participants, such as spectators                     | Open                                                                      |
+| [Player information](player-information.md)                 | Letting game logic see who has registered                                      | Decided                                                                   |
+| [Game options](game-options.md)                             | Creating a game with settings                                                  | Decided                                                                   |
+| [Game lifecycle](game-lifecycle.md)                         | Joining, leaving, disconnecting, and the end of a game                         | Open                                                                      |
+| [Server-initiated actions](server-initiated-actions.md)     | Timers, computer players, scheduled events                                     | Mostly decided; restarts open                                             |
+| [Client package](client-package.md)                         | A library for game clients                                                     | Core decided; adapters open                                               |
+| [Throughput and persistence](throughput-and-persistence.md) | Storage settings, caching and splitting accept from execute, with measurements | A decided in 0054; the rest deferred, in part taken up by Games in memory |
+| [Games in memory](games-in-memory.md)                       | Keeping games in memory, with the database as a backup                         | Open; shape agreed, writing and restoring open                            |
 
 Further open questions are listed in [Known limitations](../limitations.md).
 

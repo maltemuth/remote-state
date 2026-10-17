@@ -1,6 +1,6 @@
 # Throughput and persistence
 
-Status: Option A decided in [0054](../decisions/0054-wal-without-syncing-every-commit.md); the rest deferred until a game or host needs more throughput or lower latency. Explored with prototypes that were then discarded; their measurements are in [Performance measurements](../../reference/performance.md#2026-10-04-persistence-experiments-on-060).
+Status: Option A decided in [0054](../decisions/0054-wal-without-syncing-every-commit.md); the rest deferred until a game or host needs more throughput or lower latency. Keeping games in memory, with the database as a backup, is taken further in [Games in memory](games-in-memory.md). Explored with prototypes that were then discarded; their measurements are in [Performance measurements](../../reference/performance.md#2026-10-04-persistence-experiments-on-060).
 
 ## Problem
 
