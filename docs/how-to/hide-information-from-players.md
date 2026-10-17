@@ -69,4 +69,4 @@ assert.doesNotMatch(JSON.stringify(bobView.body), /rock/);
 
 ## Limits
 
-The filter controls what clients receive, not what's stored. The database holds the full state, every action, and a diff of the full state for each transition. See [Architecture](../explanation/architecture.md#hidden-information).
+The filter controls what clients receive, not what's stored. The database holds every full state, the action that led to it, and the diff of each audience's view for each transition. See [Architecture](../explanation/architecture.md#hidden-information).

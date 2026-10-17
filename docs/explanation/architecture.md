@@ -71,7 +71,7 @@ When `POST /api/games/:gameId/actions` arrives:
 3. **Load** the latest state (highest `sequence`).
 4. **Validate.** If `validateAction` returns a string, the request ends with 400 and nothing changes.
 5. **Execute.** `executeAction` returns the next state, and possibly audience changes and timers to schedule or cancel. A `GameRefusal` ends the request with 400.
-6. **Record**, in one transaction: the new state with `sequence + 1`, a diff of the full state, the diff of each audience's view, and any audience changes. Once that's committed, the action's timers take effect.
+6. **Record**, in one transaction: the new state with `sequence + 1` and the action that led to it, the diff of each audience's view, and any audience changes. Full-state diffs aren't stored; they can be computed from neighbouring states ([0050](decisions/0050-full-state-diffs-derived-not-stored.md)). Once that's committed, the action's timers take effect.
 7. **Publish.** Each connected socket of the game receives its audience's new view, as a whole state or as patches.
 8. **Unlock**, and respond with 201 and the `sequence`.
 
