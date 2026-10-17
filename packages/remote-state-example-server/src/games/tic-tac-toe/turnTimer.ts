@@ -1,20 +1,20 @@
 /**
  * Tic-tac-toe's turn timer: while a game with a time limit is running, every state
  * change restarts the `turn` timer, and the end of a game cancels it. When it runs
- * out, the system sends `timeout`, and the player to move loses.
+ * out, the system sends `timeout`, and the player to move loses. A paused game
+ * has no timer: a restart lost it, and resuming schedules it again.
  */
 
 import { transition, type StateResult } from "@malte.muth/remote-state";
-import { freeMark, movesMade } from "./rules.js";
+import { hasTurnTimer } from "./restart.js";
+import { movesMade } from "./rules.js";
 import type { TicTacToeAction, TicTacToeState } from "./types.js";
 
 export const withTurnTimer = (
   state: TicTacToeState,
 ): StateResult<TicTacToeState, TicTacToeAction> => {
-  if (state.turnSeconds === null) return state;
-  if (state.outcome || freeMark(state)) {
-    return transition(state, { cancel: ["turn"] });
-  }
+  if (state.turnSeconds === null || state.paused) return state;
+  if (!hasTurnTimer(state)) return transition(state, { cancel: ["turn"] });
   return transition(state, {
     schedule: [
       {

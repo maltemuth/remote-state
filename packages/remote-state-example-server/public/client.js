@@ -40,6 +40,7 @@ class TicTacToeClient {
     $("rematch-btn").addEventListener("click", () =>
       this.send({ type: "rematch" }),
     );
+    $("resume-btn").addEventListener("click", () => this.resume());
     document.querySelectorAll(".cell").forEach((cell, index) =>
       cell.addEventListener("click", () =>
         this.send({
@@ -99,12 +100,23 @@ class TicTacToeClient {
     }
   }
 
+  // Resuming is the host's to do, so it goes through the lobby
+  async resume() {
+    try {
+      this.showError("");
+      await lobby(`/games/${this.gameId}/resume`);
+    } catch (error) {
+      this.showError(error.message);
+    }
+  }
+
   render(state) {
     const me = this.session.playerId;
     const mine =
       ["X", "O"].find((mark) => state.seats[mark]?.playerId === me) ?? null;
     const waiting = !state.seats.X || !state.seats.O;
-    const myTurn = !waiting && !state.outcome && state.turn === mine;
+    const myTurn =
+      !waiting && !state.outcome && !state.paused && state.turn === mine;
     const winCells = new Set(
       (state.outcome?.line ?? []).map(([row, col]) => row * 3 + col),
     );
@@ -116,6 +128,7 @@ class TicTacToeClient {
     });
     $("board").classList.toggle("my-turn", myTurn);
     $("rematch-btn").disabled = !state.outcome || !mine;
+    $("resume-btn").hidden = !state.paused;
 
     for (const mark of ["X", "O"]) {
       const seat = state.seats[mark];
@@ -134,15 +147,17 @@ class TicTacToeClient {
     const limit = state.turnSeconds ? ` (${state.turnSeconds} s per move)` : "";
     $("game-status").textContent = waiting
       ? "Waiting for an opponent. Share the link below."
-      : state.outcome?.winner
-        ? state.outcome.winner === mine
-          ? `You win${onTime}!`
-          : `${state.seats[state.outcome.winner].name} wins${onTime}`
-        : state.outcome
-          ? "Draw"
-          : myTurn
-            ? `Your turn (${mine})${limit}`
-            : `Waiting for ${state.seats[state.turn].name}${limit}`;
+      : state.paused
+        ? "Paused by a server restart. Resume once both players are back."
+        : state.outcome?.winner
+          ? state.outcome.winner === mine
+            ? `You win${onTime}!`
+            : `${state.seats[state.outcome.winner].name} wins${onTime}`
+          : state.outcome
+            ? "Draw"
+            : myTurn
+              ? `Your turn (${mine})${limit}`
+              : `Waiting for ${state.seats[state.turn].name}${limit}`;
   }
 
   showConnection(connection) {

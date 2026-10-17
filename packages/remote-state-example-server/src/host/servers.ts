@@ -60,6 +60,7 @@ export const createExampleServer = async ({
     {
       plugin: ticTacToePlugin,
       newGame: () => newTicTacToeGame({ turnSeconds: TURN_SECONDS }),
+      resume: { type: "resume" },
     },
     { database: database("tic-tac-toe"), logger },
   );

@@ -4,7 +4,7 @@ Use timers when something must happen in a game without a player acting, such as
 
 Either way, the action runs as the system: `validateAction` and `executeAction` receive [`SYSTEM`](../reference/game-plugin.md#system) as the player ID, and the action goes through your rules like a player's.
 
-The tic-tac-toe example has a turn limit built this way, in [`turnTimer.ts`](../../packages/remote-state-example-server/src/games/tic-tac-toe/turnTimer.ts).
+The tic-tac-toe example has a turn limit built this way, in [`turnTimer.ts`](../../packages/remote-state-example-server/src/games/tic-tac-toe/turnTimer.ts), and pauses on a restart as described [below](#pause-on-a-restart), in [`restart.ts`](../../packages/remote-state-example-server/src/games/tic-tac-toe/restart.ts).
 
 ## Add a turn timeout
 
@@ -164,6 +164,8 @@ Returning the state unchanged, as for a finished game, records nothing. The host
 ```ts
 await server.act(gameId, { type: "resume" });
 ```
+
+How the host learns that everyone is back is up to it. The example host has no login, so its lobby resumes a tic-tac-toe game for anyone who asks, at `POST /tic-tac-toe/lobby/games/:gameId/resume`, and the browser client shows a Resume button while the game is paused. A real host would let only the game's host do that.
 
 ## Test it
 

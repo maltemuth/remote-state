@@ -1,6 +1,6 @@
 /**
- * Tic-tac-toe's rules as plain functions: outcomes on every kind of line, and
- * action checks, without a server.
+ * Tic-tac-toe's rules as plain functions: outcomes on every kind of line, action
+ * checks, and the pause after a restart, without a server.
  */
 
 import assert from "node:assert/strict";
@@ -12,6 +12,7 @@ import {
   emptyBoard,
   newTicTacToeGame,
   outcomeOf,
+  pauseOnRestart,
   placeMark,
   type Board,
   type Position,
@@ -149,5 +150,55 @@ describe("tic-tac-toe rules", () => {
     );
     const unlimited = seated();
     assert.equal(withTurnTimer(unlimited), unlimited);
+  });
+});
+
+describe("tic-tac-toe across a restart", () => {
+  const running = { ...seated(), turnSeconds: 0.1 };
+
+  it("pauses a game whose turn timer was running", () => {
+    assert.equal(pauseOnRestart(running).paused, true);
+  });
+
+  it("leaves other games as they were, the same object", () => {
+    const over = applyAction(running, { type: "timeout", moves: 0 });
+    const waiting = newTicTacToeGame({ turnSeconds: 0.1 });
+    const paused = pauseOnRestart(running);
+    for (const state of [seated(), over, waiting, paused]) {
+      assert.equal(pauseOnRestart(state), state);
+    }
+  });
+
+  it("lets nothing happen until the host resumes it", () => {
+    const paused = pauseOnRestart(running);
+    for (const [action, playerId] of [
+      [{ type: "place", row: 0, col: 0 }, "x"],
+      [{ type: "timeout", moves: 0 }, SYSTEM],
+    ] as const) {
+      assert.equal(checkAction(paused, action, playerId), "The game is paused");
+    }
+    assert.equal(
+      checkAction(paused, { type: "resume" }, "x"),
+      "Only the host can resume the game",
+    );
+    assert.equal(
+      checkAction(running, { type: "resume" }, SYSTEM),
+      "The game isn't paused",
+    );
+    assert.equal(checkAction(paused, { type: "resume" }, SYSTEM), true);
+  });
+
+  it("starts the turn over with its full time when resumed", () => {
+    const paused = pauseOnRestart(running);
+    assert.equal(withTurnTimer(paused), paused);
+    const resumed = applyAction(paused, { type: "resume" });
+    assert.deepEqual(
+      withTurnTimer(resumed),
+      transition(resumed, {
+        schedule: [
+          { name: "turn", in: 100, action: { type: "timeout", moves: 0 } },
+        ],
+      }),
+    );
   });
 });

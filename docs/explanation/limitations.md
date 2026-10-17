@@ -30,6 +30,6 @@ These are current properties of the library, not bugs in your game. Each one is 
 
 - **Hosts aren't told about state changes.** A computer player run by the host through `act` has to poll to find out it's its turn ([Server-initiated actions](designs/server-initiated-actions.md)).
 
-- **Timers are lost on restart.** Pending timers are kept in memory only, so a restart drops them, and a game waiting for a timeout waits until a player acts. How timers should behave across restarts is still open ([0042](decisions/0042-timer-restarts-open.md)).
+- **Timers are lost on restart.** Pending timers are kept in memory only, so a restart drops them ([0042](decisions/0042-timer-restarts-open.md)). The library offers every game to the plugin's `onRestart` when it starts, where a game with timers pauses itself until it's resumed, or schedules them again ([0052](decisions/0052-games-pause-on-restart.md)). A game without `onRestart` that was waiting for a timeout waits until a player acts.
 
 - **No game lifecycle.** Games are never closed, archived or deleted, players can't leave, and player activity isn't recorded.

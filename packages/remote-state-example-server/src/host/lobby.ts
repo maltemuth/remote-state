@@ -1,8 +1,9 @@
 /**
- * The example's host endpoints for one game: create a game, and get a code to join
- * one. There's no login, so anyone may do both, and every request is a new person
- * (decision 0020). A real host would check its own users here before calling the
- * library.
+ * The example's host endpoints for one game: create a game, get a code to join
+ * one, and, for a game that pauses on a server restart, resume it. There's no
+ * login, so anyone may do all three, and every request is a new person (decision
+ * 0020). A real host would check its own users here before calling the library,
+ * and let only a game's host resume it.
  */
 
 import { randomUUID } from "crypto";
@@ -15,8 +16,10 @@ import express, {
 import { type RemoteState, UnknownGameError } from "@malte.muth/remote-state";
 
 export const createLobby = <StateType>(
-  remote: Pick<RemoteState<StateType>, "createGame" | "admit">,
+  remote: Pick<RemoteState<StateType>, "createGame" | "admit" | "act">,
   newGame: () => StateType,
+  /** The system action that resumes a paused game; without it, there's no endpoint */
+  resume?: unknown,
 ): Router => {
   const lobby = Router();
   lobby.use(express.json());
@@ -35,6 +38,16 @@ export const createLobby = <StateType>(
     });
     res.status(201).json({ code });
   });
+
+  // Resume a game a server restart paused, once its players are back
+  if (resume !== undefined) {
+    lobby.post("/games/:gameId/resume", async (req, res) => {
+      const result = await remote.act(req.params.gameId, resume);
+      if ("rejected" in result)
+        res.status(400).json({ error: result.rejected });
+      else res.status(201).json(result);
+    });
+  }
 
   // Express 5 passes rejected handlers here
   lobby.use((err: unknown, _req: Request, res: Response, next: NextFunction) =>

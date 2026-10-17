@@ -27,6 +27,8 @@ export const mountGame = async <StateType, ActionType, ViewType>(
   game: {
     plugin: GamePlugin<StateType, ActionType, ViewType>;
     newGame: () => StateType;
+    /** The system action that resumes a game a restart paused */
+    resume?: ActionType;
   },
   { database, logger }: MountOptions,
 ): Promise<RemoteState<StateType>> => {
@@ -36,7 +38,7 @@ export const mountGame = async <StateType, ActionType, ViewType>(
     socket: { path: `${prefix}/socket.io` },
   });
   app.use(prefix, remote.router);
-  app.use(`${prefix}/lobby`, createLobby(remote, game.newGame));
+  app.use(`${prefix}/lobby`, createLobby(remote, game.newGame, game.resume));
   remote.attach(httpServer);
   return remote;
 };

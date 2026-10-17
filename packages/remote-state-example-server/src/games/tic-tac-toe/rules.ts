@@ -1,6 +1,7 @@
 /**
  * Tic-tac-toe's rules: setting up a game, seating players, and which actions are
- * allowed and what they do. Pure functions of the state.
+ * allowed and what they do. Nothing happens in a paused game until the host
+ * resumes it. Pure functions of the state.
  */
 
 import { SYSTEM } from "@malte.muth/remote-state";
@@ -19,6 +20,7 @@ export const newTicTacToeGame = ({
   turn: "X",
   outcome: null,
   turnSeconds,
+  paused: false,
 });
 
 /** How many marks are on the board, which identifies the current turn */
@@ -40,6 +42,11 @@ export const checkAction = (
   action: TicTacToeAction,
   playerId: string,
 ): true | string => {
+  if (action?.type === "resume") {
+    if (playerId !== SYSTEM) return "Only the host can resume the game";
+    return state.paused ? true : "The game isn't paused";
+  }
+  if (state.paused) return "The game is paused";
   if (action?.type === "timeout") {
     if (playerId !== SYSTEM) return "Only the system can end a turn";
     if (state.outcome || action.moves !== movesMade(state))
@@ -69,6 +76,7 @@ export const applyAction = (
   state: TicTacToeState,
   action: TicTacToeAction,
 ): TicTacToeState => {
+  if (action.type === "resume") return { ...state, paused: false };
   if (action.type === "timeout") {
     return { ...state, outcome: { winner: other(state.turn), timeout: true } };
   }

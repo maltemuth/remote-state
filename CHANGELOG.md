@@ -9,6 +9,7 @@ Databases from 0.8.0 have to be deleted: the schema's version is now 2.
 ### Added
 
 - `GamePlugin.onRestart`, called for every stored game when the library starts on a database that already has games. Timers are lost on a restart, so a game with timers pauses itself there and waits to be resumed, or schedules its timers again. Returning the state unchanged records nothing (0052).
+- Example: a tic-tac-toe game whose turn timer was running is paused by a restart, and nobody can move until it's resumed, with the turn's full time. The lobby resumes it at `POST /tic-tac-toe/lobby/games/:gameId/resume`, and the page shows a Resume button while it's paused.
 
 ### Removed
 
