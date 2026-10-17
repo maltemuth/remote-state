@@ -16,7 +16,7 @@ The directory must already exist. The tables are created on first start.
 
 After a restart on the same file, everything stored carries on: games and their history, players, tokens, and admission codes that haven't expired. Sequences continue where they stopped, and clients can catch up with `GET …/updates` from before the restart.
 
-Stop the server with `close()`. Connected clients see a lost connection and reconnect by themselves once the server is back, and get the latest view on connect. Pending timers are lost, though ([0042](../explanation/decisions/0042-timer-restarts-open.md)). A game with timers pauses itself in its plugin's `onRestart`, and waits to be resumed; see [Pause on a restart](schedule-actions.md#pause-on-a-restart).
+Stop the server with `close()`. Connected clients see a lost connection and reconnect by themselves once the server is back, and get the latest view on connect. Pending timers are lost, though ([0042](../explanation/decisions/0042-timer-restarts-open.md)). A game handles that in its plugin's `onRestart`, for example by pausing until it's resumed; see [Pause on a restart](schedule-actions.md#pause-on-a-restart).
 
 ## After changing your state type
 

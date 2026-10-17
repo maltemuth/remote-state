@@ -135,7 +135,7 @@ A host can't act as one of the players, only as the system.
 
 Timers are kept in memory only, even when games are [persisted](persist-games.md). When the server stops, every pending timer is lost, and it isn't started again when the server comes back ([0042](../explanation/decisions/0042-timer-restarts-open.md)). Without more, a game whose turn was running has no timeout for that turn, and the first player back to act starts the next clock, whether or not the others have reconnected.
 
-Pause the game instead, in `onRestart`, and resume it with an action once everyone is back ([0052](../explanation/decisions/0052-games-pause-on-restart.md)). With the game above, add `paused: boolean` to `State` and `{ type: "resume" }` to `Action`. Resuming starts the turn over with its full time:
+What to do instead is up to the game ([0053](../explanation/decisions/0053-restarts-are-game-logic.md)). For a turn timer, one way is to pause the game in `onRestart`, and resume it with an action once everyone is back ([0052](../explanation/decisions/0052-games-pause-on-restart.md)). With the game above, add `paused: boolean` to `State` and `{ type: "resume" }` to `Action`. Resuming starts the turn over with its full time:
 
 ```ts
 const game: GamePlugin<State, Action> = {

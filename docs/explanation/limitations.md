@@ -14,7 +14,7 @@ These are current properties of the library, not bugs in your game. Each one is 
 ## Protocol
 
 - **Catching up is one jump.** `GET …/updates?since=` returns a single patch to the current view, so a client can't see or animate the steps it missed ([0030](decisions/0030-updates-in-one-jump.md)).
-- **No presence.** Clients aren't told when other players connect or disconnect. The old `player-joined` and `player-left` events were removed; presence belongs to the [Game lifecycle](designs/game-lifecycle.md) proposal.
+- **Connections aren't reported.** Neither the plugin nor clients are told when players connect or disconnect; the old `player-joined` and `player-left` events were removed. Presence itself is game logic ([0053](decisions/0053-restarts-are-game-logic.md)); reporting connections to the plugin is part of the [Game lifecycle](designs/game-lifecycle.md) proposal.
 - **Views rebuilt after an audience change use the game's current filter.** If the filter changed since the client's `since`, the patch may not fit what the client holds ([0035](decisions/0035-updates-across-audiences.md)).
 - **Unhandled WebSocket upgrades stay open when embedded.** Sockets leave upgrade requests for other paths alone, so instances can share a server ([0038](decisions/0038-several-games-by-mounting-several-instances.md)). On a host's own server, a request for a path nobody handles stays open until the client gives up, unless the host refuses it. The standalone server answers such requests with 404, until the host adds an `upgrade` listener of its own.
 - **No versioning** of the API or of stored states.
@@ -30,6 +30,6 @@ These are current properties of the library, not bugs in your game. Each one is 
 
 - **Hosts aren't told about state changes.** A computer player run by the host through `act` has to poll to find out it's its turn ([Server-initiated actions](designs/server-initiated-actions.md)).
 
-- **Timers are lost on restart.** Pending timers are kept in memory only, so a restart drops them ([0042](decisions/0042-timer-restarts-open.md)). The library offers every game to the plugin's `onRestart` when it starts, where a game with timers pauses itself until it's resumed, or schedules them again ([0052](decisions/0052-games-pause-on-restart.md)). A game without `onRestart` that was waiting for a timeout waits until a player acts.
+- **Timers are lost on restart.** Pending timers are kept in memory only, so a restart drops them ([0042](decisions/0042-timer-restarts-open.md)). The library offers every game to the plugin's `onRestart` when it starts, where the game handles it, for example by pausing until it's resumed, or by scheduling them again ([0052](decisions/0052-games-pause-on-restart.md), [0053](decisions/0053-restarts-are-game-logic.md)). A game without `onRestart` that was waiting for a timeout waits until a player acts.
 
 - **No game lifecycle.** Games are never closed, archived or deleted, players can't leave, and player activity isn't recorded.

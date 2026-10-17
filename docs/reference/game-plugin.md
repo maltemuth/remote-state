@@ -90,7 +90,7 @@ Without `onJoin`, everyone the host admits joins, and the state stays unchanged,
 
 ### onRestart
 
-Optional. Called for every stored game when `createRemoteState` or `createRemoteStateServer` starts on a database that already has games, with each game's latest state, before anything is served ([0052](../explanation/decisions/0052-games-pause-on-restart.md)). Pending [timers](#timers) didn't survive the restart, so a game with timers pauses here: it returns a state in which it waits to be resumed by an action, typically the host's [`act`](server-api.md#remotestateserver). Or it schedules its timers again, through [`transition`](#transition).
+Optional. Called for every stored game when `createRemoteState` or `createRemoteStateServer` starts on a database that already has games, with each game's latest state, before anything is served ([0052](../explanation/decisions/0052-games-pause-on-restart.md)). Pending [timers](#timers) didn't survive the restart. What a game does about that is its own logic ([0053](../explanation/decisions/0053-restarts-are-game-logic.md)): for example, it pauses, returning a state in which it waits to be resumed by an action, such as the host's [`act`](server-api.md#remotestateserver); or it schedules its timers again, through [`transition`](#transition).
 
 - **Return the state it was given** to record nothing; most games, finished ones among them, have nothing to do.
 - **A changed state, or any changes,** are recorded like an action's: with the next `sequence`, action type `restart`, the system as author, and sent to clients that connect.

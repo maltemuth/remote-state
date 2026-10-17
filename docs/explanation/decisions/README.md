@@ -57,7 +57,8 @@ Records aren't edited after the fact, except to update their status. A decision 
 | [0049](0049-health-check-under-the-api.md)                             | One operational endpoint: a health check under the API                         | Accepted                                                              |
 | [0050](0050-full-state-diffs-derived-not-stored.md)                    | Full-state diffs are derived, not stored                                       | Accepted                                                              |
 | [0051](0051-tests-on-nodes-test-runner.md)                             | Tests run on Node's test runner, through tsx                                   | Accepted                                                              |
-| [0052](0052-games-pause-on-restart.md)                                 | On a restart, every game is offered to the plugin, which pauses itself         | Accepted                                                              |
+| [0052](0052-games-pause-on-restart.md)                                 | On a restart, every game is offered to the plugin, which pauses itself         | Accepted, refined by 0053                                             |
+| [0053](0053-restarts-are-game-logic.md)                                | What a game does on a restart is its own logic                                 | Accepted                                                              |
 
 ## Writing a record
 

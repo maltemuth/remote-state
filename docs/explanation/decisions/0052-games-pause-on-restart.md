@@ -1,6 +1,6 @@
 # 0052. On a restart, every game is offered to the plugin, which pauses itself
 
-Status: Accepted
+Status: Accepted, refined by [0053](0053-restarts-are-game-logic.md): pausing is an example, not an expectation
 Date: 2026-10-17
 
 ## Context
