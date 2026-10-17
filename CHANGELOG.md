@@ -6,6 +6,10 @@ All notable changes to this project are documented here. The format follows [Kee
 
 Databases from 0.8.0 have to be deleted: the schema's version is now 2.
 
+### Added
+
+- `GamePlugin.onRestart`, called for every stored game when the library starts on a database that already has games. Timers are lost on a restart, so a game with timers pauses itself there and waits to be resumed, or schedules its timers again. Returning the state unchanged records nothing (0052).
+
 ### Removed
 
 - `GamePlugin.gameConfig`. Its `name` only labelled the health check, and `description` was never read.

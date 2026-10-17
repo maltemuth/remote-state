@@ -1,6 +1,6 @@
 # 0042. What happens to timers on a restart is still open
 
-Status: Accepted
+Status: Accepted, refined by [0052](0052-games-pause-on-restart.md)
 Date: 2026-10-04
 
 ## Context

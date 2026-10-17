@@ -10,6 +10,7 @@ import { initializeDatabase } from '../database/orm.js';
 import { type EngineContext } from '../engine/context.js';
 import { createGameLock } from '../engine/gameLock.js';
 import { createScheduler } from '../engine/scheduler.js';
+import { restartGames } from '../engine/restart.js';
 import { runDueTimer } from '../engine/timers.js';
 import { createRouter } from '../http/router.js';
 import { consoleLogger } from '../logging/logger.js';
@@ -52,6 +53,8 @@ export const createRemoteState = async <StateType, ActionType, ViewType>(
     publisher: { publish: async () => undefined },
     scheduler: createScheduler(timer => runDueTimer(context, timer)),
   };
+  // Before anything is served, so no action can come in between (0052)
+  await restartGames(context);
   let io: SocketServer | null = null;
 
   const attach = (httpServer: HTTPServer) => {

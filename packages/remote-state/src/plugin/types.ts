@@ -49,6 +49,15 @@ export interface GamePlugin<StateType, ActionType, ViewType = StateType> {
   ) => Awaitable<StateResult<StateType, ActionType>>;
 
   /**
+   * Called for every stored game when the library starts on a database that
+   * already has games (decision 0052). Pending timers were lost (0042): pause the
+   * game, or schedule again what it needs. Return the state it was given to
+   * record nothing. Runs as `SYSTEM`; an error is logged and leaves the game as
+   * it was.
+   */
+  onRestart?: (state: StateType) => Awaitable<StateResult<StateType, ActionType>>;
+
+  /**
    * Reduce the full state to what an audience may see (decision 0024). By default,
    * each player is an audience of their own, named by their player ID. Without a
    * filter, everyone sees the full state.

@@ -131,9 +131,39 @@ if (action.type === "end") {
 
 A host can't act as one of the players, only as the system.
 
-## Restarts lose timers
+## Pause on a restart
 
-Timers are kept in memory only, even when games are [persisted](persist-games.md). When the server stops, every pending timer is lost, and it isn't started again when the server comes back ([0042](../explanation/decisions/0042-timer-restarts-open.md)). A game whose turn was running then has no timeout for that turn: it waits until a player acts, and the next accepted move schedules a new timer.
+Timers are kept in memory only, even when games are [persisted](persist-games.md). When the server stops, every pending timer is lost, and it isn't started again when the server comes back ([0042](../explanation/decisions/0042-timer-restarts-open.md)). Without more, a game whose turn was running has no timeout for that turn, and the first player back to act starts the next clock, whether or not the others have reconnected.
+
+Pause the game instead, in `onRestart`, and resume it with an action once everyone is back ([0052](../explanation/decisions/0052-games-pause-on-restart.md)). With the game above, add `paused: boolean` to `State` and `{ type: "resume" }` to `Action`. Resuming starts the turn over with its full time:
+
+```ts
+const game: GamePlugin<State, Action> = {
+  // …
+  onRestart: (state) =>
+    state.winner || state.paused ? state : { ...state, paused: true },
+
+  validateAction: (state, action, playerId) => {
+    if (action.type === "resume") {
+      if (playerId !== SYSTEM) return "Only the host can resume the game";
+      return state.paused ? true : "The game isn't paused";
+    }
+    if (state.paused) return "The game is paused";
+    // …
+  },
+
+  executeAction: (state, action) =>
+    action.type === "resume"
+      ? withTurnTimer({ ...state, paused: false })
+      : withTurnTimer(applyAction(state, action)),
+};
+```
+
+Returning the state unchanged, as for a finished game, records nothing. The host resumes a game with `act`:
+
+```ts
+await server.act(gameId, { type: "resume" });
+```
 
 ## Test it
 

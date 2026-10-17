@@ -1,10 +1,10 @@
 # Server-initiated actions
 
-Status: Mostly decided in [0040](../decisions/0040-server-initiated-actions.md) and [0041](../decisions/0041-named-timers.md); restarts are open ([0042](../decisions/0042-timer-restarts-open.md))
+Status: Mostly decided in [0040](../decisions/0040-server-initiated-actions.md) and [0041](../decisions/0041-named-timers.md); restarts are open ([0042](../decisions/0042-timer-restarts-open.md)), and games pause on a restart for now ([0052](../decisions/0052-games-pause-on-restart.md))
 
 ## Outcome
 
-Games schedule named timers, returned along with a new state, and hosts can run actions as the system through `act` (options A and C). Scheduling a name again replaces the timer, actions can cancel timers, and due timers run as the player `"system"` through the usual validation. Timers are kept in memory for now; what happens to them on a restart is still open ([0042](../decisions/0042-timer-restarts-open.md)). A seeded random number generator is left for later.
+Games schedule named timers, returned along with a new state, and hosts can run actions as the system through `act` (options A and C). Scheduling a name again replaces the timer, actions can cancel timers, and due timers run as the player `"system"` through the usual validation. Timers are kept in memory for now; what happens to them on a restart is still open ([0042](../decisions/0042-timer-restarts-open.md)). Until it's decided, every game is offered to the plugin's `onRestart` when the server starts, and a game with timers pauses there until a person resumes it ([0052](../decisions/0052-games-pause-on-restart.md)). A seeded random number generator is left for later.
 
 ## Problem
 

@@ -20,6 +20,9 @@ interface GamePlugin<StateType, ActionType, ViewType = StateType> {
     state: StateType,
     player: JoiningPlayer,
   ) => Awaitable<StateResult<StateType, ActionType>>;
+  onRestart?: (
+    state: StateType,
+  ) => Awaitable<StateResult<StateType, ActionType>>;
   filterStateForAudience?: (
     state: StateType,
     audience: string,
@@ -85,6 +88,15 @@ A join is a state transition like an action: it's stored with the next `sequence
 
 Without `onJoin`, everyone the host admits joins, and the state stays unchanged, though the join still adds a sequence.
 
+### onRestart
+
+Optional. Called for every stored game when `createRemoteState` or `createRemoteStateServer` starts on a database that already has games, with each game's latest state, before anything is served ([0052](../explanation/decisions/0052-games-pause-on-restart.md)). Pending [timers](#timers) didn't survive the restart, so a game with timers pauses here: it returns a state in which it waits to be resumed by an action, typically the host's [`act`](server-api.md#remotestateserver). Or it schedules its timers again, through [`transition`](#transition).
+
+- **Return the state it was given** to record nothing; most games, finished ones among them, have nothing to do.
+- **A changed state, or any changes,** are recorded like an action's: with the next `sequence`, action type `restart`, the system as author, and sent to clients that connect.
+- **It runs as [`SYSTEM`](#system),** under the game's lock, one game after the other.
+- **If it throws,** the error is logged at `error` and that game is left as it was. The other games are still offered the hook, and the server starts.
+
 ### filterStateForAudience
 
 Optional. Converts the full state to what one audience may see ([0024](../explanation/decisions/0024-views-per-audience.md)). Every view a client receives passes through it: socket events, `GET …/state` and `GET …/updates`.
@@ -105,7 +117,7 @@ A game can schedule actions to run later, for example to end a turn when its tim
 - **They take effect once the transition is recorded.** If it isn't, because the request fails, nothing is scheduled or cancelled.
 - **A due timer runs its action as [`SYSTEM`](#system),** under the game's lock, like any action: through `validateAction` and `executeAction`, recorded in the history, and sent to clients. Its action can return timers of its own. It runs only if the timer is still pending, so a timer replaced or cancelled in the meantime never runs.
 - **A rejected timer action records nothing.** If `validateAction` returns a string or a `GameRefusal` is thrown, the rejection is logged at `info`. Any other error is logged at `error`. Either way, nothing is stored.
-- **Timers are kept in memory only.** When the server stops, pending timers are lost, and they don't come back on restart: a game waiting for a timeout waits until something else happens in it, such as a player's action ([0042](../explanation/decisions/0042-timer-restarts-open.md)). `close()` drops all pending timers.
+- **Timers are kept in memory only.** When the server stops, pending timers are lost, and they don't come back on restart ([0042](../explanation/decisions/0042-timer-restarts-open.md)). A game picks up from there in [`onRestart`](#onrestart), by pausing or scheduling again; without it, a game waiting for a timeout waits until something else happens in it, such as a player's action. `close()` drops all pending timers.
 
 The system can't act through the HTTP API: player IDs are UUIDs, so no player's ID is `"system"`. A game must still decide in its rules what the system may do. Accept a system action only where you expect one, and check that it still applies to the current state, since a timer can't tell whether the state it was scheduled for has passed.
 
