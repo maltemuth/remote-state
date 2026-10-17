@@ -4,6 +4,8 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ## Unreleased
 
+## 0.9.1 - 2026-10-17
+
 ### Added
 
 - `repository`, `homepage` and `bugs` in the library's and the client's `package.json`, pointing to GitHub.
