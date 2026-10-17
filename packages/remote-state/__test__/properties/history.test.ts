@@ -1,16 +1,14 @@
 /**
- * The stored history replays: in generated scenarios, every state is stored once,
- * and every stored audience diff turns that audience's previous view into its
- * next (0012, 0024).
+ * The stored history: in generated scenarios, every state is stored once, in
+ * order, with the action that led to it. Views and their patches aren't stored;
+ * they're built from these states (0050, 0056), which the convergence tests cover.
  */
 
 import assert from 'node:assert/strict';
 import { describe, it, before, after } from 'node:test';
 import { MikroORM } from '@mikro-orm/sqlite';
 import fc from 'fast-check';
-import { applyPatches, enablePatches, type Patch } from 'immer';
-import { AudienceDiff, entities, GameState } from '../../src/database/entities/index.js';
-import { type ModelState, viewOf } from '../helpers/modelGame.js';
+import { entities, GameState } from '../../src/database/entities/index.js';
 import { tempDatabases } from '../helpers/tempDatabase.js';
 import {
   type ModelServer,
@@ -19,8 +17,6 @@ import {
   scenarioArbitrary,
   startModelServer,
 } from '../helpers/scenario.js';
-
-enablePatches();
 
 describe('history', () => {
   let server: ModelServer;
@@ -36,27 +32,18 @@ describe('history', () => {
     orm = await MikroORM.init({ dbName: database, entities });
   });
 
-  it('replays every stored diff', { timeout: 30 * 60_000 }, async () => {
+  it('stores every state once, with its action', { timeout: 30 * 60_000 }, async () => {
     await fc.assert(
       fc.asyncProperty(scenarioArbitrary, async scenario => {
         const { gameId, latest } = await playScenario(server, scenario);
-        const em = orm.em.fork();
-        const rows = await em.find(GameState, { game: gameId }, { orderBy: { sequence: 'asc' } });
+        const rows = await orm.em
+          .fork()
+          .find(GameState, { game: gameId }, { orderBy: { sequence: 'asc' } });
         assert.deepEqual(
           rows.map(row => row.sequence),
           [...Array(latest + 1).keys()]
         );
-        const states = rows.map(row => row.state as ModelState);
-
-        const diffs = await em.find(AudienceDiff, { game: gameId });
-        assert.ok(diffs.length > 0);
-        for (const { audience, sequence, patches } of diffs) {
-          const before = viewOf(states[sequence - 1], audience);
-          assert.deepEqual(
-            applyPatches(before, patches as Patch[]),
-            viewOf(states[sequence], audience)
-          );
-        }
+        assert.ok(rows.slice(1).every(row => typeof row.actionType === 'string'));
       }),
       { numRuns: PROPERTY_RUNS }
     );

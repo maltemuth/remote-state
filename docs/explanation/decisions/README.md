@@ -17,7 +17,7 @@ Records aren't edited after the fact, except to update their status. A decision 
 | [0009](0009-separate-state-and-update-endpoints.md)                    | Separate GET endpoints for whole state and for updates                         | Accepted                                                              |
 | [0010](0010-every-game-has-hidden-information.md)                      | Every game is treated as a game with hidden information                        | Accepted, refined by 0024                                             |
 | [0011](0011-patches-are-diffs-of-views.md)                             | Patches are diffs of player views; only full states are stored                 | Accepted, storage extended by 0012, views per audience by 0024        |
-| [0012](0012-store-player-diffs.md)                                     | Store each player's diffs alongside the full states                            | Accepted, superseded in part by 0024                                  |
+| [0012](0012-store-player-diffs.md)                                     | Store each player's diffs alongside the full states                            | Superseded by 0024 and 0056                                           |
 | [0013](0013-store-full-state-diffs.md)                                 | Also store diffs of the full state                                             | Superseded by 0050                                                    |
 | [0014](0014-immer-patches-only-external-format.md)                     | Immer's patch format is the only external patch format                         | Accepted for now                                                      |
 | [0015](0015-library-issues-opaque-tokens.md)                           | The library issues its own opaque tokens                                       | Accepted                                                              |
@@ -29,7 +29,7 @@ Records aren't edited after the fact, except to update their status. A decision 
 | [0021](0021-games-created-with-creategame.md)                          | Hosts create games with `createGame`, separately from admitting players        | Accepted, refined by 0036                                             |
 | [0022](0022-roles-belong-to-game-state.md)                             | Roles belong to the game's state and rules                                     | Accepted                                                              |
 | [0023](0023-no-server-to-server-admit.md)                              | `admit` is only called in-process                                              | Accepted                                                              |
-| [0024](0024-views-per-audience.md)                                     | Views are computed per audience                                                | Accepted, refined by 0035                                             |
+| [0024](0024-views-per-audience.md)                                     | Views are computed per audience                                                | Accepted, refined by 0035; diffs no longer stored since 0056          |
 | [0025](0025-default-audiences.md)                                      | Default audiences depend on whether the game filters views                     | Accepted                                                              |
 | [0026](0026-join-hook-is-a-state-transition.md)                        | Joining a game is a state transition run by the game                           | Accepted                                                              |
 | [0027](0027-audiences-set-by-join-hook-and-actions.md)                 | Audiences are set by the join hook and by actions                              | Accepted                                                              |
@@ -61,6 +61,7 @@ Records aren't edited after the fact, except to update their status. A decision 
 | [0053](0053-restarts-are-game-logic.md)                                | What a game does on a server restart is its own logic                          | Accepted                                                              |
 | [0054](0054-wal-without-syncing-every-commit.md)                       | Commits go to a write-ahead log, not synced one by one                         | Accepted                                                              |
 | [0055](0055-the-view-on-connect-replaces-the-clients.md)               | The view sent on connect replaces the client's, whatever its sequence          | Accepted                                                              |
+| [0056](0056-views-and-patches-computed-when-sent.md)                   | Views and patches are computed when they're sent, not stored                   | Accepted                                                              |
 
 ## Writing a record
 

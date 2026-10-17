@@ -1,10 +1,10 @@
 /**
  * Answers "what changed since sequence N" for a player, in one patch (decisions
- * 0030, 0035): stored diffs joined when the player stayed in one audience, a diff
- * computed from rebuilt views when they changed audience.
+ * 0030, 0035, 0056): the diff between their view of the stored state at `since`,
+ * in the audience they were in then, and their view of the current one.
  */
 
-import { AudienceDiff, AudienceMembership } from '../database/entities/index.js';
+import { AudienceMembership } from '../database/entities/index.js';
 import { diff, type Patch } from '../patches/diff.js';
 import { effectiveAudience, viewFor } from '../plugin/views.js';
 import { type EngineContext } from './context.js';
@@ -43,18 +43,6 @@ export const catchUp = (
       id: playerId,
       audience: memberships.at(-1)!.audience,
     });
-    if (!memberships.some(membership => membership.sequence > since)) {
-      const diffs = await em.find(
-        AudienceDiff,
-        { game: gameId, audience, sequence: { $gt: since } },
-        { orderBy: { sequence: 'asc' } }
-      );
-      if (diffs.length === sequence - since) {
-        return { sequence, patches: diffs.flatMap(row => row.patches as Patch[]) };
-      }
-    }
-
-    // The audience changed (or diffs are missing): rebuild the view the client has
     const base = await stateAt(em, gameId, since);
     if (!base) return { seeState: true };
     const then = memberships.filter(membership => membership.sequence <= since).at(-1)!;

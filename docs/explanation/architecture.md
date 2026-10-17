@@ -24,7 +24,7 @@ The library handles transport, storage, identity and fan-out. A game supplies on
  └───────────────────────────────┼────────────────────────────┘
                                  ▼
           SQLite: games, players, tokens, admission codes,
-                  states, audience diffs, audience memberships
+                  states, audience memberships
 ```
 
 Everything runs in one Node.js process, and that assumption shapes several decisions below.
@@ -93,9 +93,9 @@ This gives you:
 - **A cursor** for clients: `sequence` tells a client how far it is, and is all it needs to ask for what changed since ([0029](decisions/0029-sequence-is-the-cursor.md))
 - **Crash safety**: a transition is either fully written or not written at all
 
-Next to each state, the server stores diffs: one of the full state ([0013](decisions/0013-store-full-state-diffs.md)), and one per audience ([0012](decisions/0012-store-player-diffs.md)). A client that reconnects gets its whole view from the socket ([0031](decisions/0031-socket-sends-state-on-connect.md)). A client that asks `GET …/updates?since=n` gets the stored diffs of its audience after _n_, joined into one patch ([0030](decisions/0030-updates-in-one-jump.md)).
+Only full states are stored, no diffs ([0050](decisions/0050-full-state-diffs-derived-not-stored.md), [0056](decisions/0056-views-and-patches-computed-when-sent.md)). After each transition, the server computes the views and patches the connected sockets need, once per audience. A client that reconnects gets its whole view from the socket ([0031](decisions/0031-socket-sends-state-on-connect.md)). A client that asks `GET …/updates?since=n` gets one patch from its view of the state at _n_ to its current view ([0030](decisions/0030-updates-in-one-jump.md)).
 
-The cost is storage. Every transition stores the whole state and its diffs, which suits small board-game states well and large, frequently changing states badly.
+The cost is storage. Every transition stores the whole state, which suits small board-game states well and large, frequently changing states badly.
 
 ## Hidden information
 
@@ -107,9 +107,9 @@ Every game is treated as having hidden information ([0010](decisions/0010-every-
 
 Patches are diffs between two views, never between full states ([0011](decisions/0011-patches-are-diffs-of-views.md)), so they can't leak what the views hide.
 
-Views are computed per audience, not per player ([0024](decisions/0024-views-per-audience.md)). By default, a game with a filter gives each player an audience of their own, and a game without one puts everyone in a single audience ([0025](decisions/0025-default-audiences.md)). Games move players into shared audiences, such as spectators, by returning `withAudiences` from `onJoin` or an action ([0027](decisions/0027-audiences-set-by-join-hook-and-actions.md)). Players who see the same thing then cost one view and one stored diff, however many they are.
+Views are computed per audience, not per player ([0024](decisions/0024-views-per-audience.md)). By default, a game with a filter gives each player an audience of their own, and a game without one puts everyone in a single audience ([0025](decisions/0025-default-audiences.md)). Games move players into shared audiences, such as spectators, by returning `withAudiences` from `onJoin` or an action ([0027](decisions/0027-audiences-set-by-join-hook-and-actions.md)). Players who see the same thing then cost one view and one diff, however many they are.
 
-When a player changes audience, no stored diff leads from their old view to their new one. The server rebuilds the old view from the stored state and the player's audience history, and diffs the two ([0035](decisions/0035-updates-across-audiences.md)). That's why filters must be pure functions of the state and the audience.
+To catch a player up, the server rebuilds their old view from the stored state and their audience history, in case they changed audience since, and diffs it with their current one ([0035](decisions/0035-updates-across-audiences.md)). That's why filters must be pure functions of the state and the audience.
 
 Filtering happens at send time, so the stored state stays complete. That's what lets the server keep enforcing rules that depend on hidden facts.
 

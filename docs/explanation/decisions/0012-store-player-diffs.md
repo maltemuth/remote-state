@@ -1,6 +1,6 @@
 # 0012. Store each player's diffs alongside the full states
 
-Status: Accepted; diffs are stored in Immer's format per [0014](0014-immer-patches-only-external-format.md); superseded in part by [0024](0024-views-per-audience.md), which stores diffs per audience instead of per player
+Status: Accepted; diffs are stored in Immer's format per [0014](0014-immer-patches-only-external-format.md); superseded in part by [0024](0024-views-per-audience.md), which stores diffs per audience instead of per player; superseded by [0056](0056-views-and-patches-computed-when-sent.md), which stores no diffs
 Date: 2026-09-29
 
 ## Context

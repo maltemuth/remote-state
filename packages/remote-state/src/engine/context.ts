@@ -5,24 +5,20 @@
 
 import { type Orm } from '../database/orm.js';
 import { type Logger } from '../logging/logger.js';
-import { type Patch } from '../patches/diff.js';
 import { type AnyGamePlugin } from '../plugin/types.js';
 import { type TimerRequest } from '../plugin/transition.js';
 import { type GameLock } from './gameLock.js';
 import { type Scheduler } from './scheduler.js';
 
-/** One audience's view after a transition, and the patches leading to it */
-export interface AudienceUpdate {
-  view: unknown;
-  patches: Patch[];
-}
-
-/** Everything needed to send a recorded transition to connected clients */
+/**
+ * Everything needed to send a recorded transition to connected clients. Views and
+ * patches are computed from the two states when they're sent (0056).
+ */
 export interface TransitionOutcome {
   gameId: string;
   sequence: number;
   previousState: unknown;
-  updates: Map<string, AudienceUpdate>;
+  state: unknown;
   /** Player ID → effective audience, before and after the transition */
   audiencesBefore: Map<string, string>;
   audiencesAfter: Map<string, string>;

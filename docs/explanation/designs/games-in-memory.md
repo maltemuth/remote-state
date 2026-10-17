@@ -26,7 +26,7 @@ A game's latest state, sequence, players and audiences are kept in memory. An ac
 
 ### History is kept
 
-Every transition is still written: the full state, the action, and each audience's diff, as today ([0050](../decisions/0050-full-state-diffs-derived-not-stored.md)). They're written behind, not on the action's path, and always in order, so the database holds every game's history up to some transition, with no gaps.
+Every transition is still written: the full state and the action, as today ([0050](../decisions/0050-full-state-diffs-derived-not-stored.md), [0056](../decisions/0056-views-and-patches-computed-when-sent.md)). They're written behind, not on the action's path, and always in order, so the database holds every game's history up to some transition, with no gaps.
 
 ### Admission is written through
 

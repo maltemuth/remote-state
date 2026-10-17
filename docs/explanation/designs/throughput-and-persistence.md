@@ -57,7 +57,7 @@ Keep the latest state, the players and their audiences, and the token-to-player 
 ### C. Write and compute less per action
 
 - The full-state diff was stored but never sent to clients. It's now computed only when needed, from the stored states ([0050](../decisions/0050-full-state-diffs-derived-not-stored.md)).
-- The per-audience diffs only serve `GET …/updates`. They could be built from stored states on demand, or kept in memory for recent sequences only.
+- The per-audience diffs only served `GET …/updates`. They're now built from stored states on demand, and views and patches are computed only for connected sockets ([0056](../decisions/0056-views-and-patches-computed-when-sent.md)).
 - A faster established diff library, or games that produce patches themselves with Immer's `produceWithPatches`, would make the remaining diffs cheaper.
 - Writing fewer rows, or writing them without the ORM's unit of work, reduces the ORM's share.
 

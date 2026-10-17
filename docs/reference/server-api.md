@@ -284,16 +284,6 @@ All IDs are UUID strings. Tokens and codes are stored only as SHA-256 hashes ([0
 | `action_data` | JSON, nullable                     | The action as sent by the client or the system; null for `initial` and `join`                                                                                                                                                     |
 | `created_at`  | datetime                           |                                                                                                                                                                                                                                   |
 
-**audience_diffs**: what each audience's view changed by, per state. Unique per `(game_id, audience, sequence)`.
-
-| Column     | Type                   | Notes                         |
-| ---------- | ---------------------- | ----------------------------- |
-| `id`       | primary key            |                               |
-| `game_id`  | foreign key to `games` |                               |
-| `audience` | string                 |                               |
-| `sequence` | integer                | The state the patches lead to |
-| `patches`  | JSON                   | Immer patches                 |
-
 **audience_memberships**: the history of each player's audience. A player's audience at a sequence is given by the latest row at or before it.
 
 | Column      | Type                     | Notes                                                               |

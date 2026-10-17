@@ -1,6 +1,6 @@
 # 0024. Views are computed per audience
 
-Status: Accepted; default audiences settled by [0025](0025-default-audiences.md); a player who changes audience gets a computed diff rather than a whole state, per [0035](0035-updates-across-audiences.md)
+Status: Accepted; default audiences settled by [0025](0025-default-audiences.md); a player who changes audience gets a computed diff rather than a whole state, per [0035](0035-updates-across-audiences.md); diffs per audience are no longer stored, per [0056](0056-views-and-patches-computed-when-sent.md)
 Date: 2026-09-29
 
 ## Context

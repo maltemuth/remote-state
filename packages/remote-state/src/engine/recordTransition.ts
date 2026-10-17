@@ -1,20 +1,16 @@
 /**
  * Records one state transition, from a join or an action, in a single database
- * transaction: the new full state, each audience's diff (0024), and audience
- * changes (0027). Once it's recorded, applies its timers
- * and publishes it. Callers hold the game's lock.
+ * transaction: the new full state and audience changes (0027). Views and patches
+ * aren't stored; they're computed when the transition is published (0056). Once
+ * it's recorded, applies its timers and publishes it. Callers hold the game's lock.
  */
 
-import { AudienceDiff, AudienceMembership, GameState, Player } from '../database/entities/index.js';
+import { AudienceMembership, GameState, Player } from '../database/entities/index.js';
 import { type StateResult } from '../plugin/types.js';
 import { SYSTEM } from '../plugin/system.js';
 import { unwrapTransition } from '../plugin/transition.js';
 import { droppedKeysWarning, toJson } from '../json.js';
-import {
-  applyAudienceChanges,
-  computeAudienceUpdates,
-  effectiveAudiences,
-} from './audienceUpdates.js';
+import { applyAudienceChanges, effectiveAudiences } from './audienceUpdates.js';
 import { checkTimerRequests } from './scheduler.js';
 import { type EngineContext, type TransitionOutcome } from './context.js';
 import { type StoredState } from './states.js';
@@ -65,12 +61,6 @@ const persist = (
 
     const audiencesBefore = effectiveAudiences(plugin, storedBefore);
     const audiencesAfter = effectiveAudiences(plugin, storedAfter);
-    const updates = await computeAudienceUpdates(
-      plugin,
-      previous.state,
-      state,
-      audiencesAfter.values()
-    );
 
     if (joiningPlayer) {
       const audience = storedAfter.get(joiningPlayer.id) ?? null;
@@ -99,16 +89,13 @@ const persist = (
       actionType: input.actionType,
       actionData: input.actionData ?? null,
     });
-    for (const [audience, { patches }] of updates) {
-      em.create(AudienceDiff, { game: gameId, audience, sequence, patches });
-    }
 
     const author = playerId === null ? SYSTEM : `${authorAudience}:${playerId}`;
     const outcome: TransitionOutcome = {
       gameId,
       sequence,
       previousState: previous.state,
-      updates,
+      state,
       audiencesBefore,
       audiencesAfter,
       timers: { schedule: changes.schedule, cancel: changes.cancel },

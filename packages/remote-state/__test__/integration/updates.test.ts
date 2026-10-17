@@ -43,7 +43,7 @@ describe('updates', () => {
     return { gameId, alice, bob, aliceAtOne };
   };
 
-  it('joins the stored diffs into one patch', async () => {
+  it('builds one patch across several actions', async () => {
     const { gameId, alice, aliceAtOne } = await playedGame();
     const response = await getUpdates(server, gameId, alice.token, 1).expect(200);
     assert.partialDeepStrictEqual(response.body, { gameId, since: 1, sequence: 5 });
@@ -81,9 +81,11 @@ describe('updates', () => {
       em.nativeDelete(GameState, { game: gameId, sequence: 3 })
     );
 
-    const redirect = await getUpdates(server, gameId, alice.token, 3).expect(303);
-    assert.equal(redirect.headers.location, 'state');
-    // Without an audience change, stored diffs don't need the old state
-    await getUpdates(server, gameId, bob.token, 3).expect(200);
+    // With or without an audience change: patches are built from the stored states (0056)
+    for (const player of [alice, bob]) {
+      const redirect = await getUpdates(server, gameId, player.token, 3).expect(303);
+      assert.equal(redirect.headers.location, 'state');
+    }
+    await getUpdates(server, gameId, bob.token, 4).expect(200);
   });
 });

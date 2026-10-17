@@ -2,6 +2,22 @@
 
 Results of the load test, as measured. For how to run it, see [Measure performance](../how-to/measure-performance.md).
 
+## 2026-10-17, views and patches computed when sent, after 0.9.1
+
+The same machine as the next sections, with WAL, and without stored per-audience diffs: views and patches are computed after the commit, only for connected sockets ([0056](../explanation/decisions/0056-views-and-patches-computed-when-sent.md)). The load test's clients use the `state` format, so they get views and no patches are computed.
+
+**Results** (latencies in milliseconds)
+
+| Command                           | Run | Actions | Duration | Actions/s | Errors | HTTP p50 | HTTP p95 | HTTP p99 | HTTP max |
+| --------------------------------- | --- | ------- | -------- | --------- | ------ | -------- | -------- | -------- | -------- |
+| `--games 100 --pause 0 --runs 3`  | 1   | 4300    | 15.2 s   | 282       | 0      | 312.3    | 324.9    | 329.2    | 577.2    |
+|                                   | 2   | 4300    | 15.3 s   | 281       | 0      | 313.1    | 339.1    | 354.4    | 386.4    |
+|                                   | 3   | 4300    | 15.0 s   | 286       | 0      | 310.2    | 329.4    | 338.4    | 546.3    |
+| `--games 100 --pause 0 --profile` | 1   | 4300    | 15.4 s   | 279       | 0      | 315.7    | 335.6    | 349.0    | 602.6    |
+| `--games 100 --pause 2000`        | 1   | 4300    | 95.9 s   | 45        | 0      | 4.9      | 9.9      | 18.8     | 36.2     |
+
+**CPU profile,** own time by package: @mikro-orm/core 21.7%, remote-state 19.5%, kysely 16.8%, @mikro-orm/sql 11.3%, better-sqlite3 6.0%, node 5.3%. `rfc6902` doesn't appear. The largest functions are `toJson` (17.8%) and the driver's `executeQuery` (15.8%).
+
 ## 2026-10-17, WAL without syncing every commit, after 0.9.1
 
 The same machine as the next section, with databases opened with `journal_mode = WAL` and `synchronous = NORMAL` ([0054](../explanation/decisions/0054-wal-without-syncing-every-commit.md)), compared with 0.9.1 and SQLite's defaults.
