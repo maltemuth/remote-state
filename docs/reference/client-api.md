@@ -54,7 +54,8 @@ Connects to the game right away. `View` is what the player sees, as returned by 
 | `baseUrl`    | the page's origin            | Where the game's library routes are mounted, such as `/tic-tac-toe` or `https://games.example.com/tic-tac-toe` |
 | `socketPath` | `<baseUrl's path>/socket.io` | The socket's path, if the host set another                                                                     |
 | `format`     | `"immer"`                    | What the socket sends: `"immer"` patches, which the client applies, or whole views as `"state"`                |
-| `onError`    | ignore                       | Called with errors the client can't report elsewhere, such as a failed catch-up                                |
+| `onError`    | ignore                       | Called with errors the client can't report elsewhere, such as a failed catch-up, or a `ChecksumError`          |
+| `parser`     | JSON                         | Socket.IO's parser, when the server uses another, such as `socket.io-msgpack-parser`                           |
 
 Outside a browser, `baseUrl` must be an absolute URL.
 
@@ -121,6 +122,11 @@ class RequestError extends Error {
   readonly status: number;
 }
 class ActionRejectedError extends RequestError {}
+class ChecksumError extends Error {
+  readonly sequence: number;
+}
 ```
 
 `message` is the server's `error`, or the HTTP status text if there's none.
+
+A `ChecksumError` goes to `onError` when patches from a server with the `checksums` option didn't lead to a view with their checksum. The client has already fetched the whole view by then ([0059](../explanation/decisions/0059-checksums-with-patches.md)).

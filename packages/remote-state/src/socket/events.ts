@@ -20,6 +20,8 @@ export interface PatchesEvent {
   gameId: string;
   sequence: number;
   patches: Patch[];
+  /** With the `checksums` option: the checksum of the view the patches lead to (0059) */
+  checksum?: number;
 }
 
 export interface ServerToClientEvents {

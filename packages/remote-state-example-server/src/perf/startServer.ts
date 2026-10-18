@@ -14,7 +14,8 @@ import { fileURLToPath } from "url";
 
 export interface RunningServer {
   url: string;
-  stop: () => Promise<void>;
+  /** Stop the server; resolves with the CPU milliseconds it used */
+  stop: () => Promise<number>;
 }
 
 const serverScript = path.join(
@@ -36,7 +37,8 @@ const waitUntilUp = async (url: string, attempts = 100) => {
 
 export const startServer = async (
   port: number,
-  diff: string,
+  /** Settings for the server, as environment variables */
+  settings: Record<string, string>,
   profileDirectory?: string,
 ): Promise<RunningServer> => {
   const directory = mkdtempSync(path.join(tmpdir(), "remote-state-perf-"));
@@ -45,17 +47,25 @@ export const startServer = async (
     : [];
   const child = spawn(process.execPath, [...profiling, serverScript], {
     cwd: directory,
-    env: { ...process.env, PORT: String(port), DIFF: diff },
+    env: { ...process.env, ...settings, PORT: String(port) },
     stdio: ["ignore", "ignore", "ignore", "ipc"],
   });
   const url = `http://localhost:${port}`;
   await waitUntilUp(url);
+  child.send("measure");
 
   const stop = async () => {
     const exited = new Promise((resolve) => child.once("exit", resolve));
+    const usage = new Promise<NodeJS.CpuUsage>((resolve) =>
+      child.once("message", (message: { cpu: NodeJS.CpuUsage }) =>
+        resolve(message.cpu),
+      ),
+    );
     child.send("stop");
+    const { user, system } = await usage;
     await exited;
     rmSync(directory, { recursive: true, force: true });
+    return (user + system) / 1000;
   };
   return { url, stop };
 };

@@ -28,7 +28,8 @@
     "@malte.muth/remote-state-client": "file:../remote-state-client",
     "express": "^5.2.1",
     "immer": "^11.1.21",
-    "socket.io-client": "^4.8.4"
+    "socket.io-client": "^4.8.4",
+    "socket.io-msgpack-parser": "^3.0.2"
   },
   "devDependencies": {
     "@types/express": "^5.0.6",

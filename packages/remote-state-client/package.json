@@ -60,6 +60,7 @@
     "@malte.muth/remote-state": "file:../remote-state",
     "@types/express": "^5.0.6",
     "express": "^5.2.1",
-    "fast-check": "^4.10.2"
+    "fast-check": "^4.10.2",
+    "socket.io-msgpack-parser": "^3.0.2"
   }
 }

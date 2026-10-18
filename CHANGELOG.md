@@ -9,6 +9,9 @@ Databases from 0.9.x have to be deleted: the schema's version is now 3.
 ### Added
 
 - The `diff` option: `positional`, the library's own diff and the default, or `rfc6902`, the established reference the library's own is tested against on generated values and in every end-to-end property. The load test takes `--diff` (0058).
+- The `checksums` option: every patch, on the socket and from `GET …/updates`, carries the checksum of the view it leads to, cyrb53 over the view's canonical JSON. The client package checks it, reports a `ChecksumError` to `onError` on a mismatch, and fetches the whole view. The library exports `checksumOf` (0059).
+- `socket.parser` and `socket.perMessageDeflate`, passed to Socket.IO, for another parser such as MessagePack and for compressed messages; the client package takes `parser` too. Compression made whole views 97% and patches 91% smaller on the wire in the load test, for about 6% more server CPU (0060).
+- Load test: `--checksums`, `--parser` and `--deflate`. Players apply patches and check checksums, and the report adds the bytes received and the CPU time of the server and of the load test per action.
 
 ### Changed
 

@@ -10,5 +10,6 @@ export {
   type RemoteStateClient,
 } from './client.js';
 export { RequestError } from './http.js';
+export { ChecksumError } from './viewStore.js';
 export { redeemCode, type RedeemOptions, type Session } from './session.js';
 export type { ConnectionState, Format, Patch, Snapshot, Update } from './types.js';

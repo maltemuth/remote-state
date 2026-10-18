@@ -4,7 +4,8 @@
  * other player receives each update.
  *
  *   npm run perf -- --games 100 --pause 0 --format state [--runs 3]
- *                   [--diff positional|rfc6902]
+ *                   [--diff positional|rfc6902] [--checksums]
+ *                   [--parser json|msgpack] [--deflate <threshold in bytes>]
  *                   [--profile dir] [--url http://…] [--max-p95 50]
  *
  * Without `--url`, each run starts the example server on a free port with databases
@@ -21,6 +22,7 @@ import {
   runOnce,
   type RunOptions,
 } from "./runOnce.js";
+import { type Parser } from "./player.js";
 
 const { values } = parseArgs({
   options: {
@@ -28,6 +30,9 @@ const { values } = parseArgs({
     pause: { type: "string", default: "0" },
     format: { type: "string", default: "state" },
     diff: { type: "string", default: "positional" },
+    checksums: { type: "boolean", default: false },
+    parser: { type: "string", default: "json" },
+    deflate: { type: "string" },
     runs: { type: "string", default: "1" },
     profile: { type: "string" },
     url: { type: "string" },
@@ -44,6 +49,9 @@ const options: RunOptions = {
   pause: Number(values.pause),
   format: values.format as Format,
   diff: values.diff as DiffName,
+  checksums: values.checksums,
+  parser: values.parser as Parser,
+  deflate: values.deflate === undefined ? null : Number(values.deflate),
   url: values.url,
   port: Number(values.port),
   profileDirectory: values.profile,

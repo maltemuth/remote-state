@@ -58,6 +58,7 @@ export const createRemoteState = async <StateType, ActionType, ViewType>(
     publisher: { publish: async () => undefined },
     scheduler: createScheduler(timer => runDueTimer(context, timer)),
     diff: diffs[diffName],
+    checksums: options.checksums ?? false,
   };
   // Before anything is served, so no action can come in between (0052)
   await restartGames(context);
@@ -66,8 +67,8 @@ export const createRemoteState = async <StateType, ActionType, ViewType>(
   const attach = (httpServer: HTTPServer) => {
     if (options.socket === false) throw new Error('The socket is disabled');
     if (io) throw new Error('The socket is already attached');
-    io = createSocketServer(httpServer, context, { cors, path: options.socket?.path });
-    context.publisher = createPublisher(io, plugin, context.diff, logger);
+    io = createSocketServer(httpServer, context, { cors, ...options.socket });
+    context.publisher = createPublisher(io, plugin, context.diff, context.checksums, logger);
   };
 
   return {

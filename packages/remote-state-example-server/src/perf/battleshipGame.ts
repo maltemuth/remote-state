@@ -7,7 +7,7 @@
 
 import { SCRIPT } from "../games/battleship/script.js";
 import type { Format } from "@malte.muth/remote-state";
-import { joinPlayer, type Player, postJson } from "./player.js";
+import { joinPlayer, type Parser, type Player, postJson } from "./player.js";
 
 export interface Samples {
   /** Milliseconds from sending an action to its HTTP response */
@@ -15,11 +15,14 @@ export interface Samples {
   /** Milliseconds from sending an action to the other player receiving the update */
   endToEnd: number[];
   errors: number;
+  /** Bytes the players' sockets received */
+  bytes: number;
 }
 
 export interface GameOptions {
   base: string;
   format: Format;
+  parser: Parser;
   /** Average milliseconds a player thinks before each action */
   pause: number;
 }
@@ -27,7 +30,7 @@ export interface GameOptions {
 export const ACTIONS_PER_GAME = SCRIPT.length;
 
 export const playGame = async (
-  { base, format, pause }: GameOptions,
+  { base, format, parser, pause }: GameOptions,
   samples: Samples,
 ) => {
   const { gameId } = (await postJson(`${base}/battleship/lobby/games`))
@@ -35,8 +38,8 @@ export const playGame = async (
     gameId: string;
   };
   const players: Player[] = [
-    await joinPlayer(base, gameId, "A", format),
-    await joinPlayer(base, gameId, "B", format),
+    await joinPlayer(base, gameId, "A", format, parser),
+    await joinPlayer(base, gameId, "B", format, parser),
   ];
   for (const [actor, action] of SCRIPT) {
     if (pause)
@@ -55,5 +58,10 @@ export const playGame = async (
     const seen = await players[1 - actor].arrival(body.sequence as number);
     samples.endToEnd.push(seen - started);
   }
-  players.forEach((player) => player.disconnect());
+  for (const player of players) {
+    // A view that missed its checksum counts as an error
+    samples.errors += player.mismatches();
+    samples.bytes += player.bytesReceived();
+    player.disconnect();
+  }
 };

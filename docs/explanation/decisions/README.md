@@ -64,6 +64,8 @@ Records aren't edited after the fact, except to update their status. A decision 
 | [0056](0056-views-and-patches-computed-when-sent.md)                   | Views and patches are computed when they're sent, not stored                   | Accepted                                                                                                       |
 | [0057](0057-own-diff-arrays-by-position.md)                            | Patches come from a diff of our own, comparing arrays by position              | Accepted, refined by 0058                                                                                      |
 | [0058](0058-rfc6902-kept-as-reference-and-option.md)                   | rfc6902 stays, as the reference our diff is tested against, and as an option   | Accepted                                                                                                       |
+| [0059](0059-checksums-with-patches.md)                                 | Patches can carry a checksum of the view they lead to                          | Accepted                                                                                                       |
+| [0060](0060-socket-parser-and-compression-options.md)                  | The socket's parser and compression are deployment options                     | Accepted                                                                                                       |
 
 ## Writing a record
 

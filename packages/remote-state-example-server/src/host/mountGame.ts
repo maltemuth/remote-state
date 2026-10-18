@@ -12,6 +12,7 @@ import {
   type GamePlugin,
   type Logger,
   type RemoteState,
+  type SocketSettings,
 } from "@malte.muth/remote-state";
 import { createLobby } from "./lobby.js";
 
@@ -21,6 +22,10 @@ export interface MountOptions {
   logger: Logger;
   /** How patches are computed; the library's default if unset */
   diff?: DiffName;
+  /** Send checksums with patches */
+  checksums?: boolean;
+  /** The socket's parser and compression */
+  socket?: Omit<SocketSettings, "path">;
 }
 
 export const mountGame = async <StateType, ActionType, ViewType>(
@@ -33,13 +38,14 @@ export const mountGame = async <StateType, ActionType, ViewType>(
     /** The system action that resumes a game a restart paused */
     resume?: ActionType;
   },
-  { database, logger, diff }: MountOptions,
+  { database, logger, diff, checksums, socket }: MountOptions,
 ): Promise<RemoteState<StateType>> => {
   const remote = await createRemoteState(game.plugin, {
     database,
     logger,
     diff,
-    socket: { path: `${prefix}/socket.io` },
+    checksums,
+    socket: { ...socket, path: `${prefix}/socket.io` },
   });
   app.use(prefix, remote.router);
   app.use(`${prefix}/lobby`, createLobby(remote, game.newGame, game.resume));

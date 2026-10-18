@@ -7,8 +7,8 @@
 import express from 'express';
 import { createServer } from 'http';
 import { type AddressInfo } from 'net';
-import { createRemoteState, silentLogger } from '@malte.muth/remote-state';
-import { createClient, type Format, redeemCode } from '../../src/index.js';
+import { createRemoteState, type RemoteStateOptions, silentLogger } from '@malte.muth/remote-state';
+import { type ClientOptions, createClient, type Format, redeemCode } from '../../src/index.js';
 import { type NotesAction, type NotesView, newNotesGame, notesGame } from './notesGame.js';
 
 export interface NotesServerOptions {
@@ -16,13 +16,20 @@ export interface NotesServerOptions {
   database?: string;
   /** 0, the default, picks a free port */
   port?: number;
+  /** More library options, such as `checksums` or the socket's parser */
+  remote?: RemoteStateOptions;
 }
 
-export const startNotesServer = async ({ database, port = 0 }: NotesServerOptions = {}) => {
+export const startNotesServer = async ({
+  database,
+  port = 0,
+  remote: more = {},
+}: NotesServerOptions = {}) => {
   const remote = await createRemoteState(notesGame, {
     database: database ?? ':memory:',
     logger: silentLogger,
-    socket: { path: '/notes/socket.io' },
+    ...more,
+    socket: { path: '/notes/socket.io', ...(more.socket || {}) },
   });
   const app = express();
   app.use('/notes', remote.router);
@@ -38,11 +45,17 @@ export const startNotesServer = async ({ database, port = 0 }: NotesServerOption
     newGame: () => remote.createGame(newNotesGame()),
     admit: (gameId: string, id: string) => remote.admit({ gameId, identity: { id } }),
     /** Admit an identity and connect a client for it, as a player's browser would */
-    join: async (gameId: string, id: string, format?: Format) =>
+    join: async (
+      gameId: string,
+      id: string,
+      format?: Format,
+      options: Partial<ClientOptions> = {}
+    ) =>
       createClient<NotesView, NotesAction>({
         session: await redeemCode(await remote.admit({ gameId, identity: { id } }), { baseUrl }),
         baseUrl,
         format,
+        ...options,
       }),
     close: async () => {
       await remote.close();

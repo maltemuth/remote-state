@@ -2,6 +2,38 @@
 
 Results of the load test, as measured. For how to run it, see [Measure performance](../how-to/measure-performance.md).
 
+## 2026-10-18, checksums, MessagePack and compression, after 0.9.1
+
+The same machine as the next sections, with checksums ([0059](../explanation/decisions/0059-checksums-with-patches.md)), MessagePack through `socket.io-msgpack-parser` 3.0.2, and permessage-deflate from 0 bytes ([0060](../explanation/decisions/0060-socket-parser-and-compression-options.md)). Players now apply patches and check checksums, and the report adds bytes received and CPU time per action. All runs: `--games 100 --pause 0 --runs 2`, two runs each, in one session.
+
+**Throughput drifted during the session:** the same baseline, `--format state`, gave 338–361 actions per second at the start and 267–271 an hour later, with nothing changed. So compare runs from one table only, and prefer CPU per action, which stayed steady between runs of one configuration. Earlier results, such as the `immer` format being faster than `state`, may partly reflect this drift: in these tables, `state` costs the server less CPU per action.
+
+**`--format state`**
+
+| Options                        | Actions/s | Bytes per action | Server CPU per action | Load test CPU per action | End-to-end p50 | End-to-end p95 |
+| ------------------------------ | --------- | ---------------- | --------------------- | ------------------------ | -------------- | -------------- |
+| none                           | 267, 271  | 5,078            | 3.95, 3.87 ms         | 0.87, 0.67 ms            | 330.4, 328.6   | 354.8, 346.3   |
+| `--deflate 0`                  | 267, 266  | 136              | 4.18, 4.12 ms         | 0.96, 0.89 ms            | 333.7, 331.2   | 356.6, 353.9   |
+| `--parser msgpack`             | 266, 231  | 3,798            | 4.07, 4.10 ms         | 1.01, 0.84 ms            | 335.4, 341.8   | 351.1, 401.9   |
+| `--parser msgpack --deflate 0` | 265, 265  | 122              | 4.20, 4.04 ms         | 1.02, 0.85 ms            | 332.3, 331.9   | 353.8, 360.9   |
+
+**`--format immer`**
+
+| Options                                    | Actions/s | Bytes per action | Server CPU per action | Load test CPU per action | End-to-end p50 | End-to-end p95 |
+| ------------------------------------------ | --------- | ---------------- | --------------------- | ------------------------ | -------------- | -------------- |
+| none                                       | 242, 244  | 1,039            | 4.32, 4.36 ms         | 0.87, 0.83 ms            | 369.0, 367.9   | 390.6, 383.8   |
+| `--checksums`                              | 232, 230  | 1,095            | 4.52, 4.48 ms         | 1.22, 0.84 ms            | 389.8, 389.0   | 404.2, 421.3   |
+| `--deflate 0`                              | 231, 235  | 93               | 4.70, 4.59 ms         | 1.02, 0.92 ms            | 380.2, 379.9   | 427.3, 405.4   |
+| `--parser msgpack`                         | 223, 221  | 825              | 4.79, 4.64 ms         | 0.98, 0.96 ms            | 401.4, 401.4   | 446.8, 453.1   |
+| `--checksums --parser msgpack --deflate 0` | 208, 209  | 113              | 5.14, 5.07 ms         | 1.27, 1.25 ms            | 424.4, 426.9   | 523.8, 490.7   |
+
+Bytes are what both players' sockets received on the wire, per action. No run had errors, so every checksum matched.
+
+- **Compression** cut bytes by 97% for whole views and 91% for patches, for about 6% more server CPU per action. It runs off the main thread: with it, HTTP responses came after about 9 ms instead of with the update, since the response no longer waits for the socket send, but updates arrived no sooner.
+- **Checksums** cost about 4% more server CPU per action, and 56 more bytes per action for both players.
+- **MessagePack** made messages 21–25% smaller for 4–9% more server CPU. On top of compression, it saved 10–14% of the bytes.
+- The load test's own CPU stayed around 1 ms per action, so it wasn't the limit.
+
 ## 2026-10-17, the library's own diff, after 0.9.1
 
 As the next section, with patches from the library's own diff instead of `rfc6902` ([0057](../explanation/decisions/0057-own-diff-arrays-by-position.md)), in the `immer` format.

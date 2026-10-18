@@ -69,6 +69,7 @@
     "fast-check": "^4.10.2",
     "immer": "^11.1.21",
     "socket.io-client": "^4.8.4",
+    "socket.io-msgpack-parser": "^3.0.2",
     "supertest": "^7.3.0"
   }
 }

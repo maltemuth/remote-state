@@ -5,6 +5,7 @@
  * shows results only once the server has sent them (0033).
  */
 
+import { type ManagerOptions } from 'socket.io-client';
 import { connect } from './connection.js';
 import { resolveEndpoints } from './endpoints.js';
 import { RequestError, requestJson } from './http.js';
@@ -20,8 +21,16 @@ export interface ClientOptions {
   socketPath?: string;
   /** What the socket sends; `immer` patches by default, applied by the client */
   format?: Format;
-  /** Errors the client can't report anywhere else, such as a failed catch-up */
+  /**
+   * Errors the client can't report anywhere else, such as a failed catch-up, or a
+   * `ChecksumError` when patches didn't lead to the server's view
+   */
   onError?: (error: unknown) => void;
+  /**
+   * Socket.IO's parser, for a server that uses another one, such as
+   * `socket.io-msgpack-parser`; JSON by default (0060)
+   */
+  parser?: ManagerOptions['parser'];
 }
 
 export interface RemoteStateClient<View, Action> {
@@ -68,7 +77,8 @@ export const createClient = <View = unknown, Action = unknown>(
       try {
         // A 303 to the state is followed, so the answer can be a whole view
         return await get<
-          { sequence: number; patches: Patch[] } | { sequence: number; state: View }
+          | { sequence: number; patches: Patch[]; checksum?: number }
+          | { sequence: number; state: View }
         >(`/updates?since=${since}`);
       } catch (error) {
         if (error instanceof RequestError && error.status === 404) return catchUp.state();
@@ -84,6 +94,7 @@ export const createClient = <View = unknown, Action = unknown>(
     endpoints,
     session,
     format: options.format ?? 'immer',
+    parser: options.parser,
     onUpdate: store.receive,
     onState: state => {
       connection = state;

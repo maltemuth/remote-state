@@ -5,7 +5,7 @@
  * marked as a reset, since a restarted server may have gone back to an earlier state.
  */
 
-import { io } from 'socket.io-client';
+import { io, type ManagerOptions } from 'socket.io-client';
 import { type Endpoints } from './endpoints.js';
 import { type Session } from './session.js';
 import { type ConnectionState, type Format, type Patch, type Update } from './types.js';
@@ -16,6 +16,8 @@ export interface ConnectionOptions<View> {
   format: Format;
   onUpdate: (update: Update<View>) => void;
   onState: (state: ConnectionState) => void;
+  /** Socket.IO's parser; must be the server's */
+  parser?: ManagerOptions['parser'];
 }
 
 export const connect = <View>({
@@ -24,11 +26,13 @@ export const connect = <View>({
   format,
   onUpdate,
   onState,
+  parser,
 }: ConnectionOptions<View>) => {
   const socket = io(endpoints.socketOrigin, {
     path: endpoints.socketPath,
     auth: { gameId: session.gameId, token: session.token },
     query: { format },
+    ...(parser ? { parser } : {}),
   });
 
   // The first view after each (re)connect replaces whatever the client holds
@@ -51,8 +55,8 @@ export const connect = <View>({
     onUpdate({ sequence: event.sequence, state: event.state, reset: connected });
     connected = false;
   });
-  socket.on('patches', (event: { sequence: number; patches: Patch[] }) =>
-    onUpdate({ sequence: event.sequence, patches: event.patches })
+  socket.on('patches', (event: { sequence: number; patches: Patch[]; checksum?: number }) =>
+    onUpdate({ sequence: event.sequence, patches: event.patches, checksum: event.checksum })
   );
 
   return { close: () => void socket.disconnect() };

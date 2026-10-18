@@ -11,6 +11,7 @@ import {
   type DiffName,
   type Logger,
   type RemoteState,
+  type SocketSettings,
 } from "@malte.muth/remote-state";
 import {
   battleshipPlugin,
@@ -34,6 +35,10 @@ export interface ExampleServerOptions {
   publicDirectory?: string;
   /** How patches are computed; the library's default if unset */
   diff?: DiffName;
+  /** Send checksums with patches */
+  checksums?: boolean;
+  /** The socket's parser and compression */
+  socket?: Omit<SocketSettings, "path">;
 }
 
 export interface ExampleServer {
@@ -50,6 +55,8 @@ export const createExampleServer = async ({
   databaseDirectory,
   logger = consoleLogger(),
   diff,
+  checksums,
+  socket,
   publicDirectory,
 }: ExampleServerOptions = {}): Promise<ExampleServer> => {
   const app = express();
@@ -66,14 +73,14 @@ export const createExampleServer = async ({
       newGame: () => newTicTacToeGame({ turnSeconds: TURN_SECONDS }),
       resume: { type: "resume" },
     },
-    { database: database("tic-tac-toe"), logger, diff },
+    { database: database("tic-tac-toe"), logger, diff, checksums, socket },
   );
   const battleship = await mountGame(
     app,
     server,
     "/battleship",
     { plugin: battleshipPlugin, newGame: newBattleshipGame },
-    { database: database("battleship"), logger, diff },
+    { database: database("battleship"), logger, diff, checksums, socket },
   );
   if (publicDirectory) {
     app.use(express.static(publicDirectory));

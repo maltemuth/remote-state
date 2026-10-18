@@ -7,6 +7,7 @@
 
 import { type RemoteSocket, type Server } from 'socket.io';
 import { type Publisher, type TransitionOutcome } from '../engine/context.js';
+import { checksumOf } from '../patches/checksum.js';
 import { type Diff, type Patch } from '../patches/diff.js';
 import { type AnyGamePlugin } from '../plugin/types.js';
 import { viewFor } from '../plugin/views.js';
@@ -32,8 +33,10 @@ const viewsOf = (plugin: AnyGamePlugin, diff: Diff, outcome: TransitionOutcome) 
     const [before, after] = JSON.parse(key) as [string, string];
     return diff(await viewBefore(before), await viewAfter(after));
   });
+  const checksum = memoized(async audience => checksumOf(await viewAfter(audience)));
   return {
     viewAfter,
+    checksum,
     /** From the view in the audience before to the view in the audience after */
     patches: (before: string, after: string) => patches(JSON.stringify([before, after])),
   };
@@ -43,6 +46,7 @@ export const createPublisher = (
   io: Server<never, ServerToClientEvents>,
   plugin: AnyGamePlugin,
   diff: Diff,
+  checksums: boolean,
   { error }: Logger
 ): Publisher => {
   const send = async (
@@ -58,7 +62,13 @@ export const createPublisher = (
       socket.emit('state', { gameId, sequence, state: await views.viewAfter(audience) });
     } else {
       const before = outcome.audiencesBefore.get(playerId) ?? audience;
-      socket.emit('patches', { gameId, sequence, patches: await views.patches(before, audience) });
+      const patches = await views.patches(before, audience);
+      socket.emit(
+        'patches',
+        checksums
+          ? { gameId, sequence, patches, checksum: await views.checksum(audience) }
+          : { gameId, sequence, patches }
+      );
     }
   };
 

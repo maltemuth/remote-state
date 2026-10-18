@@ -40,4 +40,6 @@ export interface EngineContext {
   scheduler: Scheduler;
   /** Computes patches between two views */
   diff: Diff;
+  /** Whether patches carry a checksum of the view they lead to (0059) */
+  checksums: boolean;
 }

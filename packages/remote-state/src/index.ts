@@ -5,7 +5,11 @@
 
 export { createRemoteStateServer, type RemoteStateServer } from './server/createServer.js';
 export { createRemoteState, type RemoteState } from './server/createRemoteState.js';
-export { type RemoteStateOptions, type RemoteStateServerOptions } from './server/options.js';
+export {
+  type RemoteStateOptions,
+  type RemoteStateServerOptions,
+  type SocketSettings,
+} from './server/options.js';
 export { UnknownGameError } from './server/errors.js';
 export { UnsupportedDatabaseError } from './database/orm.js';
 export { CODE_LIFETIME_MS, type Admission, type Identity } from './server/host.js';
@@ -29,6 +33,7 @@ export { type ActResult } from './engine/act.js';
 export { GameRefusal } from './plugin/refusal.js';
 export { EVERYONE } from './plugin/views.js';
 export { type DiffName, type Patch } from './patches/diff.js';
+export { checksumOf } from './patches/checksum.js';
 export { type Format, type PatchesEvent, type StateEvent } from './socket/events.js';
 export {
   consoleLogger,

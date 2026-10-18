@@ -8,15 +8,15 @@ import { type CorsOptions } from 'cors';
 import { type Server as HTTPServer } from 'http';
 import { Server } from 'socket.io';
 import { type EngineContext } from '../engine/context.js';
+import { type SocketSettings } from '../server/options.js';
 import { currentView } from '../engine/currentView.js';
 import { authenticate } from '../engine/tokens.js';
 import { type Format, formats, type ServerToClientEvents, type SocketData } from './events.js';
 
 export type SocketServer = Server<never, ServerToClientEvents, never, SocketData>;
 
-export interface SocketOptions {
+export interface SocketOptions extends SocketSettings {
   cors: CorsOptions;
-  path?: string;
 }
 
 const parseFormat = (value: unknown): Format | null =>
@@ -25,12 +25,14 @@ const parseFormat = (value: unknown): Format | null =>
 export const createSocketServer = (
   httpServer: HTTPServer,
   context: Omit<EngineContext, 'publisher'>,
-  { cors, path }: SocketOptions
+  { cors, path, parser, perMessageDeflate }: SocketOptions
 ): SocketServer => {
   const { info, error } = context.logger;
   const io: SocketServer = new Server(httpServer, {
     cors,
     path,
+    ...(parser ? { parser } : {}),
+    ...(perMessageDeflate !== undefined ? { perMessageDeflate } : {}),
     // Leave upgrade requests for other paths to the host, such as another game's socket
     destroyUpgrade: false,
   });

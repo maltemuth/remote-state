@@ -4,6 +4,7 @@
  */
 
 import { type CorsOptions } from 'cors';
+import { type ServerOptions } from 'socket.io';
 import { type Logger } from '../logging/logger.js';
 import { type DiffName } from '../patches/diff.js';
 
@@ -15,12 +16,26 @@ export interface RemoteStateOptions {
   /** CORS for the HTTP API and the socket; every origin is allowed by default */
   cors?: CorsOptions;
   /** Socket.IO settings, or `false` for no socket */
-  socket?: false | { path?: string };
+  socket?: false | SocketSettings;
   /**
    * How patches between views are computed: `positional`, the library's own diff
    * (the default), or `rfc6902`, the established library it's tested against (0058)
    */
   diff?: DiffName;
+  /** Send a checksum of the view with every patch, for clients to check theirs (0059) */
+  checksums?: boolean;
+}
+
+export interface SocketSettings {
+  /** Where the socket is served; `/socket.io` by default */
+  path?: string;
+  /**
+   * Socket.IO's parser, for example `socket.io-msgpack-parser` for MessagePack;
+   * clients must use the same one. JSON by default (0060).
+   */
+  parser?: ServerOptions['parser'];
+  /** Compress messages with WebSocket's permessage-deflate; off by default (0060) */
+  perMessageDeflate?: ServerOptions['perMessageDeflate'];
 }
 
 export interface RemoteStateServerOptions extends RemoteStateOptions {

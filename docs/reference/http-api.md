@@ -112,16 +112,16 @@ Returns one set of patches that turns the player's view at `since` into their cu
 
 **Responses**
 
-| Status | Body                                                                            |
-| ------ | ------------------------------------------------------------------------------- |
-| 200    | `{ "gameId": string, "since": number, "sequence": number, "patches": Patch[] }` |
-| 303    | No body. `Location: state`, which resolves to `GET /api/games/:gameId/state`    |
-| 400    | `` `since` must be a sequence number ``                                         |
-| 401    | `Invalid or missing token`                                                      |
-| 404    | `No updates since <since> for this player`                                      |
-| 500    | `Internal server error`                                                         |
+| Status | Body                                                                                                 |
+| ------ | ---------------------------------------------------------------------------------------------------- |
+| 200    | `{ "gameId": string, "since": number, "sequence": number, "patches": Patch[], "checksum"?: number }` |
+| 303    | No body. `Location: state`, which resolves to `GET /api/games/:gameId/state`                         |
+| 400    | `` `since` must be a sequence number ``                                                              |
+| 401    | `Invalid or missing token`                                                                           |
+| 404    | `No updates since <since> for this player`                                                           |
+| 500    | `Internal server error`                                                                              |
 
-- **200:** `sequence` is the latest sequence. `patches` is empty when `since` is the latest sequence. Patches are in [Immer's format](socket-events.md#patch-format); apply them in order to the view at `since`. If the player changed audience after `since`, the patches lead from the old audience's view to the new one's.
+- **200:** `sequence` is the latest sequence. `patches` is empty when `since` is the latest sequence. Patches are in [Immer's format](socket-events.md#patch-format); apply them in order to the view at `since`. If the player changed audience after `since`, the patches lead from the old audience's view to the new one's. With the server's `checksums` option, `checksum` is the [checksum](socket-events.md#checksums) of the player's current view.
 - **303:** no patch can be built, because a state the server needs is missing. Fetch the whole state instead. The `Location` is relative, so it leads to the state endpoint under any prefix.
 - **404:** `since` is after the latest sequence, or before the player joined. The first sequence a player can use is the one their join produced.
 

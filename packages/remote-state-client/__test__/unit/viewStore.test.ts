@@ -3,12 +3,14 @@
  * patches for the next sequence are applied, and gaps or patches that don't apply
  * are caught up through the server, with updates from meanwhile applied after. A
  * server that went back replaces the view, on a reconnect or when catching up.
+ * Patches with a checksum that doesn't match are reported and replaced (0059).
  */
 
 import assert from 'node:assert/strict';
 import { describe, it, mock } from 'node:test';
 import { isDeepStrictEqual } from 'node:util';
-import { type CatchUp, createViewStore } from '../../src/viewStore.js';
+import { checksumOf } from '../../src/checksum.js';
+import { type CatchUp, ChecksumError, createViewStore } from '../../src/viewStore.js';
 
 interface View {
   items: string[];
@@ -156,5 +158,47 @@ describe('view store, catching up and closing', () => {
     await assert.rejects(waiting, { message: 'closed' });
     await assert.rejects(store.waitFor(3), { message: 'closed' });
     assert.deepEqual(seen, []);
+  });
+
+  it('applies patches whose checksum matches the view they lead to', () => {
+    const { store, errors } = storeWith();
+    store.receive({ sequence: 1, state: view('a') });
+    store.receive({ sequence: 2, patches: add(1, 'b'), checksum: checksumOf(view('a', 'b')) });
+    assert.deepEqual(store.getSnapshot(), { sequence: 2, view: view('a', 'b') });
+    assert.deepEqual(errors, []);
+  });
+
+  it('reports patches that miss their checksum, and fetches the whole view', async () => {
+    const { store, state, errors } = storeWith({
+      state: async () => ({ sequence: 2, state: view('a', 'right') }),
+    });
+    store.receive({ sequence: 1, state: view('a') });
+    store.receive({
+      sequence: 2,
+      patches: add(1, 'wrong'),
+      checksum: checksumOf(view('a', 'right')),
+    });
+    await settle();
+    assert.equal(state.mock.callCount(), 1);
+    assert.deepEqual(store.getSnapshot(), { sequence: 2, view: view('a', 'right') });
+    assert.ok(errors[0] instanceof ChecksumError);
+    assert.equal((errors[0] as ChecksumError).sequence, 2);
+  });
+
+  it('checks the checksum of a catch-up too', async () => {
+    const { store, state, errors } = storeWith({
+      updates: async () => ({
+        sequence: 3,
+        patches: add(1, 'wrong'),
+        checksum: checksumOf(view('a', 'b', 'c')),
+      }),
+      state: async () => ({ sequence: 3, state: view('a', 'b', 'c') }),
+    });
+    store.receive({ sequence: 1, state: view('a') });
+    store.receive({ sequence: 3, patches: add(2, 'c') });
+    await settle();
+    assert.equal(state.mock.callCount(), 1);
+    assert.deepEqual(store.getSnapshot(), { sequence: 3, view: view('a', 'b', 'c') });
+    assert.ok(errors[0] instanceof ChecksumError);
   });
 });

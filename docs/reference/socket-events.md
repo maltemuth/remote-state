@@ -69,12 +69,25 @@ interface PatchesEvent {
   gameId: string;
   sequence: number;
   patches: Patch[]; // turn the view at sequence - 1 into the view at sequence
+  checksum?: number; // with the server's `checksums` option: the checksum of the view at sequence
 }
 ```
 
 Sent for each transition when `format` is `immer`. Apply the patches to the view at `sequence - 1`.
 
 When a transition moves the player to another audience, the patches lead from the old audience's view to the new one's ([0035](../explanation/decisions/0035-updates-across-audiences.md)). Patches may be empty when the player's view didn't change.
+
+With the server's `checksums` option, `checksum` is the [checksum](#checksums) of the view the patches lead to. A client that computes another one for the view it built has gone wrong, and should fetch the whole view.
+
+## Checksums
+
+The checksum of a view is [cyrb53](https://github.com/bryc/code/blob/master/jshash/experimental/cyrb53.js), with seed 0, over the view's canonical JSON, read as UTF-16 code units ([0059](../explanation/decisions/0059-checksums-with-patches.md)). Canonical JSON is the view's JSON with every object's keys sorted by UTF-16 code units, no whitespace, and no keys whose value is `undefined`. The result is a non-negative safe integer. The library exports it as `checksumOf`, and the client package checks it by itself.
+
+It detects mistakes, not tampering: two views share a checksum with a chance of about 1 in 10^16.
+
+## Parser and compression
+
+With the server's `socket.parser` option, events are encoded by that parser, such as MessagePack, instead of JSON; clients must use the same parser. With `socket.perMessageDeflate`, messages are compressed, which clients negotiate by themselves ([0060](../explanation/decisions/0060-socket-parser-and-compression-options.md)).
 
 ## Patch format
 
