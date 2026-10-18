@@ -1,6 +1,6 @@
 {
   "name": "@malte.muth/remote-state-client",
-  "version": "0.9.1",
+  "version": "0.10.0",
   "description": "Client for Remote State games: keeps a player's view in step with the server and sends actions",
   "license": "MIT",
   "author": "Malte Muth",
