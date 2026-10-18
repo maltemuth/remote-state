@@ -1,5 +1,5 @@
 /**
- * A checksum of a view, sent with updates when the `checksums` option is on
+ * A checksum of a view, sent with updates unless the `checksums` option is off
  * (decision 0059), so a client can check that the view it built is the server's.
  * It's cyrb53 over the view's canonical JSON: keys sorted, `undefined` dropped as
  * `JSON.stringify` drops it, values with `toJSON` converted first. Meant to detect

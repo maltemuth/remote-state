@@ -1,5 +1,5 @@
 /**
- * The checksum the server sends with patches when its `checksums` option is on
+ * The checksum the server sends with patches unless its `checksums` option is off
  * (decision 0059): cyrb53 over the view's canonical JSON, with keys sorted. It
  * must match the server's `checksumOf`, which the tests check on generated values.
  */

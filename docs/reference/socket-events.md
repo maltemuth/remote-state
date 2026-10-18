@@ -69,7 +69,7 @@ interface PatchesEvent {
   gameId: string;
   sequence: number;
   patches: Patch[]; // turn the view at sequence - 1 into the view at sequence
-  checksum?: number; // with the server's `checksums` option: the checksum of the view at sequence
+  checksum?: number; // the checksum of the view at sequence, unless the server turns checksums off
 }
 ```
 
@@ -77,7 +77,7 @@ Sent for each transition when `format` is `immer`. Apply the patches to the view
 
 When a transition moves the player to another audience, the patches lead from the old audience's view to the new one's ([0035](../explanation/decisions/0035-updates-across-audiences.md)). Patches may be empty when the player's view didn't change.
 
-With the server's `checksums` option, `checksum` is the [checksum](#checksums) of the view the patches lead to. A client that computes another one for the view it built has gone wrong, and should fetch the whole view.
+`checksum` is the [checksum](#checksums) of the view the patches lead to, unless the server turns `checksums` off. A client that computes another one for the view it built has gone wrong, and should fetch the whole view.
 
 ## Checksums
 

@@ -1,6 +1,6 @@
 # 0059. Patches can carry a checksum of the view they lead to
 
-Status: Accepted
+Status: Accepted, on by default since [0061](0061-checksums-on-by-default.md)
 Date: 2026-10-18
 
 ## Context

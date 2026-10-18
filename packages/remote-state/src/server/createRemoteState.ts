@@ -58,7 +58,7 @@ export const createRemoteState = async <StateType, ActionType, ViewType>(
     publisher: { publish: async () => undefined },
     scheduler: createScheduler(timer => runDueTimer(context, timer)),
     diff: diffs[diffName],
-    checksums: options.checksums ?? false,
+    checksums: options.checksums ?? true,
   };
   // Before anything is served, so no action can come in between (0052)
   await restartGames(context);

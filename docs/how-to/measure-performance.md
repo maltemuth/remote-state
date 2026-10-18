@@ -28,20 +28,20 @@ Each game has two players on the classic 10×10 board. Both place their five shi
 
 ## Options
 
-| Option        | Default      | Meaning                                                                                                                      |
-| ------------- | ------------ | ---------------------------------------------------------------------------------------------------------------------------- |
-| `--games`     | `100`        | Games played at the same time                                                                                                |
-| `--pause`     | `0`          | Average milliseconds a player waits before each action, randomized by ±50%. `0` sends actions as fast as the server answers. |
-| `--checksums` | off          | The started server sends checksums, and the players check them; a mismatch counts as an error                                |
-| `--parser`    | `json`       | Socket.IO's parser on both ends: `json` or `msgpack`                                                                         |
-| `--deflate`   | off          | Compress messages of at least this many bytes, such as `--deflate 0`                                                         |
-| `--diff`      | `positional` | How the started server computes patches: `positional` or `rfc6902`; only matters with `--format immer`                       |
-| `--format`    | `state`      | What the socket sends: `state` or `immer`                                                                                    |
-| `--runs`      | `1`          | Repeat the run this many times, each against a freshly started server, and report each run                                   |
-| `--profile`   |              | Directory where each started server writes a CPU profile when it stops; not with `--url`                                     |
-| `--url`       |              | Test a server that's already running, instead of starting one                                                                |
-| `--port`      | `3999`       | Port for the server it starts                                                                                                |
-| `--max-p95`   |              | Fail with exit code 1 when any run's end-to-end p95, in milliseconds, exceeds this                                           |
+| Option        | Default      | Meaning                                                                                                                                                                                                                        |
+| ------------- | ------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `--games`     | `100`        | Games played at the same time                                                                                                                                                                                                  |
+| `--pause`     | `0`          | Average milliseconds a player waits before each action, randomized by ±50%. `0` sends actions as fast as the server answers.                                                                                                   |
+| `--checksums` | off          | The started server sends checksums, and the players check them; a mismatch counts as an error. Without it, the server runs with `checksums: false`, unlike the library's default, so results stay comparable with earlier ones |
+| `--parser`    | `json`       | Socket.IO's parser on both ends: `json` or `msgpack`                                                                                                                                                                           |
+| `--deflate`   | off          | Compress messages of at least this many bytes, such as `--deflate 0`                                                                                                                                                           |
+| `--diff`      | `positional` | How the started server computes patches: `positional` or `rfc6902`; only matters with `--format immer`                                                                                                                         |
+| `--format`    | `state`      | What the socket sends: `state` or `immer`                                                                                                                                                                                      |
+| `--runs`      | `1`          | Repeat the run this many times, each against a freshly started server, and report each run                                                                                                                                     |
+| `--profile`   |              | Directory where each started server writes a CPU profile when it stops; not with `--url`                                                                                                                                       |
+| `--url`       |              | Test a server that's already running, instead of starting one                                                                                                                                                                  |
+| `--port`      | `3999`       | Port for the server it starts                                                                                                                                                                                                  |
+| `--max-p95`   |              | Fail with exit code 1 when any run's end-to-end p95, in milliseconds, exceeds this                                                                                                                                             |
 
 The run also fails when any action fails.
 

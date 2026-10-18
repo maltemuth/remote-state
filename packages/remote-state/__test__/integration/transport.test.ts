@@ -1,5 +1,5 @@
 /**
- * Transport options: checksums with every patch, on the socket and from
+ * Transport options: checksums with every patch, by default, on the socket and from
  * `GET …/updates` (0059); MessagePack through Socket.IO's parser, and compressed
  * messages (0060).
  */
@@ -27,8 +27,8 @@ const next = <T>(socket: ReturnType<typeof openSocket>, event: string) =>
   new Promise<T>(resolve => socket.once(event, resolve));
 
 describe('transport options', () => {
-  it('sends the checksum of the view with every patch, when asked to', async () => {
-    const server = await startCounterServer(undefined, { checksums: true });
+  it('sends the checksum of the view with every patch, by default', async () => {
+    const server = await startCounterServer();
     const gameId = await newGame(server);
     const { token } = await join(server, gameId, 'alice');
     const socket = openSocket(serverUrl(server), { gameId, token }, { query: { format: 'immer' } });
@@ -51,8 +51,8 @@ describe('transport options', () => {
     }
   });
 
-  it('sends no checksums by default', async () => {
-    const server = await startCounterServer();
+  it('sends no checksums when turned off', async () => {
+    const server = await startCounterServer(undefined, { checksums: false });
     const gameId = await newGame(server);
     const { token } = await join(server, gameId, 'alice');
     const socket = openSocket(serverUrl(server), { gameId, token }, { query: { format: 'immer' } });

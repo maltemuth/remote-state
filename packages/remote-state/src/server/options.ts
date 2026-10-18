@@ -22,7 +22,7 @@ export interface RemoteStateOptions {
    * (the default), or `rfc6902`, the established library it's tested against (0058)
    */
   diff?: DiffName;
-  /** Send a checksum of the view with every patch, for clients to check theirs (0059) */
+  /** Send a checksum of the view with every patch, for clients to check theirs; on by default (0059, 0061) */
   checksums?: boolean;
 }
 

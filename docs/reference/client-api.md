@@ -129,4 +129,4 @@ class ChecksumError extends Error {
 
 `message` is the server's `error`, or the HTTP status text if there's none.
 
-A `ChecksumError` goes to `onError` when patches from a server with the `checksums` option didn't lead to a view with their checksum. The client has already fetched the whole view by then ([0059](../explanation/decisions/0059-checksums-with-patches.md)).
+A `ChecksumError` goes to `onError` when patches didn't lead to a view with their checksum. The client has already fetched the whole view by then ([0059](../explanation/decisions/0059-checksums-with-patches.md)).

@@ -2,7 +2,7 @@
  * Answers "what changed since sequence N" for a player, in one patch (decisions
  * 0030, 0035, 0056): the diff between their view of the stored state at `since`,
  * in the audience they were in then, and their view of the current one, with the
- * checksum of that view when the `checksums` option is on (0059).
+ * checksum of that view unless the `checksums` option is off (0059, 0061).
  */
 
 import { AudienceMembership } from '../database/entities/index.js';
