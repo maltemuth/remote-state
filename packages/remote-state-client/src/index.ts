@@ -13,3 +13,4 @@ export { RequestError } from './http.js';
 export { ChecksumError } from './viewStore.js';
 export { redeemCode, type RedeemOptions, type Session } from './session.js';
 export type { ConnectionState, Format, Patch, Snapshot, Update } from './types.js';
+export { DEFAULT_RESUME_AFTER, type Page } from './resume.js';

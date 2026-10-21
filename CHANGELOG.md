@@ -4,6 +4,10 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ## Unreleased
 
+### Added
+
+- The client reconnects at once when its page is shown again after being hidden for 10 seconds or more, or the network comes back, so a phone that wakes up shows the current view within a round trip instead of after up to 45 seconds. `resumeAfter` sets the time, or `null` turns it off; `reconnect()` does it on demand (0062).
+
 ## 0.10.0 - 2026-10-18
 
 Databases from 0.9.x have to be deleted: the schema's version is now 3.

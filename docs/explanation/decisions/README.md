@@ -67,6 +67,7 @@ Records aren't edited after the fact, except to update their status. A decision 
 | [0059](0059-checksums-with-patches.md)                                 | Patches can carry a checksum of the view they lead to                          | Accepted, on by default since 0061                                                                             |
 | [0060](0060-socket-parser-and-compression-options.md)                  | The socket's parser and compression are deployment options                     | Accepted                                                                                                       |
 | [0061](0061-checksums-on-by-default.md)                                | Checksums are on by default                                                    | Accepted                                                                                                       |
+| [0062](0062-the-client-reconnects-when-a-page-resumes.md)              | The client reconnects when a page resumes                                      | Accepted                                                                                                       |
 
 ## Writing a record
 

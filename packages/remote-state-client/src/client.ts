@@ -2,13 +2,16 @@
  * `createClient`: one player's client for one game. It keeps the player's view in
  * step with the server, which anything can subscribe to (decision 0043), and sends
  * actions over HTTP. It's generic over the game's view and action types (0045), and
- * shows results only once the server has sent them (0033).
+ * shows results only once the server has sent them (0033). In a browser, it
+ * reconnects at once when the page comes back after a while, or the network does
+ * (0062).
  */
 
 import { type ManagerOptions } from 'socket.io-client';
 import { connect } from './connection.js';
 import { resolveEndpoints } from './endpoints.js';
 import { RequestError, requestJson } from './http.js';
+import { browserPage, DEFAULT_RESUME_AFTER, onResume, type Page } from './resume.js';
 import { type Session } from './session.js';
 import { type ConnectionState, type Format, type Patch, type Snapshot } from './types.js';
 import { createViewStore, type CatchUp } from './viewStore.js';
@@ -31,6 +34,14 @@ export interface ClientOptions {
    * `socket.io-msgpack-parser`; JSON by default (0060)
    */
   parser?: ManagerOptions['parser'];
+  /**
+   * Reconnect at once when the page is shown again after being hidden this many
+   * milliseconds, or the network comes back; 10 seconds by default, null never
+   * (0062)
+   */
+  resumeAfter?: number | null;
+  /** The page to watch for that; the browser's `document` and `window` by default */
+  page?: Page;
 }
 
 export interface RemoteStateClient<View, Action> {
@@ -51,6 +62,11 @@ export interface RemoteStateClient<View, Action> {
   send: (action: Action) => Promise<{ sequence: number }>;
   getConnection: () => ConnectionState;
   onConnection: (listener: (state: ConnectionState) => void) => () => void;
+  /**
+   * Drop the connection and connect again at once, for a fresh whole view; the
+   * client does it by itself when a page resumes (0062)
+   */
+  reconnect: () => void;
   /** Disconnect for good; subscribers aren't called anymore */
   close: () => void;
 }
@@ -103,6 +119,13 @@ export const createClient = <View = unknown, Action = unknown>(
     },
   });
 
+  const resumeAfter =
+    options.resumeAfter === undefined ? DEFAULT_RESUME_AFTER : options.resumeAfter;
+  const stopWatching =
+    resumeAfter === null
+      ? () => undefined
+      : onResume(options.page ?? browserPage(), resumeAfter, socket.reconnect);
+
   return {
     session,
     getSnapshot: store.getSnapshot,
@@ -127,7 +150,9 @@ export const createClient = <View = unknown, Action = unknown>(
       connectionListeners.add(listener);
       return () => void connectionListeners.delete(listener);
     },
+    reconnect: socket.reconnect,
     close: () => {
+      stopWatching();
       socket.close();
       store.close(new Error('The client was closed'));
     },

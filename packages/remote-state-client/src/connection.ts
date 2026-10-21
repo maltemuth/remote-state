@@ -1,8 +1,9 @@
 /**
  * The Socket.IO connection to a game: authenticates with the session, passes the
  * game's `state` and `patches` events on as updates, and reports the connection's
- * state. Socket.IO reconnects by itself; every (re)connect starts with a whole view,
- * marked as a reset, since a restarted server may have gone back to an earlier state.
+ * state. Socket.IO reconnects by itself, and `reconnect` does it at once, such as
+ * when a page resumes (0062); every (re)connect starts with a whole view, marked as a
+ * reset, since a restarted server may have gone back to an earlier state.
  */
 
 import { io, type ManagerOptions } from 'socket.io-client';
@@ -59,5 +60,12 @@ export const connect = <View>({
     onUpdate({ sequence: event.sequence, patches: event.patches, checksum: event.checksum })
   );
 
-  return { close: () => void socket.disconnect() };
+  return {
+    /** Drop the connection, dead or waiting to retry, and connect again at once */
+    reconnect: () => {
+      socket.disconnect();
+      socket.connect();
+    },
+    close: () => void socket.disconnect(),
+  };
 };

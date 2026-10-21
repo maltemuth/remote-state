@@ -48,29 +48,32 @@ Connects to the game right away. `View` is what the player sees, as returned by 
 
 ### ClientOptions
 
-| Option       | Default                      | Meaning                                                                                                        |
-| ------------ | ---------------------------- | -------------------------------------------------------------------------------------------------------------- |
-| `session`    | required                     | From `redeemCode`                                                                                              |
-| `baseUrl`    | the page's origin            | Where the game's library routes are mounted, such as `/tic-tac-toe` or `https://games.example.com/tic-tac-toe` |
-| `socketPath` | `<baseUrl's path>/socket.io` | The socket's path, if the host set another                                                                     |
-| `format`     | `"immer"`                    | What the socket sends: `"immer"` patches, which the client applies, or whole views as `"state"`                |
-| `onError`    | ignore                       | Called with errors the client can't report elsewhere, such as a failed catch-up, or a `ChecksumError`          |
-| `parser`     | JSON                         | Socket.IO's parser, when the server uses another, such as `socket.io-msgpack-parser`                           |
+| Option        | Default                               | Meaning                                                                                                                                                                                                                              |
+| ------------- | ------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `session`     | required                              | From `redeemCode`                                                                                                                                                                                                                    |
+| `baseUrl`     | the page's origin                     | Where the game's library routes are mounted, such as `/tic-tac-toe` or `https://games.example.com/tic-tac-toe`                                                                                                                       |
+| `socketPath`  | `<baseUrl's path>/socket.io`          | The socket's path, if the host set another                                                                                                                                                                                           |
+| `format`      | `"immer"`                             | What the socket sends: `"immer"` patches, which the client applies, or whole views as `"state"`                                                                                                                                      |
+| `onError`     | ignore                                | Called with errors the client can't report elsewhere, such as a failed catch-up, or a `ChecksumError`                                                                                                                                |
+| `parser`      | JSON                                  | Socket.IO's parser, when the server uses another, such as `socket.io-msgpack-parser`                                                                                                                                                 |
+| `resumeAfter` | 10,000                                | In a browser, reconnect at once when the page is shown again after being hidden this many milliseconds, or the network comes back; `null` never ([0062](../explanation/decisions/0062-the-client-reconnects-when-a-page-resumes.md)) |
+| `page`        | the browser's `document` and `window` | The page to watch for that, as `{ document, window }`; for tests outside a browser                                                                                                                                                   |
 
 Outside a browser, `baseUrl` must be an absolute URL.
 
 ## RemoteStateClient
 
-| Member                   | Description                                                                                                                                    |
-| ------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------- |
-| `session`                | The session it was created with                                                                                                                |
-| `getSnapshot()`          | The latest `{ sequence, view }`, or `null` before the first view arrived                                                                       |
-| `subscribe(listener)`    | Calls `listener` with every new snapshot. Returns a function that unsubscribes                                                                 |
-| `waitFor(sequence)`      | Resolves with the snapshot once the view has reached `sequence`. Rejects after `close()` or a refused connection, since no more views can come |
-| `send(action)`           | Sends an action. Resolves with `{ sequence }` of the state it produced                                                                         |
-| `getConnection()`        | The connection's state; see below                                                                                                              |
-| `onConnection(listener)` | Calls `listener` whenever the connection's state changes. Returns a function that unsubscribes                                                 |
-| `close()`                | Disconnects for good. Subscribers aren't called anymore                                                                                        |
+| Member                   | Description                                                                                                                                                                                                    |
+| ------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `session`                | The session it was created with                                                                                                                                                                                |
+| `getSnapshot()`          | The latest `{ sequence, view }`, or `null` before the first view arrived                                                                                                                                       |
+| `subscribe(listener)`    | Calls `listener` with every new snapshot. Returns a function that unsubscribes                                                                                                                                 |
+| `waitFor(sequence)`      | Resolves with the snapshot once the view has reached `sequence`. Rejects after `close()` or a refused connection, since no more views can come                                                                 |
+| `send(action)`           | Sends an action. Resolves with `{ sequence }` of the state it produced                                                                                                                                         |
+| `getConnection()`        | The connection's state; see below                                                                                                                                                                              |
+| `onConnection(listener)` | Calls `listener` whenever the connection's state changes. Returns a function that unsubscribes                                                                                                                 |
+| `close()`                | Disconnects for good. Subscribers aren't called anymore                                                                                                                                                        |
+| `reconnect()`            | Drops the connection and connects again at once, for a fresh whole view. The client does it by itself when a page resumes ([0062](../explanation/decisions/0062-the-client-reconnects-when-a-page-resumes.md)) |
 
 `getSnapshot` and `subscribe` fit React's `useSyncExternalStore`, and stores that can subscribe to outside sources.
 
@@ -108,12 +111,12 @@ type ConnectionState =
   | { status: "refused"; error: string };
 ```
 
-| Status         | Meaning                                                                                                             |
-| -------------- | ------------------------------------------------------------------------------------------------------------------- |
-| `connecting`   | Connecting for the first time, or reconnecting. `error` is the last attempt's error, if any                         |
-| `connected`    | Connected. Every (re)connect starts with the whole view                                                             |
-| `disconnected` | The connection was lost. Socket.IO reconnects by itself, unless the client was closed or the server disconnected it |
-| `refused`      | The server refused the connection, for example for an invalid token or game. No more attempts                       |
+| Status         | Meaning                                                                                                                                                             |
+| -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `connecting`   | Connecting for the first time, or reconnecting. `error` is the last attempt's error, if any                                                                         |
+| `connected`    | Connected. Every (re)connect starts with the whole view                                                                                                             |
+| `disconnected` | The connection was lost. Socket.IO reconnects by itself, unless the client was closed or the server disconnected it; so does `reconnect()`, and a page that resumes |
+| `refused`      | The server refused the connection, for example for an invalid token or game. No more attempts                                                                       |
 
 ## Errors
 
