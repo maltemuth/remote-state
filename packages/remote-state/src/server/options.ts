@@ -24,6 +24,12 @@ export interface RemoteStateOptions {
   diff?: DiffName;
   /** Send a checksum of the view with every patch, for clients to check theirs; on by default (0059, 0061) */
   checksums?: boolean;
+  /**
+   * Let players pair their own devices: `POST /api/games/:gameId/codes` gives a
+   * player a single-use code for themselves, for another device to redeem; off by
+   * default (0063)
+   */
+  devicePairing?: boolean;
 }
 
 export interface SocketSettings {

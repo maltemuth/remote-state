@@ -60,6 +60,12 @@ export interface RemoteStateClient<View, Action> {
    * arrives through `subscribe`. A rejected action throws an `ActionRejectedError`.
    */
   send: (action: Action) => Promise<{ sequence: number }>;
+  /**
+   * A single-use code for this player, for another device to redeem with
+   * `redeemCode` and play as the same player, such as a phone; it expires within a
+   * minute. Needs a server with `devicePairing` (0063)
+   */
+  pairingCode: () => Promise<string>;
   getConnection: () => ConnectionState;
   onConnection: (listener: (state: ConnectionState) => void) => () => void;
   /**
@@ -145,6 +151,13 @@ export const createClient = <View = unknown, Action = unknown>(
         throw error;
       }
     },
+    pairingCode: async () =>
+      (
+        await requestJson<{ code: string }>(game('/codes'), {
+          method: 'POST',
+          token: session.token,
+        })
+      ).code,
     getConnection: () => connection,
     onConnection: listener => {
       connectionListeners.add(listener);

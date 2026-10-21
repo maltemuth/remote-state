@@ -2,7 +2,8 @@
  * The library's HTTP API as an Express router, which a host mounts in its own app
  * or the standalone server mounts in a new one. It has no endpoints for creating
  * or joining games (decision 0020), and its only operational endpoint is a health
- * check (0049). Everything it serves is under `/api`.
+ * check (0049). With `devicePairing`, players can get codes for their own other
+ * devices (0063). Everything it serves is under `/api`.
  */
 
 import cors, { type CorsOptions } from 'cors';
@@ -12,9 +13,19 @@ import { requirePlayer } from './authenticate.js';
 import { getState } from './routes/getState.js';
 import { getUpdates } from './routes/getUpdates.js';
 import { postAction } from './routes/postAction.js';
+import { postCode } from './routes/postCode.js';
 import { postToken } from './routes/postToken.js';
 
-export const createRouter = (context: EngineContext, corsOptions: CorsOptions) => {
+export interface RouterOptions {
+  /** Serve `POST /api/games/:gameId/codes`, for players to pair their devices (0063) */
+  devicePairing: boolean;
+}
+
+export const createRouter = (
+  context: EngineContext,
+  corsOptions: CorsOptions,
+  { devicePairing }: RouterOptions
+) => {
   const router = Router();
   const player = requirePlayer(context.orm);
 
@@ -24,6 +35,7 @@ export const createRouter = (context: EngineContext, corsOptions: CorsOptions) =
   router.post('/api/games/:gameId/actions', player, postAction(context));
   router.get('/api/games/:gameId/state', player, getState(context));
   router.get('/api/games/:gameId/updates', player, getUpdates(context));
+  if (devicePairing) router.post('/api/games/:gameId/codes', player, postCode(context));
   router.get('/api/health', (_req: Request, res: Response) => void res.end());
 
   // 404 for unknown API routes; other paths stay free for the host

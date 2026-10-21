@@ -9,6 +9,7 @@ All documentation for this project, including designs and decisions, is organize
 ## How-to guides: get a specific task done
 
 - [Create games and admit players](how-to/admit-players.md)
+- [Pair another device](how-to/pair-another-device.md)
 - [Connect a browser client](how-to/connect-a-client.md)
 - [Serve a web client from the game server](how-to/serve-a-web-client.md)
 - [Embed in an existing app](how-to/embed-in-an-existing-app.md), also with several games on one server

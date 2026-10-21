@@ -72,7 +72,7 @@ export const createRemoteState = async <StateType, ActionType, ViewType>(
   };
 
   return {
-    router: createRouter(context, cors),
+    router: createRouter(context, cors, { devicePairing: options.devicePairing ?? false }),
     attach,
     createGame: initialState => createGame(orm, logger, initialState),
     admit: admission => admit(orm, admission),

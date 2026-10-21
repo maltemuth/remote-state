@@ -1,6 +1,6 @@
 # 0020. Hosts admit players through single-use codes
 
-Status: Accepted
+Status: Accepted; codes for pairing a player's own device may travel in a link's fragment, per [0063](0063-players-pair-their-own-devices.md)
 Date: 2026-09-29
 
 ## Context

@@ -26,7 +26,7 @@ Without a valid token for the game in the URL, these endpoints answer `401 { "er
 
 ## POST /api/tokens
 
-Exchanges an admission code, issued by the host with `admit`, for a token.
+Exchanges an admission code, issued by the host with `admit` or to a player pairing a device ([`POST …/codes`](#post-apigamesgameidcodes)), for a token.
 
 **Request body**
 
@@ -124,6 +124,21 @@ Returns one set of patches that turns the player's view at `since` into their cu
 - **200:** `sequence` is the latest sequence. `patches` is empty when `since` is the latest sequence. Patches are in [Immer's format](socket-events.md#patch-format); apply them in order to the view at `since`. If the player changed audience after `since`, the patches lead from the old audience's view to the new one's. `checksum` is the [checksum](socket-events.md#checksums) of the player's current view, unless the server turns `checksums` off.
 - **303:** no patch can be built, because a state the server needs is missing. Fetch the whole state instead. The `Location` is relative, so it leads to the state endpoint under any prefix.
 - **404:** `since` is after the latest sequence, or before the player joined. The first sequence a player can use is the one their join produced.
+
+## POST /api/games/:gameId/codes
+
+Only with the server option `devicePairing` ([0063](../explanation/decisions/0063-players-pair-their-own-devices.md)). Authenticated. Answers with a single-use admission code for the authenticated player themselves, for another device to redeem at [`POST /api/tokens`](#post-apitokens): it gets a new token for the same player, and `onJoin` doesn't run. The code expires like one from `admit`, and may be put in a link's fragment, such as in a QR code.
+
+No request body.
+
+**Responses**
+
+| Status | Body                                                       |
+| ------ | ---------------------------------------------------------- |
+| 201    | `{ "code": string }`                                       |
+| 401    | `Invalid or missing token`                                 |
+| 404    | `Endpoint not found`, when the server doesn't pair devices |
+| 500    | `Internal server error`                                    |
 
 ## GET /api/health
 
