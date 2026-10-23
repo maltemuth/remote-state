@@ -28,6 +28,8 @@ These are current properties of the library, not bugs in your game. Each one is 
 
 ## Operations
 
+- **Installs from a lockfile need `--ignore-scripts`.** npm ignores `better-sqlite3`'s `gypfile: false` when installing from a lockfile, and tries to build it from source, which fails without a C++ compiler. `npm ci --ignore-scripts` installs it with its prebuilt binaries ([0064](decisions/0064-install-without-scripts.md)).
+
 - **Hosts aren't told about state changes.** A computer player run by the host through `act` has to poll to find out it's its turn ([Server-initiated actions](designs/server-initiated-actions.md)).
 
 - **Timers are lost on restart.** Pending timers are kept in memory only, so a restart drops them ([0042](decisions/0042-timer-restarts-open.md)). The library offers every game to the plugin's `onRestart` when it starts, where the game handles it, for example by pausing until it's resumed, or by scheduling them again ([0052](decisions/0052-games-pause-on-restart.md), [0053](decisions/0053-restarts-are-game-logic.md)). A game without `onRestart` that was waiting for a timeout waits until a player acts.

@@ -20,8 +20,10 @@ Allow about 30 minutes.
 You need Node.js 24 or newer, `curl`, and a clone of this repository with dependencies installed:
 
 ```sh
-npm install
+npm install --ignore-scripts
 ```
+
+Without `--ignore-scripts`, npm tries to build the SQLite driver from source, which needs a C++ compiler ([0064](../explanation/decisions/0064-install-without-scripts.md)).
 
 You'll write the game inside the example server package, which is already set up to use the library.
 

@@ -9,10 +9,10 @@ Neither package has been published yet.
 ```sh
 git switch master && git pull
 nvm use
-npm ci
+npm ci --ignore-scripts
 ```
 
-`npm ci` installs exactly what `package-lock.json` specifies. Any change to the lockfile belongs in a normal commit, not in the release.
+`npm ci` installs exactly what `package-lock.json` specifies. `--ignore-scripts` keeps npm from building the SQLite driver from source ([0064](../explanation/decisions/0064-install-without-scripts.md)). Any change to the lockfile belongs in a normal commit, not in the release.
 
 ## 2. Run every check
 
@@ -61,7 +61,7 @@ Each command must print `function`. The first two load the library as ESM and th
 1. If the entities' tables changed since the last release, raise `SCHEMA_VERSION` in `packages/remote-state/src/database/orm.ts`, and say in the changelog that databases have to be deleted.
 1. In `CHANGELOG.md`, rename `## Unreleased` to `## <version> - <date>`, and add a new empty `## Unreleased` section above it.
 1. Set the new version in the root, library, client and example `package.json` files. Before 1.0, breaking changes raise the minor version.
-1. Run `npm install` to update the lockfile.
+1. Run `npm install --ignore-scripts` to update the lockfile.
 1. Commit, and tag the commit:
 
 ```sh

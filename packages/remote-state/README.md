@@ -16,7 +16,11 @@ Requires Node.js 24 or newer.
 npm install @malte.muth/remote-state
 ```
 
-npm 11 may ask whether to allow `better-sqlite3`'s install script. You can deny it: the package ships prebuilt binaries for common platforms, and the library works without the script.
+The SQLite driver, `better-sqlite3`, ships prebuilt binaries for common platforms and needs no install script. When installing from a lockfile, such as with `npm ci`, npm still tries to build it from source, which fails without a C++ compiler. Install with `--ignore-scripts` until npm fixes this ([npm/cli#9859](https://github.com/npm/cli/pull/9859)):
+
+```sh
+npm ci --ignore-scripts
+```
 
 ## Example
 

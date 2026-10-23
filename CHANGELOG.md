@@ -4,6 +4,10 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ## Unreleased
 
+### Changed
+
+- Install with `--ignore-scripts`: from a lockfile, npm tries to build the SQLite driver from source, which fails without a C++ compiler. The docs said npm would ask about its install script, and that `allowScripts` denied it; neither is so (0064).
+
 ### Added
 
 - Players can pair their own devices, with the server option `devicePairing`: `POST /api/games/:gameId/codes` gives a player a single-use code for themselves, which another device redeems at `POST /api/tokens` for a new token for the same player. The client offers `pairingCode()`. A pairing code may travel in a link's fragment, such as in a QR code (0063).

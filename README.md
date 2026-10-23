@@ -39,7 +39,7 @@ Requires Node.js 24 or newer. With [nvm](https://github.com/nvm-sh/nvm), `nvm us
 
 ```sh
 nvm use
-npm install
+npm install --ignore-scripts   # npm would build better-sqlite3 from source otherwise (0064)
 npm run start:example   # builds, then serves the tic-tac-toe client on http://localhost:3000
 npm test                # all tests: library, e2e and example game engines
 ```

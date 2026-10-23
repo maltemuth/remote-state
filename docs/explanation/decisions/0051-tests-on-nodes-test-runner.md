@@ -1,6 +1,6 @@
 # 0051. Tests run on Node's test runner, through tsx
 
-Status: Accepted
+Status: Accepted; npm doesn't read `allowScripts`, so installs use `--ignore-scripts` since [0064](0064-install-without-scripts.md)
 Date: 2026-10-17
 
 ## Context

@@ -1,6 +1,6 @@
 # 0005. MikroORM with standard decorators for the data layer
 
-Status: Accepted; migrations dropped until 1.0 by [0048](0048-no-database-upgrades-before-1-0.md)
+Status: Accepted; migrations dropped until 1.0 by [0048](0048-no-database-upgrades-before-1-0.md); npm runs `node-gyp rebuild` for `better-sqlite3` when installing from a lockfile, so installs use `--ignore-scripts` since [0064](0064-install-without-scripts.md)
 Date: 2026-09-29
 
 ## Context
