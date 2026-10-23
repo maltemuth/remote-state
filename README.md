@@ -24,6 +24,8 @@ const code = await server.admit({
 await server.startServer();
 ```
 
+Coding agents can read [llms.txt](packages/remote-state/llms.txt), a manual of the whole library in one file, also shipped in the server package.
+
 ## Repository layout
 
 | Path                                                                         | Contents                                                                                          |

@@ -8,6 +8,8 @@ The client for [`@malte.muth/remote-state`](https://www.npmjs.com/package/@malte
 
 Works in browsers and in Node.js 24 or newer.
 
+For coding agents, the server package, `@malte.muth/remote-state`, ships `llms.txt`: a manual of both packages in one file.
+
 ## Install
 
 ```sh

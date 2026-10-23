@@ -22,6 +22,7 @@ All documentation for this project, including designs and decisions, is organize
 
 ## Reference: look up exact behavior
 
+- [llms.txt](../packages/remote-state/llms.txt): the whole library in one file, for coding agents, shipped in the server package
 - [GamePlugin](reference/game-plugin.md): the interface a game implements
 - [HTTP API](reference/http-api.md)
 - [Socket.IO events](reference/socket-events.md)

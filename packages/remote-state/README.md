@@ -63,6 +63,8 @@ In the browser, [`@malte.muth/remote-state-client`](https://www.npmjs.com/packag
 
 ## Documentation
 
+For coding agents, `llms.txt` in this package is a manual of the whole library in one file: the model, both packages' APIs, a server and a client, and the common mistakes.
+
 The repository's `docs/` folder has a tutorial, how-to guides (connecting clients, embedding in an app, hiding information, scheduling actions, persisting and testing games), the full reference, and the design decisions behind the library.
 
 ## License

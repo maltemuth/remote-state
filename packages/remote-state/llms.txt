@@ -1,0 +1,244 @@
+# Remote State
+
+> Server-authoritative state for multiplayer games, on Node.js 24+, Express 5 and Socket.IO. You write a game's rules as a plugin of plain functions. The library stores every game and its history in SQLite, runs actions one at a time per game, and sends each player their own filtered view of the state. Two packages: `@malte.muth/remote-state` (server) and `@malte.muth/remote-state-client` (browser or Node client).
+
+This file is a manual for coding agents. It covers versions 0.10.x and the changes listed as unreleased in the changelog. The full documentation is in the repository's `docs/` folder: tutorial, how-to guides, reference and decision records. Where this file and `docs/reference/` disagree, the reference wins.
+
+## The model in one paragraph
+
+A **host** is the developer's own app. It creates games with `createGame(initialState)` and admits people with `admit({ gameId, identity })`, which returns a single-use **code**. The library has no HTTP endpoints for creating or joining games: the host adds its own routes, after its own login and rules. The client exchanges the code at `POST /api/tokens` for a **token**, then sends **actions** with `POST /api/games/:gameId/actions` and receives **views** over Socket.IO. Every accepted action or join is a **transition** to a new state with the next **sequence** number. Each player belongs to one **audience**, and every audience gets its own view from `filterStateForAudience`. The **system** (player ID `SYSTEM`, `"system"`) acts through **timers** the game schedules, and through the host's `act(gameId, action)`.
+
+## Install
+
+```sh
+npm install @malte.muth/remote-state          # server
+npm install @malte.muth/remote-state-client   # client
+```
+
+Install from a lockfile with `npm ci --ignore-scripts`. Without the flag, npm ignores `better-sqlite3`'s `gypfile: false` and tries to build it from source, which fails without a C++ compiler. It ships prebuilt binaries and needs no script.
+
+The packages are ES modules only.
+
+## The plugin
+
+```ts
+import {
+  type GamePlugin,
+  GameRefusal,
+  transition,
+  withAudiences,
+  SYSTEM,
+  EVERYONE,
+} from "@malte.muth/remote-state";
+
+interface GamePlugin<StateType, ActionType, ViewType = StateType> {
+  validateAction(state, action, playerId): Awaitable<true | string>;
+  executeAction(state, action, playerId): Awaitable<StateType | Transition<StateType, ActionType>>;
+  onJoin?(state, player: { playerId: string; details: Record<string, unknown> }): Awaitable<StateType | Transition>;
+  onRestart?(state): Awaitable<StateType | Transition>;
+  filterStateForAudience?(state, audience: string): Awaitable<ViewType>;
+}
+```
+
+Every function may return a value or a promise. The plugin has no function for the initial state: the host builds it and passes it to `createGame`.
+
+- **`validateAction(state, action, playerId)`** runs for every submitted action. Return `true` to accept it, or a string to reject it with that reason (HTTP 400). `action` is exactly what the client sent, unchecked: validate its shape yourself. `playerId` is always a player admitted to this game, but not necessarily one your game seated, or it's `SYSTEM`.
+- **`executeAction(state, action, playerId)`** runs only after `validateAction` returned `true`, with the same arguments. Return a new state; never modify `state`. Throw `new GameRefusal(reason)` to reject after all (400). Any other error is a 500, and nothing is stored.
+- **`onJoin(state, { playerId, details })`** runs once per identity and game, when its first code is redeemed. `details` is the host's `identity` without `id`, such as `{ name }`. Return the state with the player added. Throw `GameRefusal` to refuse them (403; the code is used up, and no player is created). Without `onJoin`, everyone admitted joins and the state is unchanged, but the join still takes a sequence.
+- **`onRestart(state)`** runs for every stored game when the server starts on an existing database, before anything is served, as `SYSTEM`. Timers are lost on restart, so this is where a game pauses itself or schedules its timers again. Return the same state object to record nothing.
+- **`filterStateForAudience(state, audience)`** returns what one audience may see. With a filter, each player's default audience is their own player ID. Without one, everyone is in `EVERYONE` (`"everyone"`) and gets the full state. It must depend only on `state` and `audience`: no clock, no randomness, no side effects. Views of past states are rebuilt from stored states.
+
+### Returning changes with `transition`
+
+```ts
+transition(state, {
+  audiences: { [playerId]: "spectators" }, // or null: back to the default audience
+  schedule: [{ name: "turn", in: 30_000, action: { type: "timeout", turn: 3 } }],
+  cancel: ["nextHand"],
+});
+withAudiences(state, { [playerId]: "spectators" }); // shorthand for audiences only
+```
+
+- **Audiences:** keys are player IDs of this game. In `onJoin`, that includes the joining player. An unknown player ID is a 500.
+- **Timers:** named per game. Scheduling a pending name replaces it; cancelling an unknown name does nothing; cancels are applied before schedules. `in` is 0 to 2^31 − 1 ms.
+  - A due timer runs its `action` as `SYSTEM`, through `validateAction` and `executeAction`, and only if still pending.
+  - A rejected timer action is logged and records nothing.
+  - Timers live in memory only, and `close()` drops them.
+- **When changes apply:** only once the transition is recorded.
+
+### State rules
+
+- **States and views are JSON.** They're normalized with `JSON.parse(JSON.stringify(x))` before they're stored, diffed or passed back. `Date`s become strings, and `Map`, `Set`, class instances and `undefined` properties are lost. Keys named `__proto__` and `constructor` are dropped, with a warning.
+- **Every action stores a full snapshot.** Avoid states that grow without bound, such as long logs or chats.
+- **Actions in one game run one at a time,** under a per-game lock.
+- **One process only.** Don't run two instances on one database.
+
+### What the system may do
+
+Player IDs are UUIDs, so no client can act as `SYSTEM`, but your rules must still decide what the system may do:
+- Refuse system-only action types from players, and player actions from `SYSTEM`.
+- Name the turn or step a timer is for, such as `{ type: "timeout", turn }`. In `validateAction`, reject it if the state has moved on, since a timer can't know whether its turn is over.
+
+## Server
+
+### Standalone
+
+```ts
+import { createRemoteStateServer } from "@malte.muth/remote-state";
+
+const server = await createRemoteStateServer(plugin, { port: 3000, database: "games.db" });
+// server.app: Express app with the library's routes at /api; add your own routes outside /api
+// server.createGame(initialState) → gameId
+// server.admit({ gameId, identity: { id, ...details } }) → code
+// server.act(gameId, action) → { sequence } | { rejected: reason }
+await server.startServer(); // → the port; 0 picks a free one
+// server.close()
+```
+
+### Embedded in an existing Express app
+
+```ts
+import express from "express";
+import { createServer } from "node:http";
+import { createRemoteState } from "@malte.muth/remote-state";
+
+const app = express();
+const httpServer = createServer(app);
+const remote = await createRemoteState(plugin, {
+  database: "my-game.db",
+  socket: { path: "/my-game/socket.io" }, // the socket path does NOT follow the router's prefix
+});
+app.use("/my-game", remote.router); // the API is then at /my-game/api/...
+remote.attach(httpServer); // once; until then, no updates are pushed
+httpServer.listen(3000);
+```
+
+- **Several games on one server:** one instance each, with its own prefix, socket path and database file.
+- **Shutting down:** `remote.close()` drops timers, disconnects sockets and closes the database. It leaves your HTTP server running and never exits the process. The library registers no signal handlers.
+
+### Options
+
+| Option          | Default           | Meaning                                                                  |
+| --------------- | ----------------- | ------------------------------------------------------------------------ |
+| `database`      | `":memory:"`      | SQLite file; its directory must exist                                    |
+| `logger`        | `consoleLogger()` | `{ debug, info, warn, error }`; also `silentLogger`, `consoleLogger({ level: LogLevel.warn, scope })` |
+| `cors`          | `{ origin: "*" }` | Options of the `cors` package, for `/api` and the socket                 |
+| `socket`        | `{}`              | `false` disables Socket.IO; `{ path, parser, perMessageDeflate }`        |
+| `checksums`     | `true`            | Send each view's checksum with its patches                               |
+| `devicePairing` | `false`           | Enable `POST /api/games/:gameId/codes`, so players can pair their own devices |
+| `diff`          | `"positional"`    | Or `"rfc6902"`; both give patches that lead to the same views           |
+| `port`          | `3000`            | `createRemoteStateServer` only                                           |
+
+`createRemoteStateServer` and `createRemoteState` reject with `UnsupportedDatabaseError` for a database from another schema version. Databases aren't upgraded before 1.0: delete the file.
+
+### Host routes: creating games and admitting players
+
+```ts
+server.app.post("/games", express.json(), async (req, res) => {
+  const user = await currentUser(req); // your own login
+  if (!user) return void res.status(401).json({ error: "Log in first" });
+  res.status(201).json({ gameId: await server.createGame(newGame()) });
+});
+
+server.app.post("/games/:gameId/codes", express.json(), async (req, res) => {
+  const user = await currentUser(req);
+  if (!user) return void res.status(401).json({ error: "Log in first" });
+  try {
+    const code = await server.admit({ gameId: req.params.gameId, identity: { id: user.id, name: user.name } });
+    res.status(201).json({ code });
+  } catch (err) {
+    if (!(err instanceof UnknownGameError)) throw err;
+    res.status(404).json({ error: err.message });
+  }
+});
+```
+
+- **Your routes need their own setup.** The library's JSON parser, CORS and error handler apply only to its `/api` routes, so add `express.json()` and your own error handler to yours.
+- **`identity.id` identifies a person within a game.** The same `id` admitted again gets the same player back, with a new token, and `onJoin` doesn't run again. Use your user ID with a login; without one, generate a new ID for each person.
+- **Codes are single-use and expire after one minute** (`CODE_LIFETIME_MS`). Return them in the response body, never in a URL. The one exception is a pairing code in a link's fragment.
+- **The creator isn't a player.** A new game has none; whoever created it joins with a code like everyone else.
+- **`act(gameId, action)` acts as `SYSTEM`,** for the host's own controls such as start and pause, or a computer player. It resolves to `{ rejected }` rather than throwing when the game refuses, and throws `UnknownGameError` for an unknown game.
+
+## HTTP API
+
+The paths below are relative to where the router is mounted. Bodies are JSON, and errors are `{ "error": string }`.
+
+| Route                                     | Auth   | Answers                                                                    |
+| ----------------------------------------- | ------ | -------------------------------------------------------------------------- |
+| `POST /api/tokens` `{ code }`             | none   | 201 `{ gameId, playerId, token }`; 401 bad code; 403 refused by `onJoin`   |
+| `POST /api/games/:gameId/actions` `{ action }` | Bearer | 201 `{ sequence }`; 400 the game's reason; 401                       |
+| `GET /api/games/:gameId/state`            | Bearer | 200 `{ gameId, sequence, state }`; `state` is the player's view            |
+| `GET /api/games/:gameId/updates?since=n`  | Bearer | 200 `{ since, sequence, patches, checksum? }`; 303 to `state`; 404         |
+| `POST /api/games/:gameId/codes`           | Bearer | 201 `{ code }` for the same player; only with `devicePairing`              |
+| `GET /api/health`                         | none   | 200                                                                        |
+
+- **The token goes in the `Authorization: Bearer <token>` header only.** Tokens never expire and can't be revoked.
+- **An action's response doesn't include the new state.** It arrives over the socket.
+
+## Socket.IO
+
+- **Connecting:** `io(origin, { path, auth: { gameId, token }, query: { format: "immer" } })`. `format` is `"state"` (the default) or `"immer"`.
+- **Events, server to client only:**
+  - `state` is `{ gameId, sequence, state }`, the whole view. It's sent on every (re)connect, and, with format `state`, after every transition.
+  - `patches` is `{ gameId, sequence, patches, checksum? }`, Immer patches from the view at `sequence − 1`, sent with format `immer`.
+- **The view on (re)connect replaces the client's,** even at a lower sequence: a restarted server may have gone back.
+- **Refused connections** get `connect_error` with the message `Invalid token or game`.
+
+## Client
+
+```ts
+import { redeemCode, createClient, ActionRejectedError } from "@malte.muth/remote-state-client";
+
+const session = await redeemCode(code, { baseUrl: "/my-game" }); // { gameId, playerId, token }
+localStorage.setItem(`game:${session.gameId}`, JSON.stringify(session)); // the token can't be fetched again
+
+const client = createClient<MyView, MyAction>({ session, baseUrl: "/my-game" });
+const stop = client.subscribe(({ sequence, view }) => render(view));
+client.onConnection((c) => showStatus(c.status)); // connecting | connected | disconnected | refused
+
+try {
+  const { sequence } = await client.send({ type: "move", to: 3 });
+  await client.waitFor(sequence); // the view that includes this action
+} catch (error) {
+  if (error instanceof ActionRejectedError) showError(error.message); // the game's reason
+  else throw error;
+}
+```
+
+### Client behaviour
+
+- **`send` doesn't change the view.** There are no optimistic updates: the new view arrives through `subscribe`, like every other player's.
+- **Views are frozen.** Copy one before changing it. Unchanged parts keep their object identity between snapshots.
+- **Catching up is automatic.** After gaps or reconnects, the client does it by itself. When a page is shown again after 10 seconds or more hidden, it reconnects at once (`resumeAfter`, or `null` to turn that off).
+- **On `refused` status, stop using the session.** The token or game is invalid; get a new code.
+- **React:** `useSyncExternalStore(client.subscribe, client.getSnapshot)`.
+- **Other options:**
+  - `baseUrl`: the router's prefix, or an absolute URL; outside a browser it must be absolute.
+  - `socketPath`: defaults to `<baseUrl path>/socket.io`.
+  - `format`: `"immer"` by default.
+  - `onError`: catch-up failures and `ChecksumError`.
+  - `parser`: must match the server's.
+- **Pairing another device:** `await client.pairingCode()` gives a code for a phone to `redeemCode` as the same player. It needs `devicePairing: true` on the server.
+- **`client.close()` disconnects for good.**
+
+## Testing a game
+
+- **Unit-test the plugin's functions directly.** They're plain functions of plain data, so no server is needed.
+- **End to end:** `createRemoteStateServer(plugin, { logger: silentLogger })`, with the in-memory database by default.
+  - Call `server.createGame` and `server.admit` as the host would.
+  - Drive `server.app` with supertest, without `startServer()`.
+- **Socket tests:** use `port: 0`, `await server.startServer()`, and `socket.io-client`.
+- **Timers:** test what the plugin returns from `transition`, and the system action it schedules, rather than waiting for real time.
+
+## Checklist of common mistakes
+
+- Expecting endpoints for creating or joining games. Write host routes that call `createGame` and `admit`.
+- Mutating `state` in `executeAction`, or storing `Date`, `Map`, `Set` or class instances in it.
+- Trusting the shape of `action`, or letting `SYSTEM` and players send each other's actions.
+- A filter that reads the clock or random numbers, or returns secrets, such as other players' cards, to the wrong audience.
+- Updating the UI from `send`'s result instead of from `subscribe`.
+- Mounting the router under a prefix and forgetting that the socket path doesn't follow it.
+- Forgetting `express.json()` on host routes.
+- Expecting timers to survive a restart. Handle `onRestart`.
+- Putting admission codes in URLs, or issuing them long before use; they last one minute.
+- Installing from a lockfile without `--ignore-scripts`.

@@ -10,6 +10,7 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ### Added
 
+- `llms.txt`, a manual of the whole library in one file for coding agents, shipped in `@malte.muth/remote-state`.
 - Players can pair their own devices, with the server option `devicePairing`: `POST /api/games/:gameId/codes` gives a player a single-use code for themselves, which another device redeems at `POST /api/tokens` for a new token for the same player. The client offers `pairingCode()`. A pairing code may travel in a link's fragment, such as in a QR code (0063).
 - The client reconnects at once when its page is shown again after being hidden for 10 seconds or more, or the network comes back, so a phone that wakes up shows the current view within a round trip instead of after up to 45 seconds. `resumeAfter` sets the time, or `null` turns it off; `reconnect()` does it on demand (0062).
 
