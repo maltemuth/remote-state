@@ -1,18 +1,12 @@
-# Connect a browser client
+# Connect a client
 
-This guide shows how to connect a web page to a Remote State game with the client package, `@malte.muth/remote-state-client`: getting a session, showing the player's view, and sending actions. [public/client.js](../../packages/remote-state-example-server/public/client.js) in the example server is a complete working version. For every option, see the [Client API](../reference/client-api.md).
+Use `@malte.muth/remote-state-client` to get a session, show the player's view and send actions. [public/client.js](../../packages/remote-state-example-server/public/client.js) in the example server is a complete page. Every option is in the [Client API](../reference/client-api.md).
 
-The paths here assume the library's routes are at the root of your server, as with `createRemoteStateServer`. If your host mounts them under a prefix, pass it as `baseUrl`; the example server serves tic-tac-toe under `/tic-tac-toe`.
+## Load the package
 
-## 1. Load the client package
+With a bundler: `npm install @malte.muth/remote-state-client`.
 
-With a bundler, install it:
-
-```sh
-npm install @malte.muth/remote-state-client
-```
-
-Without a bundler, serve the package and its two dependencies as ES modules, and map their names with an import map:
+Without one, serve it and its two dependencies as ES modules, with an import map:
 
 ```html
 <script type="importmap">
@@ -24,67 +18,26 @@ Without a bundler, serve the package and its two dependencies as ES modules, and
     }
   }
 </script>
-<script type="module" src="client.js"></script>
 ```
 
-The paths are the host's choice. The example server serves them from the installed packages: the client's `dist` directory, `immer/dist/immer.production.mjs`, and `socket.io-client/dist/socket.io.esm.min.js`. See [src/host/browserModules.ts](../../packages/remote-state-example-server/src/host/browserModules.ts).
+The example serves them from the installed packages: the client's `dist`, `immer/dist/immer.production.mjs` and `socket.io-client/dist/socket.io.esm.min.js` ([browserModules.ts](../../packages/remote-state-example-server/src/host/browserModules.ts)).
 
-## 2. Get a code from your host
-
-The library has no endpoint for creating or joining games. Your host app has its own, which return an admission code; see [Create games and admit players](admit-players.md). With a lobby like the example server's:
+## Join, show the view, send actions
 
 ```js
-const lobby = async (path, body = {}) => {
-  const response = await fetch(`/lobby${path}`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-  });
-  return response.json();
-};
+import {
+  ActionRejectedError,
+  createClient,
+  redeemCode,
+} from "@malte.muth/remote-state-client";
 
-const { gameId } = await lobby("/games"); // only to create a new game
-const { code } = await lobby(`/games/${gameId}/codes`, { name });
-```
-
-## 3. Exchange the code for a session
-
-Exchange the code right away; it's valid for one minute and works once:
-
-```js
-import { redeemCode } from "@malte.muth/remote-state-client";
-
+// A code from your host's own route; see Create games and admit players
 const session = await redeemCode(code); // { gameId, playerId, token }
 sessionStorage.setItem(`game:${session.gameId}`, JSON.stringify(session));
-```
-
-If the game refuses the player, for example because it's full, this throws a `RequestError` with `status` 403 and the game's reason as `message`. A used or expired code fails with 401.
-
-`sessionStorage` keeps one identity per tab, which lets you play both sides in two tabs while testing. Use `localStorage` to survive browser restarts instead. The server can't hand out the token again; if the host admits the same identity again, the player gets their player back with a new session.
-
-## 4. Show the player's view
-
-```js
-import { createClient } from "@malte.muth/remote-state-client";
 
 const client = createClient({ session });
-
 client.subscribe(({ view }) => render(view));
-client.onConnection((connection) => showConnection(connection.status));
-```
-
-The client connects right away. It receives the player's whole view, then every change, and catches up by itself after reconnects and missed updates. `render` gets a new view for every change. Unchanged parts of it are the same objects as before, and views are frozen.
-
-To use it in React, `getSnapshot` and `subscribe` fit `useSyncExternalStore`:
-
-```js
-const snapshot = useSyncExternalStore(client.subscribe, client.getSnapshot);
-```
-
-## 5. Send actions
-
-```js
-import { ActionRejectedError } from "@malte.muth/remote-state-client";
+client.onConnection((connection) => showStatus(connection.status));
 
 try {
   await client.send({ type: "place", row: 1, col: 1 });
@@ -94,31 +47,30 @@ try {
 }
 ```
 
-`send` resolves with the `sequence` of the state the action produced. The new view arrives through `subscribe`, as for every other player; show the result then, not before ([0033](../explanation/decisions/0033-no-optimistic-updates.md)). To wait for it, use `await client.waitFor(sequence)`.
+- **Keep the session.** The server can't hand out the token again. `sessionStorage` gives each tab its own player, which helps when testing; `localStorage` survives restarts.
+- **Render from `subscribe` only.** `send` resolves with the action's `sequence`, but the new view arrives through `subscribe`, like everyone else's ([0033](../explanation/decisions/0033-no-optimistic-updates.md)). `await client.waitFor(sequence)` waits for it.
+- **Views are frozen,** and unchanged parts keep their identity. In React: `useSyncExternalStore(client.subscribe, client.getSnapshot)`.
+- **Type it** with the game's types, `createClient<View, Action>({ session })`, from a module that doesn't import the server.
 
-A rejected action throws an `ActionRejectedError`, whose `message` is the game's reason, such as `"It's not your turn"`.
+## Under a prefix or on another origin
 
-## Use the game's types
+Pass where the library's routes are as `baseUrl`, to both `redeemCode` and `createClient`: `/tic-tac-toe`, or `https://games.example.com/tic-tac-toe`. The library allows every origin unless the server's [`cors` option](../reference/server-api.md#options) says otherwise; your own routes need their own CORS.
 
-In TypeScript, pass the game's view and action types, so `render` and `send` are checked:
+## Serve the page from the game server
+
+`server.app` is an Express app; only `/api` is reserved:
 
 ```ts
-import type { TicTacToeAction, TicTacToeView } from "my-game/types";
-
-const client = createClient<TicTacToeView, TicTacToeAction>({ session });
+server.app.use(express.static("public"));
 ```
 
-Keep the types in a module the client can import without importing the server.
+The example server does this, with the game under `/tic-tac-toe`: run `npm run start:example`, open http://localhost:3000, and open the invite link in a second tab.
 
-## Clients on another origin
+## Without the package
 
-Pass the full URL as `baseUrl`, for example `createClient({ session, baseUrl: "https://games.example.com/tic-tac-toe" })`, and to `redeemCode`. By default, the library's API and socket allow requests from any origin; to limit them, set the server's [`cors` option](../reference/server-api.md#options). Your own routes, such as a lobby, need their own CORS.
+1. `POST /api/tokens` with `{ code }`, for the token.
+2. Connect Socket.IO with `auth: { gameId, token }`, and optionally `query: { format: "immer" }`. Every (re)connect starts with a whole `state` event; a `state` or `patches` event follows each change.
+3. `POST /api/games/:gameId/actions` with `{ action }` and `Authorization: Bearer <token>`: 201 `{ sequence }`, or 400 with the game's reason.
+4. After missing updates, `GET /api/games/:gameId/updates?since=<sequence>`.
 
-## Without the client package
-
-Clients in other languages, or that don't want the package, talk to the [HTTP API](../reference/http-api.md) and the [Socket.IO events](../reference/socket-events.md) directly:
-
-1. `POST /api/tokens` with the code, for the token.
-2. Connect Socket.IO with `auth: { gameId, token }`, and optionally `query: { format: "immer" }`. Every (re)connect starts with a whole `state` event, followed by a `state` or `patches` event for every change, each with a `sequence`.
-3. `POST /api/games/:gameId/actions` with `{ action }` and `Authorization: Bearer <token>`. It answers 201 with `{ sequence }`, or 400 with the game's reason.
-4. After missing updates, `GET /api/games/:gameId/updates?since=<sequence>` returns one set of patches, or redirects to the whole state.
+See the [HTTP API](../reference/http-api.md) and [Socket.IO events](../reference/socket-events.md).

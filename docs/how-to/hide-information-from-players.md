@@ -1,72 +1,45 @@
 # Hide information from players
 
-Use `filterStateForAudience` whenever players must not see all of the state, such as hands of cards, fog of war, or secret choices.
+Use `filterStateForAudience` when players must not see all of the state: hands of cards, fog of war, secret choices.
 
 ## Write the filter
 
-The filter turns the full state into what one audience may see. By default, each player is an audience of their own, named by their player ID, so for most games the audience is the player:
+Each player is an audience of their own, named by their player ID, so the audience is usually the player:
 
 ```ts
 filterStateForAudience: (state, playerId) => ({
   pot: state.pot,
   myHand: state.hands[playerId] ?? [],
-  // Other players: only how many cards they hold
   handSizes: Object.fromEntries(
     Object.entries(state.hands).map(([id, cards]) => [id, cards.length]),
   ),
 }),
 ```
 
-Give the result its own type (the third type parameter of `GamePlugin`). That way the compiler catches a field that leaks through a spread like `{ ...state }`.
+Give the view its own type, the third type parameter of `GamePlugin`, so the compiler catches a field leaking through.
 
 ## Group players who see the same thing
 
-When many players see the same view, such as spectators, put them in a shared audience. The view is then computed once for all of them. Return `withAudiences` from `onJoin` or `executeAction`:
+Put spectators, for example, in a shared audience, whose view is computed once. Return `withAudiences` from `onJoin` or `executeAction`, and handle the audience in the filter:
 
 ```ts
-import { withAudiences } from "@malte.muth/remote-state";
+onJoin: (state, { playerId, details }) =>
+  details.spectator ? withAudiences(state, { [playerId]: "spectators" }) : seat(state, playerId),
 
-onJoin: (state, { playerId, details }) => {
-  if (details.spectator) {
-    return withAudiences(state, { [playerId]: "spectators" });
-  }
-  // … seat the player
-},
-```
-
-The filter then receives `"spectators"` as the audience, and must handle it:
-
-```ts
 filterStateForAudience: (state, audience) => ({
   pot: state.pot,
   myHand: audience === "spectators" ? [] : (state.hands[audience] ?? []),
-  // …
 }),
 ```
 
-To move a player back to their own audience, set it to `null`. Players who change audience receive patches from their old view to their new one. See [GamePlugin](../reference/game-plugin.md#withaudiences).
+`null` moves a player back to their own audience. Players who change audience get patches from their old view to the new one.
 
-## Things to get right
+## Get it right
 
-- **Build up from nothing rather than removing fields.** A filter that starts from `{ ...state }` and deletes secrets will leak any secret field added to the state later.
-- **Handle every audience the game can have.** That's the ID of every player who joined, including any your game didn't seat, and every audience name you set with `withAudiences`. For anyone else, return a view that reveals nothing private.
-- **Keep the filter pure.** Views of past states are rebuilt from stored states, for example when a client catches up. The view must depend only on the state and the audience.
-- **Don't rely on the client.** Anything in the view can be seen in the browser's dev tools, even if the UI never shows it.
-- **Consider what the rules reveal.** `validateAction` messages and `GameRefusal` reasons go to the client. A message like `"Bob already has the ace of spades"` leaks information that the filter hides.
+- **Build the view up from nothing.** Starting from `{ ...state }` and deleting secrets leaks every secret added later.
+- **Handle every audience:** every player who joined, seated or not, and every name you set. Reveal nothing private to anyone else.
+- **Keep it pure.** Past views are rebuilt from stored states, so the view may depend only on the state and the audience.
+- **Mind the messages.** `validateAction` reasons and `GameRefusal` messages reach the client unfiltered.
+- **Test what a player can't see:** `assert.doesNotMatch(JSON.stringify(view), /rock/)` ([Test a game plugin](test-a-game-plugin.md)).
 
-## Test it
-
-Assert on what a player _can't_ see, not just on what they can. For example, with supertest (see [Test a game plugin](test-a-game-plugin.md)):
-
-```ts
-const bobView = await request(server.app)
-  .get(`/api/games/${gameId}/state`)
-  .set("Authorization", `Bearer ${bob.token}`)
-  .expect(200);
-
-assert.doesNotMatch(JSON.stringify(bobView.body), /rock/);
-```
-
-## Limits
-
-The filter controls what clients receive, not what's stored. The database holds every full state, the action that led to it, and the diff of each audience's view for each transition. See [Architecture](../explanation/architecture.md#hidden-information).
+The filter controls what clients receive, not what's stored: the database holds every full state ([Architecture](../explanation/architecture.md#hidden-information)).

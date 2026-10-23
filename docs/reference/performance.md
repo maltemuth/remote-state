@@ -1,6 +1,6 @@
 # Performance measurements
 
-Results of the load test, as measured. For how to run it, see [Measure performance](../how-to/measure-performance.md).
+Results of the load test, as measured. For how to run it, see [Measure performance](../how-to/maintain.md#measure-performance).
 
 ## 2026-10-18, checksums, MessagePack and compression, after 0.9.1
 

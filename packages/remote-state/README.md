@@ -1,26 +1,12 @@
 # @malte.muth/remote-state
 
-Server-authoritative state for multiplayer games. You write the game's rules as a plugin; the library runs them on the server, keeps every game's history, and sends each player their own view of the state, as whole states or as patches.
-
-- **Actions over HTTP, updates over Socket.IO.** Clients send actions; every connected player receives the new state, filtered for what they may see.
-- **Hidden information built in.** A view filter decides what each audience sees, such as each player their own hand and spectators neither.
-- **Your app stays in charge.** Mount the library in your Express app, or run it standalone. Your app decides who may create and join games, and admits players with single-use codes.
-- **Time limits and actions from the server.** A game can schedule actions, such as a turn timeout, and your app can act in a game as the system.
-- **Patches for state libraries.** Updates can be Immer patches, which keep unchanged parts of the client's state as the same objects.
-
-Requires Node.js 24 or newer.
-
-## Install
+Server-authoritative state for multiplayer games, on Node.js 24+. You write the rules as a plugin; the library runs them, stores every game's history, and sends each player their own view, live. Your app decides who may play.
 
 ```sh
 npm install @malte.muth/remote-state
 ```
 
-The SQLite driver, `better-sqlite3`, ships prebuilt binaries for common platforms and needs no install script. When installing from a lockfile, such as with `npm ci`, npm still tries to build it from source, which fails without a C++ compiler. Install with `--ignore-scripts` until npm fixes this ([npm/cli#9859](https://github.com/npm/cli/pull/9859)):
-
-```sh
-npm ci --ignore-scripts
-```
+From a lockfile, install with `npm ci --ignore-scripts`: otherwise npm tries to build the SQLite driver, `better-sqlite3`, from source, though it ships prebuilt binaries ([npm/cli#9859](https://github.com/npm/cli/pull/9859)).
 
 ## Example
 
@@ -59,13 +45,9 @@ server.app.post('/games/:gameId/codes', async (req, res) => {
 await server.startServer();
 ```
 
-In the browser, [`@malte.muth/remote-state-client`](https://www.npmjs.com/package/@malte.muth/remote-state-client) exchanges the code for a session, keeps the player's view in step, and sends actions. Clients can also talk to the HTTP API and the socket directly: the code is exchanged at `POST /api/tokens` for a token, actions go to `POST /api/games/:gameId/actions` with `Authorization: Bearer <token>`, and updates arrive on the socket with `auth: { gameId, token }`.
+Clients use [`@malte.muth/remote-state-client`](https://www.npmjs.com/package/@malte.muth/remote-state-client), or the HTTP API and socket directly.
 
-## Documentation
-
-For coding agents, `llms.txt` in this package is a manual of the whole library in one file: the model, both packages' APIs, a server and a client, and the common mistakes.
-
-The repository's `docs/` folder has a tutorial, how-to guides (connecting clients, embedding in an app, hiding information, scheduling actions, persisting and testing games), the full reference, and the design decisions behind the library.
+Documentation: the repository's `docs/`, and, for coding agents, `llms.txt` in this package.
 
 ## License
 

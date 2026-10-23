@@ -1,10 +1,6 @@
 # Architecture
 
-Remote State is a server-authoritative game server. Clients never change the game state themselves. They ask the server to apply an action, and the server decides.
-
-The library handles transport, storage, identity and fan-out. A game supplies only its rules, as a [`GamePlugin`](../reference/game-plugin.md). The application around it, the host, decides who may create and join games.
-
-## The pieces
+Remote State is a server-authoritative game server. Clients ask the server to apply an action; the server decides. A game supplies only its rules, as a [`GamePlugin`](../reference/game-plugin.md). The app around it, the host, decides who may create and join games.
 
 ```
                               client
@@ -27,97 +23,49 @@ The library handles transport, storage, identity and fan-out. A game supplies on
                   states, audience memberships
 ```
 
-Everything runs in one Node.js process, and that assumption shapes several decisions below.
+Everything runs in one Node.js process ([0006](decisions/0006-single-process.md)). The library runs inside the host: standalone, with the host adding routes to its app, or mounted in the host's own app ([0037](decisions/0037-embeddable-core-and-server-options.md)). One instance serves one game with its own database; a host with several games mounts several ([0038](decisions/0038-several-games-by-mounting-several-instances.md)).
 
-The library runs inside the host. Either it's a standalone server whose Express app the host adds its routes to, or the host mounts the library's router in its own app and attaches its socket to its own HTTP server ([0037](decisions/0037-embeddable-core-and-server-options.md)). Either way, one instance serves one game, with its own database. A host that serves several games creates one instance per game, each under its own path ([0038](decisions/0038-several-games-by-mounting-several-instances.md)). Deployment settings such as the database, CORS and logging are passed by the host when it creates an instance, not defined by the game, so the same game can be deployed in different ways.
+## Actions over HTTP, updates over sockets
 
-## Why actions go over HTTP and updates over sockets
+An action needs a reply, accepted or rejected with a reason, which HTTP gives with ordinary tooling. An update must reach every player, which needs a push channel ([0001](decisions/0001-http-actions-socket-updates.md)). Clients never send anything over the socket, so it's authenticated once, in the handshake, and there's one write path to secure.
 
-Actions need a reply: accepted or rejected with a reason. A request/response protocol gives that reply, with status codes and ordinary tooling (curl, supertest, retries), without building acknowledgements on top of Socket.IO.
-
-Updates need to reach every player, including those who didn't act. That needs a push channel, which is what Socket.IO is for.
-
-This was decided in [0001](decisions/0001-http-actions-socket-updates.md). Keeping them separate means the socket carries only server-to-client traffic. Clients never send anything over it, so authentication happens once, in the handshake, and there's no second write path to secure.
-
-The reply to an action carries only its `sequence`, not the new state ([0034](decisions/0034-action-response-with-sequence.md)). The state reaches the acting client the same way it reaches everyone else, over the socket, so there's one path for state and the client can match the update to its action.
+The reply carries only the action's `sequence`. The new state reaches the actor the way it reaches everyone, over the socket ([0034](decisions/0034-action-response-with-sequence.md)).
 
 ## Hosts, codes and tokens
 
-The library has no accounts and no endpoints for creating or joining games. Who may play is the host's business, decided with its own login ([0016](decisions/0016-authentication-in-library-authorization-by-implementer.md), [0020](decisions/0020-hosts-admit-players-through-codes.md)).
+The library has no accounts and no endpoints for creating or joining games ([0016](decisions/0016-authentication-in-library-authorization-by-implementer.md)). The host calls it in-process ([0023](decisions/0023-no-server-to-server-admit.md)): `createGame(initialState)`, with a state from the game's own code ([0036](decisions/0036-hosts-pass-the-initial-state.md)), and `admit({ gameId, identity })`, which returns a code valid once, for a minute ([0020](decisions/0020-hosts-admit-players-through-codes.md)).
 
-The host calls the library in-process ([0023](decisions/0023-no-server-to-server-admit.md)):
+The client trades the code for a token, its only credential from then on ([0017](decisions/0017-hashed-tokens-in-header-and-handshake.md)). So the host never handles tokens, and a leaked code is worth little. Tokens are stored as hashes. A person admitted again gets a new token for the same player ([0019](decisions/0019-several-tokens-per-player.md)). Names, seats and roles are game state, not the library's ([0022](decisions/0022-roles-belong-to-game-state.md)).
 
-- `createGame(initialState)` stores a new game. The host gets the initial state from the game's own code, so the library needs no notion of game options ([0036](decisions/0036-hosts-pass-the-initial-state.md)).
-- `admit({ gameId, identity })` returns a single-use code that's valid for a minute. The host passes it to its client in a response body.
-
-The client exchanges the code at `POST /api/tokens` for a token. From then on, the token is the only credential, sent in the `Authorization` header or the socket handshake ([0017](decisions/0017-hashed-tokens-in-header-and-handshake.md)).
-
-This way, the host never handles tokens or keeps its own table linking users to players, and a leaked code is worth little: it works once, for a minute. Tokens are stored only as hashes, so the library can never show one again. A returning person, or the same person on another device, is admitted again and gets a new token; a player can hold several ([0019](decisions/0019-several-tokens-per-player.md)). The host's `identity.id` ties them to one player per game.
-
-A player exists per game. The library knows nothing else about them: names, seats and roles are game state, set by the game ([0022](decisions/0022-roles-belong-to-game-state.md)).
-
-## Joining is a transition
-
-When a code is redeemed for an identity the game hasn't seen, the game's `onJoin` runs with the current state. It can seat the player, or refuse them with a `GameRefusal`, for example when the game is full ([0026](decisions/0026-join-hook-is-a-state-transition.md)).
-
-A join is recorded like an action: it gets the next `sequence`, and connected players receive the new state. That keeps the library's players and the game's seats consistent; nobody has a token without the game having agreed.
+A join is a transition: the game's `onJoin` seats or refuses the person, and the join is recorded and sent like an action. Nobody has a token without the game having agreed ([0026](decisions/0026-join-hook-is-a-state-transition.md)).
 
 ## The life of an action
 
-When `POST /api/games/:gameId/actions` arrives:
+1. **Authenticate** the token to a player of this game.
+2. **Lock** the game. Two transitions of one game never interleave; different games run in parallel.
+3. **Load** the latest state.
+4. **Validate.** A string from `validateAction` ends the request with 400.
+5. **Execute.** `executeAction` returns the next state, and maybe audience changes and timers. A `GameRefusal` ends it with 400.
+6. **Record**, in one transaction, the new state with the next `sequence`, the action and its author, and audience changes. Then the timers take effect.
+7. **Publish** each connected socket's new view, whole or as patches, computed once per audience.
+8. **Unlock,** and answer 201 with the `sequence`.
 
-1. **Authenticate.** The token is resolved to a player, who must belong to this game.
-2. **Lock.** All following steps run inside a per-game lock, so two transitions on the same game can't interleave. Different games run in parallel.
-3. **Load** the latest state (highest `sequence`).
-4. **Validate.** If `validateAction` returns a string, the request ends with 400 and nothing changes.
-5. **Execute.** `executeAction` returns the next state, and possibly audience changes and timers to schedule or cancel. A `GameRefusal` ends the request with 400.
-6. **Record**, in one transaction: the new state with `sequence + 1` and the action that led to it, the diff of each audience's view, and any audience changes. Full-state diffs aren't stored; they can be computed from neighbouring states ([0050](decisions/0050-full-state-diffs-derived-not-stored.md)). Once that's committed, the action's timers take effect.
-7. **Publish.** Each connected socket of the game receives its audience's new view, as a whole state or as patches.
-8. **Unlock**, and respond with 201 and the `sequence`.
+The lock keeps validation in step with the state it's validated against, and socket events in order.
 
-Without the lock, two actions could both read state _n_, both be validated against it, and both try to write state _n + 1_. The unique `(gameId, sequence)` index would reject the second write, but only after its validation had already passed against stale state. The lock keeps each validation in step with the state it's validated against, and keeps socket events in `sequence` order.
-
-## Actions from the server
-
-Not every transition starts with a client's request. A game can schedule actions along with a new state, such as a turn timeout, and the host can run actions with `act`, such as an admin ending a game ([0040](decisions/0040-server-initiated-actions.md)). Both act as the system, with the player ID `"system"`. They take the same path as a player's action from step 2 on: the lock, validation, execution, recording and publishing. A game's rules therefore decide what the system may do, and the history shows each system action, recorded without a player.
-
-Timers are named per game, so a turn timeout is one timer that every move replaces and the end of the game cancels ([0041](decisions/0041-named-timers.md)). A due timer runs only if it's still pending, and its action is validated against the state at that time, so an outdated timeout is rejected rather than applied. Timers are kept in memory only: a restart loses them, and how they should survive one is still open ([0042](decisions/0042-timer-restarts-open.md)).
+Timers and the host's `act` take the same path from step 2, as the system, the player ID `"system"` ([0040](decisions/0040-server-initiated-actions.md)). So the game's rules decide what the system may do, and the history shows it. Timers are named, so one turn timer is replaced by every move ([0041](decisions/0041-named-timers.md)). They live in memory; after a restart, each game decides what to do in `onRestart` ([0052](decisions/0052-games-pause-on-restart.md), [0053](decisions/0053-restarts-are-game-logic.md)).
 
 ## State as an append-only log
 
-The server never overwrites a state. Each transition appends a full snapshot, together with the action that produced it, who sent it and from which audience ([0039](decisions/0039-actions-recorded-with-authors-audience.md)). The current state is simply the newest row.
+Every transition appends a full snapshot with its action, author and the author's audience ([0039](decisions/0039-actions-recorded-with-authors-audience.md)); the newest row is the current state. That gives an audit trail, crash safety, and a cursor: `sequence` is all a client needs to ask what changed ([0029](decisions/0029-sequence-is-the-cursor.md)).
 
-This gives you:
-
-- **An audit trail** of every move, from the stored action and the player who sent it
-- **A cursor** for clients: `sequence` tells a client how far it is, and is all it needs to ask for what changed since ([0029](decisions/0029-sequence-is-the-cursor.md))
-- **Crash safety**: a transition is either fully written or not written at all
-
-Only full states are stored, no diffs ([0050](decisions/0050-full-state-diffs-derived-not-stored.md), [0056](decisions/0056-views-and-patches-computed-when-sent.md)). After each transition, the server computes the views and patches the connected sockets need, once per audience. A client that reconnects gets its whole view from the socket ([0031](decisions/0031-socket-sends-state-on-connect.md)). A client that asks `GET …/updates?since=n` gets one patch from its view of the state at _n_ to its current view ([0030](decisions/0030-updates-in-one-jump.md)).
-
-The cost is storage. Every transition stores the whole state, which suits small board-game states well and large, frequently changing states badly.
+Only states are stored. Views and patches are computed when they're sent ([0050](decisions/0050-full-state-diffs-derived-not-stored.md), [0056](decisions/0056-views-and-patches-computed-when-sent.md)). A reconnecting client gets its whole view ([0031](decisions/0031-socket-sends-state-on-connect.md)); `GET …/updates?since=n` gives one patch from its view at _n_ ([0030](decisions/0030-updates-in-one-jump.md)). The cost is storage, which suits small states and punishes large ones.
 
 ## Hidden information
 
-Every game is treated as having hidden information ([0010](decisions/0010-every-game-has-hidden-information.md)). `filterStateForAudience` is the security boundary for it. Every path that sends state to a client goes through it:
+Every game is treated as having hidden information ([0010](decisions/0010-every-game-has-hidden-information.md)), and `filterStateForAudience` is the boundary: socket events, `GET …/state` and `GET …/updates` all go through it. Patches are diffs between views, never between states, so they can't leak what views hide ([0011](decisions/0011-patches-are-diffs-of-views.md)).
 
-- socket events, on connect and after every transition
-- `GET …/state`
-- `GET …/updates`
+Views are per audience, not per player ([0024](decisions/0024-views-per-audience.md)): by default each player's own with a filter, and one for everyone without ([0025](decisions/0025-default-audiences.md)). Games move players into shared audiences, such as spectators, who then cost one view however many they are ([0027](decisions/0027-audiences-set-by-join-hook-and-actions.md)). Catching up rebuilds a player's old view from the stored state and their audience history ([0035](decisions/0035-updates-across-audiences.md)), which is why filters must be pure.
 
-Patches are diffs between two views, never between full states ([0011](decisions/0011-patches-are-diffs-of-views.md)), so they can't leak what the views hide.
+Stored states stay complete, so the rules can depend on hidden facts. Two consequences: anything outside the filter can leak, such as rejection messages and the host's own routes; and the database is not filtered.
 
-Views are computed per audience, not per player ([0024](decisions/0024-views-per-audience.md)). By default, a game with a filter gives each player an audience of their own, and a game without one puts everyone in a single audience ([0025](decisions/0025-default-audiences.md)). Games move players into shared audiences, such as spectators, by returning `withAudiences` from `onJoin` or an action ([0027](decisions/0027-audiences-set-by-join-hook-and-actions.md)). Players who see the same thing then cost one view and one diff, however many they are.
-
-To catch a player up, the server rebuilds their old view from the stored state and their audience history, in case they changed audience since, and diffs it with their current one ([0035](decisions/0035-updates-across-audiences.md)). That's why filters must be pure functions of the state and the audience.
-
-Filtering happens at send time, so the stored state stays complete. That's what lets the server keep enforcing rules that depend on hidden facts.
-
-Two consequences:
-
-- **Anything outside the filter can leak.** That includes `validateAction` messages and `GameRefusal` reasons, and anything the host app sends on its own routes.
-- **The database is not filtered.** Anyone with access to the SQLite file sees everything, including every past action and every past full state.
-
-## Single process
-
-The per-game lock, the Socket.IO rooms and the SQLite database all live in one process. That keeps the moving parts few, and it means one server instance per deployment, as decided in [0006](decisions/0006-single-process.md). [Limitations](limitations.md) lists what would need to change to go beyond that.
+See [Known limitations](limitations.md) for what this design doesn't do yet.

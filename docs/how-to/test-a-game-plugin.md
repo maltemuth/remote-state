@@ -1,23 +1,21 @@
 # Test a game plugin
 
-A plugin is a set of plain functions, so you can test the rules without a server. Add a few end-to-end tests through the HTTP API to cover what the server adds: admission, authentication, filtering, and state history.
-
-The examples use the rock-paper-scissors game from the [tutorial](../tutorials/build-your-first-game.md), with the plugin, `newGame` and the `RpsState` type exported from their own module.
-
 ## Unit-test the rules
 
-Call the functions directly. The examples use Node's test runner, as this repository's own tests do:
+A plugin is plain functions, so call them directly. Test `validateAction` and `executeAction` separately: the server never executes an action that failed validation.
 
 ```ts
 import assert from "node:assert/strict";
 import { it } from "node:test";
 import { GameRefusal } from "@malte.muth/remote-state";
-import { rockPaperScissors } from "../src/rps.js";
-
-const playing = { players: ["a", "b"], names: {}, choices: {}, winner: null };
 
 it("rejects a second choice", async () => {
-  const state = { ...playing, choices: { a: "rock" as const } };
+  const state = {
+    players: ["a", "b"],
+    names: {},
+    choices: { a: "rock" },
+    winner: null,
+  };
   assert.equal(
     await rockPaperScissors.validateAction(
       state,
@@ -29,43 +27,24 @@ it("rejects a second choice", async () => {
 });
 
 it("refuses a third player", () => {
+  const full = { players: ["a", "b"], names: {}, choices: {}, winner: null };
   assert.throws(
-    () => rockPaperScissors.onJoin!(playing, { playerId: "c", details: {} }),
+    () => rockPaperScissors.onJoin!(full, { playerId: "c", details: {} }),
     GameRefusal,
   );
 });
 ```
 
-Test `validateAction` and `executeAction` separately. The server never calls `executeAction` with an action that failed validation.
-
 ## Test through the API
 
-Create a server with an in-memory database, the default, and drive it with [supertest](https://github.com/ladjs/supertest). You don't need to call `startServer()`, because supertest calls the Express app directly.
-
-Your tests act as the host: they create games and admit players by calling the server directly, then use the HTTP API as a client would.
+Use an in-memory server, the default, and drive its app with [supertest](https://github.com/ladjs/supertest); there's no need to start it. The test plays the host, then the client:
 
 ```ts
-import assert from "node:assert/strict";
-import { after, before, it } from "node:test";
-import request from "supertest";
-import {
-  createRemoteStateServer,
-  type RemoteStateServer,
-  silentLogger,
-} from "@malte.muth/remote-state";
-import { newGame, rockPaperScissors, type RpsState } from "../src/rps.js";
-
-let server: RemoteStateServer<RpsState>;
-
-before(async () => {
-  server = await createRemoteStateServer(rockPaperScissors, {
-    logger: silentLogger,
-  });
+const server = await createRemoteStateServer(rockPaperScissors, {
+  logger: silentLogger,
 });
-
 after(() => server.close());
 
-// What a host and its client do together: admit someone and redeem the code
 const join = async (gameId, name) => {
   const code = await server.admit({ gameId, identity: { id: name, name } });
   return (
@@ -77,33 +56,19 @@ it("hides the opponent's choice", async () => {
   const gameId = await server.createGame(newGame());
   const alice = await join(gameId, "alice");
   const bob = await join(gameId, "bob");
-
   await request(server.app)
     .post(`/api/games/${gameId}/actions`)
     .set("Authorization", `Bearer ${alice.token}`)
     .send({ action: { type: "choose", choice: "rock" } })
     .expect(201);
-
-  const bobView = await request(server.app)
+  const { body } = await request(server.app)
     .get(`/api/games/${gameId}/state`)
     .set("Authorization", `Bearer ${bob.token}`)
     .expect(200);
-  assert.deepEqual(bobView.body.state.choices, {});
-  assert.equal(bobView.body.state.opponentHasChosen, true);
+  assert.deepEqual(body.state.choices, {});
 });
 ```
 
-`silentLogger` keeps the server's output out of the test report. To see only errors, pass `consoleLogger({ level: LogLevel.error })` instead.
+If your host has its own routes, test through those instead of calling `admit`.
 
-If your host adds its own routes, as the example's lobby does, test through those instead of calling `admit` directly.
-
-## Test socket updates
-
-Create the server with `port: 0`, call `startServer()`, which resolves to the port it picked, and connect with `socket.io-client`. [socket.test.ts](../../packages/remote-state/__test__/integration/socket.test.ts) has complete examples, including how to wait for events and how to apply patches with Immer.
-
-## Examples in this repository
-
-- [tic-tac-toe.e2e.test.ts](../../packages/remote-state-example-server/__test__/e2e/tic-tac-toe.e2e.test.ts): a full game through the example's lobby and the library's API, using the library through its package name as your project would. Its [client helpers](../../packages/remote-state-example-server/__test__/helpers/client.ts) do what a browser client does.
-- [rules.test.ts](../../packages/remote-state-example-server/__test__/games/tic-tac-toe/rules.test.ts): tic-tac-toe's rules, tested without a server
-- The example's [package.json](../../packages/remote-state-example-server/package.json): its `test` script runs the TypeScript tests on Node's test runner, loaded through [tsx](https://tsx.is) (`node --import tsx --test`).
-- [admission.test.ts](../../packages/remote-state/__test__/integration/admission.test.ts) and [updates.test.ts](../../packages/remote-state/__test__/integration/updates.test.ts): codes, the join hook, refusals, audiences and catch-up, using a small [counter game](../../packages/remote-state/__test__/helpers/counterGame.ts)
+For socket updates, start the server with `port: 0` and connect with `socket.io-client`, as [socket.test.ts](../../packages/remote-state/__test__/integration/socket.test.ts) does. A full game through a lobby is in [tic-tac-toe.e2e.test.ts](../../packages/remote-state-example-server/__test__/e2e/tic-tac-toe.e2e.test.ts).

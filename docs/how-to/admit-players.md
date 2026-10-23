@@ -1,16 +1,15 @@
 # Create games and admit players
 
-Remote State has no endpoints for creating or joining games. Your app is the host: it decides who may do either, and calls the library in the same process. This guide shows the routes a host adds. For why it works this way, see [0020](../explanation/decisions/0020-hosts-admit-players-through-codes.md) and [0023](../explanation/decisions/0023-no-server-to-server-admit.md).
+The library has no endpoints for creating or joining games: your app, the host, adds its own, after its own login ([0020](../explanation/decisions/0020-hosts-admit-players-through-codes.md)).
 
-The flow is:
-
-1. Your route checks the person against your own login, then calls `server.createGame` or `server.admit`.
-2. `admit` returns a single-use code, which your route returns to the client in the response body.
-3. The client exchanges the code at [`POST /api/tokens`](../reference/http-api.md#post-apitokens) for a token, and uses the library's API from then on.
+1. Your route checks the person, then calls `createGame` or `admit`.
+2. `admit` returns a single-use code, which your route returns in the response body.
+3. The client exchanges the code at [`POST /api/tokens`](../reference/http-api.md#post-apitokens) for a token.
 
 ## Add the routes
 
 ```ts
+import express from "express";
 import {
   createRemoteStateServer,
   UnknownGameError,
@@ -19,29 +18,17 @@ import {
 const server = await createRemoteStateServer(myGame, { port: 3000 });
 
 server.app.post("/games", async (req, res) => {
-  const user = await currentUser(req);
-  if (!user) {
-    res.status(401).json({ error: "Log in first" });
-    return;
-  }
-  const gameId = await server.createGame(newGame());
-  res.status(201).json({ gameId });
+  if (!(await currentUser(req)))
+    return void res.status(401).json({ error: "Log in first" });
+  res.status(201).json({ gameId: await server.createGame(newGame()) });
 });
 
-server.app.post("/games/:gameId/codes", async (req, res) => {
+server.app.post("/games/:gameId/codes", express.json(), async (req, res) => {
   const user = await currentUser(req);
-  if (!user) {
-    res.status(401).json({ error: "Log in first" });
-    return;
-  }
-  const { gameId } = req.params;
-  if (!(await mayJoin(user, gameId))) {
-    res.status(403).json({ error: "You're not invited" });
-    return;
-  }
+  if (!user) return void res.status(401).json({ error: "Log in first" });
   try {
     const code = await server.admit({
-      gameId,
+      gameId: req.params.gameId,
       identity: { id: user.id, name: user.name },
     });
     res.status(201).json({ code });
@@ -54,44 +41,43 @@ server.app.post("/games/:gameId/codes", async (req, res) => {
 await server.startServer();
 ```
 
-`currentUser` and `mayJoin` stand for your own login and rules. Use any paths outside `/api`, which the library reserves. If you [embed the library in your own app](embed-in-an-existing-app.md), add the same routes there, and call `createGame` and `admit` on what `createRemoteState` returns.
-
-The library's JSON body parser and error handler apply only to `/api`. If your routes read a JSON body, add `express.json()` to them. Errors you don't handle get Express's default response, an HTML page with status 500. Add your own error handler after your routes if clients need JSON.
-
-## Create a game
-
-Pass `createGame` the state the game starts in. Build it with a function from your game, such as `newTicTacToeGame()` in the example. The library stores it as state 0 and doesn't check it ([0036](../explanation/decisions/0036-hosts-pass-the-initial-state.md)).
-
-A new game has no players. The person who created it joins like everyone else, with a code.
+- `currentUser` stands for your own login. Use any paths outside `/api`.
+- The library's JSON parser and error handler cover only `/api`, so add `express.json()`, and your own error handler if your routes' errors should be JSON.
+- When [embedded](embed-in-an-existing-app.md), call the same functions on what `createRemoteState` returns.
 
 ## Choose the identity
 
-`identity.id` is how the library recognizes a person within a game. It's never shown to clients.
+`identity.id` identifies a person within a game; clients never see it. The rest of `identity` goes to the game's `onJoin` as `details`, the first time only.
 
-- **With a login,** use your user ID. When the same user is admitted again, for example on another device, they get the same player back, with a new token. Their old tokens stay valid ([0019](../explanation/decisions/0019-several-tokens-per-player.md)).
-- **Without a login,** generate a new ID per request, as the example's [lobby](../../packages/remote-state-example-server/src/host/lobby.ts) does. Every code is then a new player, and a client that loses its token can't get its player back.
+- **With a login,** use the user's ID. Admitting them again, such as on another device, gives the same player back with a new token.
+- **Without one,** generate an ID per person. A client that loses its token then can't get its player back.
 
-Everything else in `identity` is passed to the game's `onJoin` as `details`, for example a display name. The game decides what to keep in its state. `onJoin` runs only the first time an identity joins a game, so later admissions don't change those details.
+A new game has no players: its creator joins with a code too.
 
 ## Hand over the code
 
-Return the code in the response body. Never put it in a URL, where it ends up in logs and browser history.
+Return it in the response body, never in a URL. It works once, within a minute (`CODE_LIFETIME_MS`), so issue it right before use. Redeeming it fails with 401 if it's used or expired, and with 403 and the game's reason if `onJoin` refuses the player. A refused code is used up.
 
-The code is valid for one minute (`CODE_LIFETIME_MS`), so issue it when the client is about to use it, not ahead of time. Exchanging it can fail:
+## Let players pair another device
 
-| Status | Meaning                                                                                  | What the client can do      |
-| ------ | ---------------------------------------------------------------------------------------- | --------------------------- |
-| 401    | The code is unknown, used or expired                                                     | Ask your host for a new one |
-| 403    | The game refused the player, for example because it's full; `error` is the game's reason | Show the reason             |
+With `devicePairing: true`, a player can follow the game on a second device, such as a phone, as the same player, without logging in there ([0063](../explanation/decisions/0063-players-pair-their-own-devices.md)).
 
-A refused code is used up too, so a client can't retry with it.
+On the device they play on, get a code and show a link to it, as a QR code for example. The code goes in the fragment, so it never reaches a server:
 
-## Errors from the host API
+```ts
+const code = await client.pairingCode();
+showQrCode(`${location.origin}/games/${client.session.gameId}/pair#${code}`);
+```
 
-| Call         | Throws             | When                              |
-| ------------ | ------------------ | --------------------------------- |
-| `createGame` | `Error`            | The initial state is `undefined`  |
-| `admit`      | `UnknownGameError` | The game doesn't exist            |
-| `admit`      | `Error`            | `identity.id` is missing or empty |
+On the page the link opens, redeem it and take it out of the address:
 
-See [Server API](../reference/server-api.md#remotestateserver) for the full signatures.
+```ts
+const code = location.hash.slice(1);
+history.replaceState(null, "", location.pathname);
+const client = createClient({
+  session: await redeemCode(code, { baseUrl }),
+  baseUrl,
+});
+```
+
+Show the code only to the player, and only briefly: whoever redeems it within the minute plays as them.
