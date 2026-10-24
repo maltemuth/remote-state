@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 800 452" width="800" height="452" role="img" aria-labelledby="title desc">
   <title id="title">How Remote State works</title>
-  <desc id="desc">Alice's and Bob's clients send actions to the server. Your rules turn the current state and an action into the new state. Your filter turns the state into each player's own view, which goes back to that player's client.</desc>
+  <desc id="desc">Alice's and Bob's clients send actions to the server. Your rules turn the current state and an action into the new state. Your filter turns the state into each user's own view, which goes back to that user's client.</desc>
   <style>
     svg { --text: #1f2328; --muted: #59636e; --line: #59636e; --fill: #ffffff; --server: #f6f8fa;
           --action: #0969da; --state: #8250df; --view: #1a7f37;
@@ -48,7 +48,7 @@
   <rect class="box" x="450" y="302" width="320" height="92" rx="10"/>
   <rect class="glow anim" x="450" y="302" width="320" height="92" rx="10" opacity="0"><animate attributeName="opacity" dur="8s" repeatCount="indefinite" values="0;0;0.35;0;0;0.35;0;0" keyTimes="0.0000;0.3000;0.3187;0.3563;0.8000;0.8188;0.8563;1.0000"/></rect>
   <text class="title" x="610" y="344">your filter</text>
-  <text class="sub" x="610" y="366">state → each player’s view</text>
+  <text class="sub" x="610" y="366">state → each user’s view</text>
   <path id="p-aliceAction" class="arrow action" d="M 190 78 L 448 78" marker-end="url(#head-action)"/>
   <path id="p-bobAction" class="arrow action" d="M 190 322 C 320 322 320 102 448 102" marker-end="url(#head-action)"/>
   <path id="p-newState" class="arrow state" d="M 610 130 L 610 176" marker-end="url(#head-state)"/>

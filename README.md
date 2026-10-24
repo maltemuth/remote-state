@@ -1,12 +1,12 @@
 # Remote State
 
-Like Redux, Pinia or NgRx, but the store lives on the server and every player is connected to it.
+Like Redux, Pinia or NgRx, but the store lives on the server and every user is connected to it.
 
-Clients dispatch actions. The server runs your game's rules, like a reducer, and sends each player the new state.
+Clients dispatch actions. The server runs your rules, like a reducer, and sends each user the new state.
 
-![Alice and Bob each send actions to the server. Your rules turn the current state and an action into the new state; your filter turns the state into each player's own view, which goes back to that player.](docs/how-it-works.svg)
+![Alice and Bob each send actions to the server. Your rules turn the current state and an action into the new state; your filter turns the state into each user's own view, which goes back to that user.](docs/how-it-works.svg)
 
-Because the full state never leaves the server, clients can't cheat. A client only ever receives what your filter lets its player see, so other players' cards stay hidden, even in the browser's dev tools. An action your rules reject changes nothing: the player gets the reason, and everyone else sees nothing at all.
+The full state never leaves the server. A client only ever receives what your filter lets its user see, so anything private, such as a sealed bid, a hand of cards or someone else's draft, stays hidden, even from the browser's dev tools. And clients can't change the state themselves: an action your rules reject changes nothing, its sender gets the reason, and nobody else sees a thing.
 
 ```ts
 const server = await createRemoteStateServer(myGame, { port: 3000 });
@@ -17,12 +17,12 @@ const code = await server.admit({
   gameId,
   identity: { id: user.id, name: user.name },
 });
-// The client trades the code for a token, then plays
+// The client trades the code for a token, then connects
 
 await server.startServer();
 ```
 
-You get admission codes and tokens, actions over HTTP, per-player views over Socket.IO as whole states or patches, a stored history, catch-up, timers, and a standalone server or a router for your own Express app.
+You get admission codes and tokens, actions over HTTP, per-user views over Socket.IO as whole states or patches, a stored history, catch-up, timers, and a standalone server or a router for your own Express app.
 
 ## Try it
 
