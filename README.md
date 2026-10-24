@@ -1,6 +1,21 @@
 # Remote State
 
-Server-authoritative multiplayer games in TypeScript. You write a game's rules; clients send actions, the server applies them, and each player gets their own view of the result, live.
+Like Redux, but the store lives on the server and every player is connected to it.
+
+Clients dispatch actions. The server runs your game's rules, like a reducer, and sends each player the new state. A player sees only what your filter lets them see, so hidden hands stay hidden.
+
+```mermaid
+flowchart LR
+  A[Alice's client] -- "action" --> S
+  B[Bob's client] -- "action" --> S
+  subgraph S[Server]
+    R["your rules<br/>(state, action) → state"] --> F["your filter<br/>state → each player's view"]
+  end
+  F -- "Alice's view" --> A
+  F -- "Bob's view" --> B
+```
+
+Your app decides who may play, and the library does the rest: storing every game and its history, ordering actions, and keeping every client in step.
 
 ```ts
 const server = await createRemoteStateServer(myGame, { port: 3000 });
