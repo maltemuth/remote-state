@@ -1,4 +1,4 @@
-# Remote State documentation
+# <img src="icon.svg" alt="" width="40" height="40" align="top"> Remote State documentation
 
 Organized by what you're doing, following [Diátaxis](https://diataxis.fr/). Coding agents: [llms.txt](../packages/remote-state/llms.txt) has the whole library in one file.
 
