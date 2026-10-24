@@ -2,11 +2,11 @@
 
 Like Redux, Pinia or NgRx, but the store lives on the server and every player is connected to it.
 
-Clients dispatch actions. The server runs your game's rules, like a reducer, and sends each player the new state. A player sees only what your filter lets them see, so hidden hands stay hidden.
+Clients dispatch actions. The server runs your game's rules, like a reducer, and sends each player the new state.
 
 ![Alice and Bob each send actions to the server. Your rules turn the current state and an action into the new state; your filter turns the state into each player's own view, which goes back to that player.](docs/how-it-works.svg)
 
-Your app decides who may play, and the library does the rest: storing every game and its history, ordering actions, and keeping every client in step.
+Because the full state never leaves the server, clients can't cheat. A client only ever receives what your filter lets its player see, so other players' cards stay hidden, even in the browser's dev tools. An action your rules reject changes nothing: the player gets the reason, and everyone else sees nothing at all.
 
 ```ts
 const server = await createRemoteStateServer(myGame, { port: 3000 });
