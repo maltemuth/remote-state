@@ -4,17 +4,7 @@ Like Redux, but the store lives on the server and every player is connected to i
 
 Clients dispatch actions. The server runs your game's rules, like a reducer, and sends each player the new state. A player sees only what your filter lets them see, so hidden hands stay hidden.
 
-```mermaid
-flowchart LR
-  A[Alice's client]
-  B[Bob's client]
-  subgraph S[Server]
-    direction TB
-    R["your rules<br/>(state, action) → state"] --> F["your filter<br/>state → each player's view"]
-  end
-  A <-- "actions / Alice's view" --> S
-  B <-- "actions / Bob's view" --> S
-```
+![Alice and Bob each send actions to the server. Your rules turn the current state and an action into the new state; your filter turns the state into each player's own view, which goes back to that player.](docs/how-it-works.svg)
 
 Your app decides who may play, and the library does the rest: storing every game and its history, ordering actions, and keeping every client in step.
 
