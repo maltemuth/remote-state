@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64" role="img" aria-label="Remote State">
+  <title>Remote State</title>
+  <style>
+    svg { --store: #0969da; --client: #8250df; --line: #59636e; }
+    @media (prefers-color-scheme: dark) {
+      svg { --store: #4493f8; --client: #a371f7; --line: #9198a1; }
+    }
+    .line { stroke: var(--line); stroke-width: 3; stroke-linecap: round; }
+    .client { fill: none; stroke: var(--client); stroke-width: 3.5; }
+    .store { fill: var(--store); }
+  </style>
+  <!-- three clients, all connected to the one store in the middle -->
+  <line class="line" x1="32" y1="32" x2="32" y2="15"/>
+  <line class="line" x1="32" y1="32" x2="17.1" y2="40.9"/>
+  <line class="line" x1="32" y1="32" x2="46.9" y2="40.9"/>
+  <circle class="client" cx="32" cy="9" r="6"/>
+  <circle class="client" cx="12" cy="44" r="6"/>
+  <circle class="client" cx="52" cy="44" r="6"/>
+  <rect class="store" x="22" y="22" width="20" height="20" rx="5"/>
+</svg>

@@ -1,5 +1,5 @@
 /**
- * Answers "what changed since sequence N" for a player, in one patch (decisions
+ * Answers "what changed since sequence N" for a member, in one patch (decisions
  * 0030, 0035, 0056): the diff between their view of the stored state at `since`,
  * in the audience they were in then, and their view of the current one, with the
  * checksum of that view unless the `checksums` option is off (0059, 0061).
@@ -14,24 +14,24 @@ import { latestState, stateAt } from './states.js';
 
 export type CatchUpResult =
   | { sequence: number; patches: Patch[]; checksum?: number }
-  /** `since` is in the future, or before the player joined */
+  /** `since` is in the future, or before the member joined */
   | { notFound: true }
   /** No patch can be built; the client should fetch the whole state */
   | { seeState: true };
 
 export const catchUp = (
   context: EngineContext,
-  gameId: string,
-  playerId: string,
+  spaceId: string,
+  memberId: string,
   since: number
 ): Promise<CatchUpResult> =>
-  context.withGameLock(gameId, async () => {
+  context.withSpaceLock(spaceId, async () => {
     const { orm, plugin, diff, checksums } = context;
     const em = orm.em.fork();
-    const current = await latestState(em, gameId);
+    const current = await latestState(em, spaceId);
     const memberships = await em.find(
       AudienceMembership,
-      { player: playerId },
+      { member: memberId },
       { orderBy: { sequence: 'asc' } }
     );
     if (!current || since > current.sequence || !(memberships[0]?.sequence <= since)) {
@@ -40,7 +40,7 @@ export const catchUp = (
     const sequence = current.sequence;
     // Every join and audience change records a membership, so the last is the current one
     const audience = effectiveAudience(plugin, {
-      id: playerId,
+      id: memberId,
       audience: memberships.at(-1)!.audience,
     });
     let currentView: Promise<unknown> | undefined;
@@ -49,10 +49,10 @@ export const catchUp = (
       checksums ? { sequence, patches, checksum: checksumOf(await view()) } : { sequence, patches };
     if (since === sequence) return withChecksum([]);
 
-    const base = await stateAt(em, gameId, since);
+    const base = await stateAt(em, spaceId, since);
     if (!base) return { seeState: true };
     const then = memberships.filter(membership => membership.sequence <= since).at(-1)!;
-    const baseAudience = effectiveAudience(plugin, { id: playerId, audience: then.audience });
+    const baseAudience = effectiveAudience(plugin, { id: memberId, audience: then.audience });
     const baseView = await viewFor(plugin, base.state, baseAudience);
     return withChecksum(diff(baseView, await view()));
   });

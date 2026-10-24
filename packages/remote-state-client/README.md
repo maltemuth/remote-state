@@ -1,6 +1,6 @@
 # @malte.muth/remote-state-client
 
-The client for [`@malte.muth/remote-state`](https://www.npmjs.com/package/@malte.muth/remote-state) games: it keeps one player's view in step with the server, and sends their actions. Browsers and Node.js 24+.
+The client for [`@malte.muth/remote-state`](https://www.npmjs.com/package/@malte.muth/remote-state) spaces: it keeps one member's view in step with the server, and dispatches their actions. Browsers and Node.js 24+.
 
 ```sh
 npm install @malte.muth/remote-state-client
@@ -17,7 +17,7 @@ client.subscribe(({ view }) => render(view)); // also after your own actions
 client.onConnection(({ status }) => showConnection(status));
 
 try {
-  await client.send({ type: 'place', row: 1, col: 1 });
+  await client.dispatch({ type: 'place', row: 1, col: 1 });
 } catch (error) {
   if (error instanceof ActionRejectedError) showError(error.message);
 }

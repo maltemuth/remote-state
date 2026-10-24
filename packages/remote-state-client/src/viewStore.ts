@@ -1,5 +1,5 @@
 /**
- * Keeps the player's current view and its sequence, and tells subscribers when it
+ * Keeps the member's current view and its sequence, and tells subscribers when it
  * changes (decision 0044). Updates at or before the current sequence are ignored;
  * patches for the next one are applied with Immer; after a gap, or patches that
  * don't apply, it catches up through the server and applies what arrived meanwhile.

@@ -1,7 +1,7 @@
 /**
- * A host for the client's tests: the notes game mounted under `/notes` of an
+ * A host for the client's tests: the notes space mounted under `/notes` of an
  * Express app, with its socket at `/notes/socket.io`, as the example server does,
- * and players joining it through the client.
+ * and members joining it through the client.
  */
 
 import express from 'express';
@@ -9,10 +9,10 @@ import { createServer } from 'http';
 import { type AddressInfo } from 'net';
 import { createRemoteState, type RemoteStateOptions, silentLogger } from '@malte.muth/remote-state';
 import { type ClientOptions, createClient, type Format, redeemCode } from '../../src/index.js';
-import { type NotesAction, type NotesView, newNotesGame, notesGame } from './notesGame.js';
+import { type NotesAction, type NotesView, newNotesSpace, notesRules } from './notesRules.js';
 
 export interface NotesServerOptions {
-  /** SQLite file, to restart on the same games; in memory by default */
+  /** SQLite file, to restart on the same spaces; in memory by default */
   database?: string;
   /** 0, the default, picks a free port */
   port?: number;
@@ -25,7 +25,7 @@ export const startNotesServer = async ({
   port = 0,
   remote: more = {},
 }: NotesServerOptions = {}) => {
-  const remote = await createRemoteState(notesGame, {
+  const remote = await createRemoteState(notesRules, {
     database: database ?? ':memory:',
     logger: silentLogger,
     ...more,
@@ -42,17 +42,17 @@ export const startNotesServer = async ({
   return {
     baseUrl,
     port: listening,
-    newGame: () => remote.createGame(newNotesGame()),
-    admit: (gameId: string, id: string) => remote.admit({ gameId, identity: { id } }),
-    /** Admit an identity and connect a client for it, as a player's browser would */
+    newSpace: () => remote.createSpace(newNotesSpace()),
+    admit: (spaceId: string, id: string) => remote.admit({ spaceId, identity: { id } }),
+    /** Admit an identity and connect a client for it, as a member's browser would */
     join: async (
-      gameId: string,
+      spaceId: string,
       id: string,
       format?: Format,
       options: Partial<ClientOptions> = {}
     ) =>
       createClient<NotesView, NotesAction>({
-        session: await redeemCode(await remote.admit({ gameId, identity: { id } }), { baseUrl }),
+        session: await redeemCode(await remote.admit({ spaceId, identity: { id } }), { baseUrl }),
         baseUrl,
         format,
         ...options,

@@ -1,20 +1,20 @@
 /**
- * Reading stored game states.
+ * Reading stored space states.
  */
 
 import { type EntityManager } from '@mikro-orm/sqlite';
-import { GameState } from '../database/entities/index.js';
+import { SpaceState } from '../database/entities/index.js';
 
 /** What the engine needs of a stored state */
-export type StoredState = Pick<GameState, 'sequence' | 'state'>;
+export type StoredState = Pick<SpaceState, 'sequence' | 'state'>;
 
-/** The latest state of a game, or null if the game doesn't exist */
-export const latestState = (em: EntityManager, gameId: string): Promise<StoredState | null> =>
-  em.findOne(GameState, { game: gameId }, { orderBy: { sequence: 'desc' } });
+/** The latest state of a space, or null if the space doesn't exist */
+export const latestState = (em: EntityManager, spaceId: string): Promise<StoredState | null> =>
+  em.findOne(SpaceState, { space: spaceId }, { orderBy: { sequence: 'desc' } });
 
-/** The state of a game at a sequence, or null if there's none */
+/** The state of a space at a sequence, or null if there's none */
 export const stateAt = (
   em: EntityManager,
-  gameId: string,
+  spaceId: string,
   sequence: number
-): Promise<StoredState | null> => em.findOne(GameState, { game: gameId, sequence });
+): Promise<StoredState | null> => em.findOne(SpaceState, { space: spaceId, sequence });

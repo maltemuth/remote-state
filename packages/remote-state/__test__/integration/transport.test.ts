@@ -14,7 +14,7 @@ import {
   getState,
   getUpdates,
   join,
-  newGame,
+  newSpace,
   openSocket,
   sendAction,
   serverUrl,
@@ -29,21 +29,25 @@ const next = <T>(socket: ReturnType<typeof openSocket>, event: string) =>
 describe('transport options', () => {
   it('sends the checksum of the view with every patch, by default', async () => {
     const server = await startCounterServer();
-    const gameId = await newGame(server);
-    const { token } = await join(server, gameId, 'alice');
-    const socket = openSocket(serverUrl(server), { gameId, token }, { query: { format: 'immer' } });
+    const spaceId = await newSpace(server);
+    const { token } = await join(server, spaceId, 'alice');
+    const socket = openSocket(
+      serverUrl(server),
+      { spaceId, token },
+      { query: { format: 'immer' } }
+    );
     try {
       const { state, sequence } = await next<StateEvent>(socket, 'state');
       const patched = next<PatchesEvent>(socket, 'patches');
-      await sendAction(server, gameId, token, { type: 'increment' }).expect(201);
+      await sendAction(server, spaceId, token, { type: 'increment' }).expect(201);
       const event = await patched;
       const view = applyPatches(state as object, event.patches);
       assert.equal(event.checksum, checksumOf(view));
-      assert.deepEqual(view, (await getState(server, gameId, token)).body.state);
+      assert.deepEqual(view, (await getState(server, spaceId, token)).body.state);
 
-      const caughtUp = (await getUpdates(server, gameId, token, sequence).expect(200)).body;
+      const caughtUp = (await getUpdates(server, spaceId, token, sequence).expect(200)).body;
       assert.equal(caughtUp.checksum, checksumOf(view));
-      const none = (await getUpdates(server, gameId, token, sequence + 1).expect(200)).body;
+      const none = (await getUpdates(server, spaceId, token, sequence + 1).expect(200)).body;
       assert.deepEqual([none.patches, none.checksum], [[], checksumOf(view)]);
     } finally {
       socket.disconnect();
@@ -53,15 +57,19 @@ describe('transport options', () => {
 
   it('sends no checksums when turned off', async () => {
     const server = await startCounterServer(undefined, { checksums: false });
-    const gameId = await newGame(server);
-    const { token } = await join(server, gameId, 'alice');
-    const socket = openSocket(serverUrl(server), { gameId, token }, { query: { format: 'immer' } });
+    const spaceId = await newSpace(server);
+    const { token } = await join(server, spaceId, 'alice');
+    const socket = openSocket(
+      serverUrl(server),
+      { spaceId, token },
+      { query: { format: 'immer' } }
+    );
     try {
       const { sequence } = await next<StateEvent>(socket, 'state');
       const patched = next<PatchesEvent>(socket, 'patches');
-      await sendAction(server, gameId, token, { type: 'increment' }).expect(201);
+      await sendAction(server, spaceId, token, { type: 'increment' }).expect(201);
       assert.equal('checksum' in (await patched), false);
-      const caughtUp = (await getUpdates(server, gameId, token, sequence).expect(200)).body;
+      const caughtUp = (await getUpdates(server, spaceId, token, sequence).expect(200)).body;
       assert.equal('checksum' in caughtUp, false);
     } finally {
       socket.disconnect();
@@ -75,12 +83,12 @@ describe('transport options', () => {
   ] as const) {
     it(`sends views and patches as ${name}`, async () => {
       const server = await startCounterServer(undefined, { socket: socketOptions });
-      const gameId = await newGame(server);
-      const { token } = await join(server, gameId, 'alice');
+      const spaceId = await newSpace(server);
+      const { token } = await join(server, spaceId, 'alice');
       const parser = 'parser' in socketOptions ? { parser: socketOptions.parser } : {};
       const socket = openSocket(
         serverUrl(server),
-        { gameId, token },
+        { spaceId, token },
         { query: { format: 'immer' }, ...parser }
       );
       try {
@@ -92,10 +100,10 @@ describe('transport options', () => {
           'perMessageDeflate' in socketOptions
         );
         const patched = next<PatchesEvent>(socket, 'patches');
-        await sendAction(server, gameId, token, { type: 'increment' }).expect(201);
+        await sendAction(server, spaceId, token, { type: 'increment' }).expect(201);
         assert.deepEqual(
           applyPatches(state as object, (await patched).patches),
-          (await getState(server, gameId, token)).body.state
+          (await getState(server, spaceId, token)).body.state
         );
       } finally {
         socket.disconnect();

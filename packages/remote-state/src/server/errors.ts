@@ -3,9 +3,9 @@
  * answer their own clients with 404.
  */
 
-export class UnknownGameError extends Error {
-  constructor(gameId: string) {
-    super(`Game ${gameId} not found`);
-    this.name = 'UnknownGameError';
+export class UnknownSpaceError extends Error {
+  constructor(spaceId: string) {
+    super(`Space ${spaceId} not found`);
+    this.name = 'UnknownSpaceError';
   }
 }

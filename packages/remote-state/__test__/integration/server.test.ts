@@ -9,7 +9,7 @@ import { request as httpRequest } from 'node:http';
 import { describe, it } from 'node:test';
 import request from 'supertest';
 import { type Logger } from '../../src/index.js';
-import { counterGame } from '../helpers/counterGame.js';
+import { counterRules } from '../helpers/counterRules.js';
 import { startCounterServer } from '../helpers/testServer.js';
 
 describe('standalone server', () => {
@@ -25,22 +25,22 @@ describe('standalone server', () => {
   });
 
   it('applies the CORS options to the API', async () => {
-    const server = await startCounterServer(counterGame(), {
-      cors: { origin: 'https://games.example' },
+    const server = await startCounterServer(counterRules(), {
+      cors: { origin: 'https://spaces.example' },
     });
     try {
       const response = await request(server.app)
         .options('/api/tokens')
-        .set('Origin', 'https://games.example')
+        .set('Origin', 'https://spaces.example')
         .set('Access-Control-Request-Method', 'POST');
-      assert.equal(response.headers['access-control-allow-origin'], 'https://games.example');
+      assert.equal(response.headers['access-control-allow-origin'], 'https://spaces.example');
     } finally {
       await server.close();
     }
   });
 
   it('can run without a socket', async () => {
-    const server = await startCounterServer(counterGame(), { socket: false });
+    const server = await startCounterServer(counterRules(), { socket: false });
     try {
       await request(`http://localhost:${server.port}`)
         .get('/socket.io/?EIO=4&transport=polling')
@@ -52,7 +52,7 @@ describe('standalone server', () => {
 
   it("refuses a diff it doesn't know", async () => {
     await assert.rejects(
-      startCounterServer(counterGame(), { diff: 'microdiff' as 'rfc6902' }),
+      startCounterServer(counterRules(), { diff: 'microdiff' as 'rfc6902' }),
       /Unknown diff microdiff; use one of positional, rfc6902/
     );
   });
@@ -61,7 +61,7 @@ describe('standalone server', () => {
     const messages: string[] = [];
     const record = (message: string) => void messages.push(message);
     const logger: Logger = { debug: record, info: record, warn: record, error: record };
-    const server = await startCounterServer(counterGame(), { logger });
+    const server = await startCounterServer(counterRules(), { logger });
     await server.close();
     assert.equal(
       messages.some(message => message.includes('Created the schema')),
@@ -96,7 +96,7 @@ describe('standalone server', () => {
 
   it('refuses upgrades for paths that nothing handles, with or without a socket', async () => {
     for (const socket of [undefined, false] as const) {
-      const server = await startCounterServer(counterGame(), { socket });
+      const server = await startCounterServer(counterRules(), { socket });
       try {
         assert.equal(await upgrade(server.port, '/elsewhere'), 404);
       } finally {

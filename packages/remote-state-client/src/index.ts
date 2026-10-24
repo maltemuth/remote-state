@@ -1,6 +1,6 @@
 /**
- * Remote State client: exchanges an admission code for a session, keeps a player's
- * view of a game in step with the server, and sends the player's actions.
+ * Remote State client: exchanges an admission code for a session, keeps a member's
+ * view of a space in step with the server, and sends the member's actions.
  */
 
 export {

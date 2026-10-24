@@ -7,11 +7,11 @@
 import assert from 'node:assert/strict';
 import { describe, it, before, after } from 'node:test';
 import { setTimeout as sleep } from 'timers/promises';
-import { type Logger, type RemoteStateServer, UnknownGameError } from '../../src/index.js';
-import { GameState } from '../../src/database/entities/index.js';
+import { type Logger, type RemoteStateServer, UnknownSpaceError } from '../../src/index.js';
+import { SpaceState } from '../../src/database/entities/index.js';
 import { tempDatabases, withOrm } from '../helpers/tempDatabase.js';
 import { getState, join, sendAction, startServer } from '../helpers/testServer.js';
-import { type TimerAction, timerGame, type TimerState } from '../helpers/timerGame.js';
+import { type TimerAction, timerRules, type TimerState } from '../helpers/timerRules.js';
 import { waitUntil } from '../helpers/waitUntil.js';
 
 describe('timers', () => {
@@ -23,19 +23,19 @@ describe('timers', () => {
   const logger: Logger = { debug: () => undefined, info: record, warn: record, error: record };
 
   before(async () => {
-    server = await startServer(timerGame, { logger, database });
+    server = await startServer(timerRules, { logger, database });
   });
 
-  const newPlayer = async () => {
-    const gameId = await server.createGame({ fired: [] });
-    const { playerId, token } = await join(server, gameId, 'alice');
-    const send = (action: TimerAction) => sendAction(server, gameId, token, action);
-    const fired = async () => (await getState(server, gameId, token)).body.state.fired;
-    return { gameId, playerId, send, fired };
+  const newMember = async () => {
+    const spaceId = await server.createSpace({ fired: [] });
+    const { memberId, token } = await join(server, spaceId, 'alice');
+    const send = (action: TimerAction) => sendAction(server, spaceId, token, action);
+    const fired = async () => (await getState(server, spaceId, token)).body.state.fired;
+    return { spaceId, memberId, send, fired };
   };
 
   it('runs a due timer as the system', async () => {
-    const { send, fired } = await newPlayer();
+    const { send, fired } = await newMember();
     await send({ type: 'arm', name: 'turn', ms: 300, label: 'timeout' }).expect(201);
     assert.deepEqual(await fired(), []);
     await waitUntil(async () => (await fired()).length > 0, 'the timer');
@@ -43,7 +43,7 @@ describe('timers', () => {
   });
 
   it('replaces a timer scheduled again under the same name', async () => {
-    const { send, fired } = await newPlayer();
+    const { send, fired } = await newMember();
     await send({ type: 'arm', name: 'turn', ms: 300, label: 'first' }).expect(201);
     await send({ type: 'arm', name: 'turn', ms: 300, label: 'second' }).expect(201);
     await send({ type: 'arm', name: 'clock', ms: 300, label: 'clock' }).expect(201);
@@ -52,7 +52,7 @@ describe('timers', () => {
   });
 
   it('drops a cancelled timer', async () => {
-    const { send, fired } = await newPlayer();
+    const { send, fired } = await newMember();
     await send({ type: 'arm', name: 'turn', ms: 200, label: 'never' }).expect(201);
     await send({ type: 'cancel', name: 'turn' }).expect(201);
     // Nothing to wait for: give the timer time to fire if it weren't cancelled
@@ -60,37 +60,42 @@ describe('timers', () => {
     assert.deepEqual(await fired(), []);
   });
 
-  it("doesn't let players act as the system", async () => {
-    const { send } = await newPlayer();
+  it("doesn't let members act as the system", async () => {
+    const { send } = await newMember();
     await send({ type: 'fire', label: 'cheat' }).expect(400);
   });
 
-  it('lets the host act as the system', async () => {
-    const { gameId, fired } = await newPlayer();
-    assert.deepEqual(await server.act(gameId, { type: 'fire', label: 'host' }), { sequence: 2 });
-    assert.deepEqual(await server.act(gameId, { type: 'arm', name: 'x', ms: 1, label: 'x' }), {
-      rejected: "system can't arm",
+  it('lets the host dispatch as the system', async () => {
+    const { spaceId, fired } = await newMember();
+    assert.deepEqual(await server.dispatch(spaceId, { type: 'fire', label: 'host' }), {
+      sequence: 2,
     });
+    assert.deepEqual(
+      await server.dispatch(spaceId, { type: 'arm', name: 'x', ms: 1, label: 'x' }),
+      {
+        rejected: "system can't arm",
+      }
+    );
     assert.deepEqual(await fired(), ['host']);
-    await assert.rejects(server.act('nope', { type: 'fire', label: 'x' }), UnknownGameError);
+    await assert.rejects(server.dispatch('nope', { type: 'fire', label: 'x' }), UnknownSpaceError);
   });
 
   it('logs and records who acted, from which audience', async () => {
-    const { gameId, playerId, send } = await newPlayer();
+    const { spaceId, memberId, send } = await newMember();
     await send({ type: 'arm', name: 'turn', ms: 1, label: 'late' }).expect(201);
-    const fire = `fire by system in game ${gameId}, now at 3`;
+    const fire = `fire by system in space ${spaceId}, now at 3`;
     await waitUntil(() => logged.includes(fire), 'the timer');
-    assert.ok(logged.includes(`arm by everyone:${playerId} in game ${gameId}, now at 2`));
+    assert.ok(logged.includes(`arm by everyone:${memberId} in space ${spaceId}, now at 2`));
 
     const rows = await withOrm(database, em =>
-      em.find(GameState, { game: gameId }, { orderBy: { sequence: 'asc' } })
+      em.find(SpaceState, { space: spaceId }, { orderBy: { sequence: 'asc' } })
     );
     assert.deepEqual(
-      rows.map(row => [row.actionType, row.player?.id ?? null, row.audience]),
+      rows.map(row => [row.actionType, row.member?.id ?? null, row.audience]),
       [
         ['initial', null, null],
-        ['join', playerId, 'everyone'],
-        ['arm', playerId, 'everyone'],
+        ['join', memberId, 'everyone'],
+        ['arm', memberId, 'everyone'],
         ['fire', null, null],
       ]
     );

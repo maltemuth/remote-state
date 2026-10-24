@@ -38,7 +38,7 @@ describe("Tic-tac-toe across a restart", () => {
 
   it("pauses a running game until the host resumes it", async () => {
     let client = await start();
-    const gameId = await example.ticTacToe.createGame(
+    const gameId = await example.ticTacToe.createSpace(
       newTicTacToeGame({ turnSeconds: 0.1 }),
     );
     const x = await client.joinAs(gameId, "Xena");

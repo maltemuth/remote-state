@@ -1,6 +1,6 @@
 # Schedule actions and time limits
 
-Timers run an action later, such as ending a turn whose time ran out. The host's `act` runs one now, such as an admin ending a game. Either way the action runs as the system: your rules get [`SYSTEM`](../reference/game-plugin.md#system) as the player ID. The tic-tac-toe example has a turn limit ([turnTimer.ts](../../packages/remote-state-example-server/src/games/tic-tac-toe/turnTimer.ts)) and pauses on restart ([restart.ts](../../packages/remote-state-example-server/src/games/tic-tac-toe/restart.ts)).
+Timers run an action later, such as ending a turn whose time ran out. The host's `dispatch` runs one now, such as an admin ending a game. Either way the action runs as the system: your rules get [`SYSTEM`](../reference/rules.md#system) as the player ID. The tic-tac-toe example has a turn limit ([turnTimer.ts](../../packages/remote-state-example-server/src/games/tic-tac-toe/turnTimer.ts)) and pauses on restart ([restart.ts](../../packages/remote-state-example-server/src/games/tic-tac-toe/restart.ts)).
 
 ## Add a turn timeout
 
@@ -36,22 +36,22 @@ const withTurnTimer = (state: State): StateResult<State, Action> => {
   });
 };
 
-const game: GamePlugin<State, Action> = {
-  onJoin: (state, { playerId }) =>
-    withTurnTimer({ ...state, players: [...state.players, playerId] }),
+const game: Rules<State, Action> = {
+  onJoin: (state, { memberId }) =>
+    withTurnTimer({ ...state, players: [...state.players, memberId] }),
   executeAction: (state, action) =>
     action.type === "timeout"
       ? withTurnTimer({ ...state, winner: state.players[1 - state.toMove] })
       : withTurnTimer(applyMove(state, action)),
-  validateAction: (state, action, playerId) => {
+  validateAction: (state, action, memberId) => {
     if (action.type === "timeout") {
-      if (playerId !== SYSTEM) return "Only the system can end a turn";
+      if (memberId !== SYSTEM) return "Only the system can end a turn";
       return !state.winner && action.moves === state.moves
         ? true
         : "That turn is over";
     }
     if (state.winner) return "The game is over";
-    return state.players[state.toMove] === playerId
+    return state.players[state.toMove] === memberId
       ? true
       : "It's not your turn";
   },
@@ -63,25 +63,25 @@ const game: GamePlugin<State, Action> = {
 - **Clients learn the outcome like any move.** The state doesn't say when the turn ends; put a deadline in it if clients should show one.
 - **Test with a short limit,** such as 100 ms, set in the initial state.
 
-## Act from the host
+## Dispatch from the host
 
 ```ts
-const result = await server.act(gameId, { type: "end" });
+const result = await server.dispatch(spaceId, { type: "end" });
 if ("rejected" in result) console.log(result.rejected);
 ```
 
-Accept it in `validateAction` only from `SYSTEM`, like a timeout. `act` resolves to `{ sequence }` or `{ rejected }`, and throws `UnknownGameError` for an unknown game. A host can act only as the system, never as a player.
+Accept it in `validateAction` only from `SYSTEM`, like a timeout. `dispatch` resolves to `{ sequence }` or `{ rejected }`, and throws `UnknownSpaceError` for an unknown game. A host can act only as the system, never as a player.
 
 ## Pause on a restart
 
-Timers live in memory: a restart loses them, even with games [persisted](persist-games.md). What happens then is the game's own logic ([0053](../explanation/decisions/0053-restarts-are-game-logic.md)). One way is to pause in `onRestart` and resume with the host's `act` once everyone is back ([0052](../explanation/decisions/0052-games-pause-on-restart.md)):
+Timers live in memory: a restart loses them, even with spaces [persisted](persist-spaces.md). What happens then is up to the rules ([0053](../explanation/decisions/0053-restarts-are-game-logic.md)). One way is to pause in `onRestart` and resume with the host's `dispatch` once everyone is back ([0052](../explanation/decisions/0052-games-pause-on-restart.md)):
 
 ```ts
 onRestart: (state) => (state.winner || state.paused ? state : { ...state, paused: true }),
 
 // in validateAction
 if (action.type === "resume") {
-  if (playerId !== SYSTEM) return "Only the host can resume the game";
+  if (memberId !== SYSTEM) return "Only the host can resume the game";
   return state.paused ? true : "The game isn't paused";
 }
 if (state.paused) return "The game is paused";
@@ -90,6 +90,6 @@ if (state.paused) return "The game is paused";
 if (action.type === "resume") return withTurnTimer({ ...state, paused: false });
 ```
 
-Returning the same state from `onRestart` records nothing. The host then calls `await server.act(gameId, { type: "resume" })`.
+Returning the same state from `onRestart` records nothing. The host then calls `await server.dispatch(spaceId, { type: "resume" })`.
 
-Exact timer behaviour: [GamePlugin: Timers](../reference/game-plugin.md#timers).
+Exact timer behaviour: [Rules: Timers](../reference/rules.md#timers).

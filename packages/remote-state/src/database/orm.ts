@@ -14,7 +14,7 @@ import { entities } from './entities/index.js';
 export type Orm = MikroORM;
 
 /** Stored as SQLite's `user_version`; raise it whenever the entities' tables change */
-export const SCHEMA_VERSION = 3;
+export const SCHEMA_VERSION = 4;
 
 /** The database was created by a version of the library with another schema */
 export class UnsupportedDatabaseError extends Error {

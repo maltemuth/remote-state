@@ -1,6 +1,6 @@
 # @malte.muth/remote-state
 
-Server-authoritative state for multiplayer games, on Node.js 24+. You write the rules as a plugin; the library runs them, stores every game's history, and sends each player their own view, live. Your app decides who may play.
+Server-authoritative shared state, on Node.js 24+: like Redux, Pinia or NgRx, but on the server. Each shared state is a **space**, such as a game, an auction or a document, and the people in it are its **members**. You write the rules; the library runs them, stores every space's history, and sends each member their own view, live. Your app decides who may join.
 
 ```sh
 npm install @malte.muth/remote-state
@@ -11,32 +11,32 @@ From a lockfile, install with `npm ci --ignore-scripts`: otherwise npm tries to 
 ## Example
 
 ```ts
-import { createRemoteStateServer, GameRefusal, type GamePlugin } from '@malte.muth/remote-state';
+import { createRemoteStateServer, Refusal, type Rules } from '@malte.muth/remote-state';
 
 interface Counter {
   count: number;
-  players: string[];
+  members: string[];
 }
 
-const counter: GamePlugin<Counter, { type: 'increment' }> = {
-  onJoin: (state, { playerId }) => {
-    if (state.players.length >= 2) throw new GameRefusal('The game is full');
-    return { ...state, players: [...state.players, playerId] };
+const counter: Rules<Counter, { type: 'increment' }> = {
+  onJoin: (state, { memberId }) => {
+    if (state.members.length >= 2) throw new Refusal('Two people are counting already');
+    return { ...state, members: [...state.members, memberId] };
   },
-  validateAction: (state, _action, playerId) =>
-    state.players.includes(playerId) || 'Only players can count',
+  validateAction: (state, _action, memberId) =>
+    state.members.includes(memberId) || 'Only members can count',
   executeAction: state => ({ ...state, count: state.count + 1 }),
 };
 
 const server = await createRemoteStateServer(counter, { port: 3000 });
 
-// Your routes decide who plays, then hand the client a single-use code
-server.app.post('/games', async (_req, res) => {
-  res.json({ gameId: await server.createGame({ count: 0, players: [] }) });
+// Your routes decide who joins, then hand the client a single-use code
+server.app.post('/counters', async (_req, res) => {
+  res.json({ spaceId: await server.createSpace({ count: 0, members: [] }) });
 });
-server.app.post('/games/:gameId/codes', async (req, res) => {
+server.app.post('/counters/:spaceId/codes', async (req, res) => {
   const code = await server.admit({
-    gameId: req.params.gameId,
+    spaceId: req.params.spaceId,
     identity: { id: crypto.randomUUID() },
   });
   res.json({ code });

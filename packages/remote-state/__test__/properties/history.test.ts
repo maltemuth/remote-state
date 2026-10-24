@@ -8,7 +8,7 @@ import assert from 'node:assert/strict';
 import { describe, it, before, after } from 'node:test';
 import { MikroORM } from '@mikro-orm/sqlite';
 import fc from 'fast-check';
-import { entities, GameState } from '../../src/database/entities/index.js';
+import { entities, SpaceState } from '../../src/database/entities/index.js';
 import { tempDatabases } from '../helpers/tempDatabase.js';
 import {
   type ModelServer,
@@ -35,10 +35,10 @@ describe('history', () => {
   it('stores every state once, with its action', { timeout: 30 * 60_000 }, async () => {
     await fc.assert(
       fc.asyncProperty(scenarioArbitrary, async scenario => {
-        const { gameId, latest } = await playScenario(server, scenario);
+        const { spaceId, latest } = await playScenario(server, scenario);
         const rows = await orm.em
           .fork()
-          .find(GameState, { game: gameId }, { orderBy: { sequence: 'asc' } });
+          .find(SpaceState, { space: spaceId }, { orderBy: { sequence: 'asc' } });
         assert.deepEqual(
           rows.map(row => row.sequence),
           [...Array(latest + 1).keys()]

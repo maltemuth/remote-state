@@ -6,15 +6,15 @@
 import { type Opt } from '@mikro-orm/core';
 import { Entity, ManyToOne, PrimaryKey, Property } from '@mikro-orm/decorators/es';
 import { randomUUID } from 'crypto';
-import { Game } from './Game.js';
+import { Space } from './Space.js';
 
 @Entity({ tableName: 'admission_codes' })
 export class AdmissionCode {
   @PrimaryKey({ type: 'string' })
   id: Opt<string> = randomUUID();
 
-  @ManyToOne(() => Game)
-  game!: Game;
+  @ManyToOne(() => Space)
+  space!: Space;
 
   /** SHA-256 of the code, hex-encoded */
   @Property({ type: 'string', unique: true })
@@ -23,7 +23,7 @@ export class AdmissionCode {
   @Property({ type: 'string' })
   identityId!: string;
 
-  /** Identity details from the host, handed to the game's join hook */
+  /** Identity details from the host, handed to the space's join hook */
   @Property({ type: 'json' })
   details!: Record<string, unknown>;
 

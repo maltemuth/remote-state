@@ -6,7 +6,7 @@
 
 const transitionMarker = Symbol('remote-state transition');
 
-/** Player ID → new audience, or null to return to the default audience */
+/** Member ID → new audience, or null to return to the default audience */
 export type AudienceChanges = Record<string, string | null>;
 
 /** Run `action` as the system in `in` milliseconds; a pending timer with the same name is replaced */
@@ -35,13 +35,13 @@ export const transition = <StateType, ActionType = unknown>(
   changes: TransitionChanges<ActionType>
 ): Transition<StateType, ActionType> => ({ [transitionMarker]: true, state, changes });
 
-/** Return a new state together with audience changes for some of the game's players */
+/** Return a new state together with audience changes for some of the space's members */
 export const withAudiences = <StateType>(
   state: StateType,
   audiences: AudienceChanges
 ): Transition<StateType, never> => transition<StateType, never>(state, { audiences });
 
-/** Split what a game returned into the state and its changes, with defaults */
+/** Split what a space returned into the state and its changes, with defaults */
 export const unwrapTransition = <StateType>(
   result: StateType | Transition<StateType>
 ): { state: StateType; changes: Required<TransitionChanges> } => {
@@ -51,7 +51,7 @@ export const unwrapTransition = <StateType>(
     : { state: result as StateType, changes: {} as TransitionChanges };
   return {
     state,
-    // `??`, not spread defaults: a game may pass a field as undefined
+    // `??`, not spread defaults: a space may pass a field as undefined
     changes: {
       audiences: changes.audiences ?? {},
       schedule: changes.schedule ?? [],

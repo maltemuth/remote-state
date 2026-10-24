@@ -9,7 +9,7 @@ import type { Server } from "http";
 import {
   createRemoteState,
   type DiffName,
-  type GamePlugin,
+  type Rules,
   type Logger,
   type RemoteState,
   type SocketSettings,
@@ -33,7 +33,7 @@ export const mountGame = async <StateType, ActionType, ViewType>(
   httpServer: Server,
   prefix: string,
   game: {
-    plugin: GamePlugin<StateType, ActionType, ViewType>;
+    plugin: Rules<StateType, ActionType, ViewType>;
     newGame: () => StateType;
     /** The system action that resumes a game a restart paused */
     resume?: ActionType;

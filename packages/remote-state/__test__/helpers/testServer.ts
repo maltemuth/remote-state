@@ -1,37 +1,37 @@
 /**
- * Test helpers acting as a host and as clients: start a server for any game (the
- * counter game by default), create games, admit and join players, and send actions.
+ * Test helpers acting as a host and as clients: start a server for any space (the
+ * counter space by default), create spaces, admit and join members, and send actions.
  */
 
 import { io, type ManagerOptions, type SocketOptions } from 'socket.io-client';
 import request from 'supertest';
 import {
   createRemoteStateServer,
-  type GamePlugin,
+  type Rules,
   type RemoteStateServerOptions,
   type RemoteStateServer,
   silentLogger,
 } from '../../src/index.js';
 import {
-  counterGame,
+  counterRules,
   type CounterAction,
   type CounterState,
   type CounterView,
   initialCounterState,
-} from './counterGame.js';
+} from './counterRules.js';
 
 export type CounterServer = RemoteStateServer<CounterState>;
-/** Any game's server, for the helpers that don't depend on the game */
+/** Any space's server, for the helpers that don't depend on the space */
 type AnyServer = RemoteStateServer<unknown>;
 
-export interface TestPlayer {
-  playerId: string;
+export interface TestMember {
+  memberId: string;
   token: string;
 }
 
 /** A standalone server on a free port, silent unless given a logger */
 export const startServer = async <S, A, V>(
-  plugin: GamePlugin<S, A, V>,
+  plugin: Rules<S, A, V>,
   options: RemoteStateServerOptions = {}
 ): Promise<RemoteStateServer<S>> => {
   const server = await createRemoteStateServer(plugin, {
@@ -44,7 +44,7 @@ export const startServer = async <S, A, V>(
 };
 
 export const startCounterServer = (
-  plugin: GamePlugin<CounterState, CounterAction, CounterView> = counterGame(),
+  plugin: Rules<CounterState, CounterAction, CounterView> = counterRules(),
   options: RemoteStateServerOptions = {}
 ): Promise<CounterServer> => startServer(plugin, options);
 
@@ -57,32 +57,32 @@ export const openSocket = (
   options: Partial<ManagerOptions & SocketOptions> = {}
 ) => io(url, { auth, transports: ['websocket'], reconnection: false, ...options });
 
-export const newGame = (server: CounterServer) => server.createGame(initialCounterState());
+export const newSpace = (server: CounterServer) => server.createSpace(initialCounterState());
 
 /** Admit an identity as the host would, and redeem the code as its client would */
 export const join = async (
   server: AnyServer,
-  gameId: string,
+  spaceId: string,
   identityId: string,
   details: Record<string, unknown> = {}
-): Promise<TestPlayer> => {
-  const code = await server.admit({ gameId, identity: { id: identityId, ...details } });
+): Promise<TestMember> => {
+  const code = await server.admit({ spaceId, identity: { id: identityId, ...details } });
   const response = await request(server.app).post('/api/tokens').send({ code }).expect(201);
-  return { playerId: response.body.playerId, token: response.body.token };
+  return { memberId: response.body.memberId, token: response.body.token };
 };
 
-export const sendAction = (server: AnyServer, gameId: string, token: string, action: unknown) =>
+export const sendAction = (server: AnyServer, spaceId: string, token: string, action: unknown) =>
   request(server.app)
-    .post(`/api/games/${gameId}/actions`)
+    .post(`/api/spaces/${spaceId}/actions`)
     .set('Authorization', `Bearer ${token}`)
     .send({ action });
 
-export const getState = (server: AnyServer, gameId: string, token: string) =>
-  request(server.app).get(`/api/games/${gameId}/state`).set('Authorization', `Bearer ${token}`);
+export const getState = (server: AnyServer, spaceId: string, token: string) =>
+  request(server.app).get(`/api/spaces/${spaceId}/state`).set('Authorization', `Bearer ${token}`);
 
-export const getUpdates = (server: AnyServer, gameId: string, token: string, since: unknown) =>
+export const getUpdates = (server: AnyServer, spaceId: string, token: string, since: unknown) =>
   request(server.app)
-    .get(`/api/games/${gameId}/updates`)
+    .get(`/api/spaces/${spaceId}/updates`)
     .query({ since: String(since) })
     .set('Authorization', `Bearer ${token}`)
     .redirects(0);

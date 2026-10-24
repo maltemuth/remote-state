@@ -1,8 +1,8 @@
 /**
- * Restarting the server on the same database: games, tokens, admission codes and
- * players carry on, sequences continue, `GET …/updates` reaches back before the
+ * Restarting the server on the same database: spaces, tokens, admission codes and
+ * members carry on, sequences continue, `GET …/updates` reaches back before the
  * restart, sockets reconnect by themselves, pending timers are dropped (0042), and
- * every game is offered to the plugin's `onRestart` (0052).
+ * every space is offered to the plugin's `onRestart` (0052).
  */
 
 import assert from 'node:assert/strict';
@@ -11,7 +11,7 @@ import { applyPatches, enablePatches } from 'immer';
 import { type Socket } from 'socket.io-client';
 import request from 'supertest';
 import { silentLogger, type StateEvent, transition } from '../../src/index.js';
-import { initialCounterState } from '../helpers/counterGame.js';
+import { initialCounterState } from '../helpers/counterRules.js';
 import { tempDatabases } from '../helpers/tempDatabase.js';
 import {
   getState,
@@ -21,7 +21,7 @@ import {
   startCounterServer,
   startServer,
 } from '../helpers/testServer.js';
-import { timerGame, type TimerState } from '../helpers/timerGame.js';
+import { timerRules, type TimerState } from '../helpers/timerRules.js';
 import { waitUntil } from '../helpers/waitUntil.js';
 
 enablePatches();
@@ -31,26 +31,26 @@ describe('restart', () => {
   const sockets: Socket[] = [];
   after(() => sockets.forEach(socket => socket.disconnect()));
 
-  it('carries games, tokens, codes and sequences over a restart', async () => {
+  it('carries spaces, tokens, codes and sequences over a restart', async () => {
     const database = databaseNamed('counter.db');
     let server = await startCounterServer(undefined, { database });
     const port = server.port;
     const url = `http://localhost:${port}`;
 
-    const gameId = await server.createGame(initialCounterState());
+    const spaceId = await server.createSpace(initialCounterState());
     const redeem = async (code: string) =>
       (await request(url).post('/api/tokens').send({ code }).expect(201)).body;
-    const alice = await redeem(await server.admit({ gameId, identity: { id: 'alice' } }));
-    const pendingCode = await server.admit({ gameId, identity: { id: 'bob' } });
+    const alice = await redeem(await server.admit({ spaceId, identity: { id: 'alice' } }));
+    const pendingCode = await server.admit({ spaceId, identity: { id: 'bob' } });
     const act = (token: string) =>
       request(url)
-        .post(`/api/games/${gameId}/actions`)
+        .post(`/api/spaces/${spaceId}/actions`)
         .set('Authorization', `Bearer ${token}`)
         .send({ action: { type: 'increment' } })
         .expect(201);
     const getState = (token: string) =>
       request(url)
-        .get(`/api/games/${gameId}/state`)
+        .get(`/api/spaces/${spaceId}/state`)
         .set('Authorization', `Bearer ${token}`)
         .expect(200);
 
@@ -60,7 +60,7 @@ describe('restart', () => {
 
     const socket = openSocket(
       url,
-      { gameId, token: alice.token },
+      { spaceId, token: alice.token },
       { reconnection: true, reconnectionDelay: 50, reconnectionDelayMax: 100 }
     );
     sockets.push(socket);
@@ -75,17 +75,17 @@ describe('restart', () => {
       assert.deepEqual((await getState(alice.token)).body, before);
       // A code issued before the restart still works, once
       const bob = await redeem(pendingCode);
-      assert.notEqual(bob.playerId, alice.playerId);
-      // Admitting a known identity again finds its player, without a new join
-      const again = await redeem(await server.admit({ gameId, identity: { id: 'alice' } }));
-      assert.equal(again.playerId, alice.playerId);
+      assert.notEqual(bob.memberId, alice.memberId);
+      // Admitting a known identity again finds its member, without a new join
+      const again = await redeem(await server.admit({ spaceId, identity: { id: 'alice' } }));
+      assert.equal(again.memberId, alice.memberId);
 
       // Sequences continue
       assert.deepEqual((await act(again.token)).body, { sequence: 4 });
 
       // Catching up reaches back before the restart
       const since = await request(url)
-        .get(`/api/games/${gameId}/updates?since=2`)
+        .get(`/api/spaces/${spaceId}/updates?since=2`)
         .set('Authorization', `Bearer ${alice.token}`)
         .expect(200);
       const now = (await getState(alice.token)).body;
@@ -100,24 +100,24 @@ describe('restart', () => {
     }
   });
 
-  it('drops pending timers, and the game carries on', async () => {
+  it('drops pending timers, and the space carries on', async () => {
     const database = databaseNamed('timers.db');
-    let server = await startServer(timerGame, { database });
+    let server = await startServer(timerRules, { database });
     const port = server.port;
-    const gameId = await server.createGame({ fired: [] });
-    const { token } = await join(server, gameId, 'alice');
+    const spaceId = await server.createSpace({ fired: [] });
+    const { token } = await join(server, spaceId, 'alice');
     const arm = (label: string, ms: number) =>
-      sendAction(server, gameId, token, { type: 'arm', name: 'turn', ms, label }).expect(201);
+      sendAction(server, spaceId, token, { type: 'arm', name: 'turn', ms, label }).expect(201);
     await arm('lost', 300);
 
     await server.close();
-    server = await startServer(timerGame, { database, port });
+    server = await startServer(timerRules, { database, port });
     try {
       // Nothing to wait for: give the lost timer time to fire if it survived
       await new Promise(resolve => setTimeout(resolve, 400));
       await arm('after', 10);
       const fired = async () =>
-        (await getState(server, gameId, token)).body.state.fired as string[];
+        (await getState(server, spaceId, token)).body.state.fired as string[];
       await waitUntil(async () => (await fired()).length > 0, 'the new timer');
       assert.deepEqual(await fired(), ['after']);
     } finally {
@@ -125,25 +125,25 @@ describe('restart', () => {
     }
   });
 
-  it('offers every game to onRestart, which can change it and schedule again (0052)', async () => {
+  it('offers every space to onRestart, which can change it and schedule again (0052)', async () => {
     const database = databaseNamed('on-restart.db');
-    let server = await startServer(timerGame, { database });
+    let server = await startServer(timerRules, { database });
     const port = server.port;
-    const players: { gameId: string; token: string }[] = [];
+    const members: { spaceId: string; token: string }[] = [];
     for (const fired of [[], ['done'], ['again']]) {
-      const gameId = await server.createGame({ fired });
-      players.push({ gameId, ...(await join(server, gameId, 'alice')) });
+      const spaceId = await server.createSpace({ fired });
+      members.push({ spaceId, ...(await join(server, spaceId, 'alice')) });
     }
-    const [paused, done, rescheduled] = players;
-    const view = async ({ gameId, token }: { gameId: string; token: string }) =>
-      (await getState(server, gameId, token)).body as { sequence: number; state: TimerState };
-    const before = await Promise.all(players.map(view));
+    const [paused, done, rescheduled] = members;
+    const view = async ({ spaceId, token }: { spaceId: string; token: string }) =>
+      (await getState(server, spaceId, token)).body as { sequence: number; state: TimerState };
+    const before = await Promise.all(members.map(view));
 
     await server.close();
     const restarted: TimerState[] = [];
     server = await startServer(
       {
-        ...timerGame,
+        ...timerRules,
         onRestart: state => {
           restarted.push(state);
           if (state.fired.includes('done')) return state;
@@ -176,21 +176,21 @@ describe('restart', () => {
     }
   });
 
-  it('logs a game whose onRestart fails, leaves it as it was, and restarts the others', async () => {
+  it('logs a space whose onRestart fails, leaves it as it was, and restarts the others', async () => {
     const database = databaseNamed('on-restart-fails.db');
-    let server = await startServer(timerGame, { database });
+    let server = await startServer(timerRules, { database });
     const port = server.port;
-    const failing = await server.createGame({ fired: ['fail'] });
-    const other = await server.createGame({ fired: [] });
-    const failingPlayer = await join(server, failing, 'alice');
-    const otherPlayer = await join(server, other, 'alice');
-    const failingBefore = (await getState(server, failing, failingPlayer.token)).body;
+    const failing = await server.createSpace({ fired: ['fail'] });
+    const other = await server.createSpace({ fired: [] });
+    const failingMember = await join(server, failing, 'alice');
+    const otherMember = await join(server, other, 'alice');
+    const failingBefore = (await getState(server, failing, failingMember.token)).body;
 
     await server.close();
     const errors: string[] = [];
     server = await startServer(
       {
-        ...timerGame,
+        ...timerRules,
         onRestart: state => {
           if (state.fired.includes('fail')) throw new Error('broken');
           return { fired: ['paused'] };
@@ -203,9 +203,9 @@ describe('restart', () => {
       }
     );
     try {
-      assert.deepEqual(errors, [`Restarting game ${failing} failed; it's left as it was`]);
-      assert.deepEqual((await getState(server, failing, failingPlayer.token)).body, failingBefore);
-      assert.deepEqual((await getState(server, other, otherPlayer.token)).body.state, {
+      assert.deepEqual(errors, [`Restarting space ${failing} failed; it's left as it was`]);
+      assert.deepEqual((await getState(server, failing, failingMember.token)).body, failingBefore);
+      assert.deepEqual((await getState(server, other, otherMember.token)).body.state, {
         fired: ['paused'],
       });
     } finally {

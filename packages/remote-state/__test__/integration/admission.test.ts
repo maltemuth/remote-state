@@ -1,18 +1,18 @@
 /**
- * Creating games and admitting players: single-use codes, the join hook, and
- * several tokens per player (decisions 0019, 0020, 0021, 0026).
+ * Creating spaces and admitting members: single-use codes, the join hook, and
+ * several tokens per member (decisions 0019, 0020, 0021, 0026).
  */
 
 import assert from 'node:assert/strict';
 import { describe, it, before, after, mock } from 'node:test';
 import request from 'supertest';
-import { CODE_LIFETIME_MS, UnknownGameError } from '../../src/index.js';
-import { counterGame, MAX_PLAYERS } from '../helpers/counterGame.js';
+import { CODE_LIFETIME_MS, UnknownSpaceError } from '../../src/index.js';
+import { counterRules, MAX_PLAYERS } from '../helpers/counterRules.js';
 import {
   type CounterServer,
   getState,
   join,
-  newGame,
+  newSpace,
   sendAction,
   startCounterServer,
 } from '../helpers/testServer.js';
@@ -23,41 +23,41 @@ const redeem = (server: CounterServer, code: unknown) =>
 describe('admission', () => {
   let server: CounterServer;
   /** What the join hook was given, per call */
-  const joins: { playerId: string; details: Record<string, unknown> }[] = [];
+  const joins: { memberId: string; details: Record<string, unknown> }[] = [];
   before(async () => {
-    const game = counterGame();
+    const space = counterRules();
     server = await startCounterServer({
-      ...game,
-      onJoin: (state, player) => {
-        joins.push(player);
-        return game.onJoin!(state, player);
+      ...space,
+      onJoin: (state, member) => {
+        joins.push(member);
+        return space.onJoin!(state, member);
       },
     });
   });
   after(() => server.close());
 
-  it('has no public endpoints for creating or joining games', async () => {
-    await request(server.app).post('/api/games').send({}).expect(404);
-    const gameId = await newGame(server);
-    await request(server.app).post(`/api/games/${gameId}/players`).send({}).expect(404);
+  it('has no public endpoints for creating or joining spaces', async () => {
+    await request(server.app).post('/api/spaces').send({}).expect(404);
+    const spaceId = await newSpace(server);
+    await request(server.app).post(`/api/spaces/${spaceId}/members`).send({}).expect(404);
   });
 
   it('exchanges a code for a token once', async () => {
-    const gameId = await newGame(server);
-    const code = await server.admit({ gameId, identity: { id: 'alice', name: 'Alice' } });
+    const spaceId = await newSpace(server);
+    const code = await server.admit({ spaceId, identity: { id: 'alice', name: 'Alice' } });
     const first = await redeem(server, code).expect(201);
-    const { playerId, token, ...rest } = first.body;
-    assert.deepEqual(rest, { gameId });
-    assert.equal(typeof playerId, 'string');
+    const { memberId, token, ...rest } = first.body;
+    assert.deepEqual(rest, { spaceId });
+    assert.equal(typeof memberId, 'string');
     assert.equal(typeof token, 'string');
     await redeem(server, code).expect(401);
   });
 
   it('rejects missing, unknown and expired codes', async () => {
-    const gameId = await newGame(server);
+    const spaceId = await newSpace(server);
     await redeem(server, undefined).expect(400);
     await redeem(server, 'not-a-code').expect(401);
-    const code = await server.admit({ gameId, identity: { id: 'late' } });
+    const code = await server.admit({ spaceId, identity: { id: 'late' } });
     const now = Date.now();
     const clock = mock.method(Date, 'now', () => now + CODE_LIFETIME_MS + 1);
     try {
@@ -68,42 +68,45 @@ describe('admission', () => {
   });
 
   it('validates admissions', async () => {
-    await assert.rejects(server.admit({ gameId: 'nope', identity: { id: 'x' } }), UnknownGameError);
-    const gameId = await newGame(server);
-    await assert.rejects(server.admit({ gameId, identity: { id: '' } }));
+    await assert.rejects(
+      server.admit({ spaceId: 'nope', identity: { id: 'x' } }),
+      UnknownSpaceError
+    );
+    const spaceId = await newSpace(server);
+    await assert.rejects(server.admit({ spaceId, identity: { id: '' } }));
   });
 
   it('runs the join hook once per identity, with the host details', async () => {
-    const gameId = await newGame(server);
-    const first = await join(server, gameId, 'alice', { name: 'Alice' });
-    const again = await join(server, gameId, 'alice', { name: 'Ignored' });
-    assert.equal(again.playerId, first.playerId);
+    const spaceId = await newSpace(server);
+    const first = await join(server, spaceId, 'alice', { name: 'Alice' });
+    const again = await join(server, spaceId, 'alice', { name: 'Ignored' });
+    assert.equal(again.memberId, first.memberId);
     assert.deepEqual(
-      joins.filter(({ playerId }) => playerId === first.playerId),
-      [{ playerId: first.playerId, details: { name: 'Alice' } }]
+      joins.filter(({ memberId }) => memberId === first.memberId),
+      [{ memberId: first.memberId, details: { name: 'Alice' } }]
     );
     assert.notEqual(again.token, first.token);
 
     // Both tokens stay valid (0019); the join is the only transition so far
-    const view = await getState(server, gameId, first.token).expect(200);
-    await getState(server, gameId, again.token).expect(200);
-    assert.deepEqual(view.body, { gameId, sequence: 1, state: { count: 0, mine: 0 } });
+    const view = await getState(server, spaceId, first.token).expect(200);
+    await getState(server, spaceId, again.token).expect(200);
+    assert.deepEqual(view.body, { spaceId, sequence: 1, state: { count: 0, mine: 0 } });
   });
 
-  it('refuses a join with the game reason, using up the code', async () => {
-    const gameId = await newGame(server);
-    for (let i = 0; i < MAX_PLAYERS; i++) await join(server, gameId, `player-${i}`);
-    const code = await server.admit({ gameId, identity: { id: 'one-too-many' } });
+  it('refuses a join with the space reason, using up the code', async () => {
+    const spaceId = await newSpace(server);
+    for (let i = 0; i < MAX_PLAYERS; i++) await join(server, spaceId, `member-${i}`);
+    const code = await server.admit({ spaceId, identity: { id: 'one-too-many' } });
     const refused = await redeem(server, code).expect(403);
-    assert.equal(refused.body.error, 'Game is full');
+    assert.equal(refused.body.error, 'Space is full');
     await redeem(server, code).expect(401);
   });
 
-  it('only accepts tokens for their own game', async () => {
-    const gameId = await newGame(server);
-    const otherGame = await newGame(server);
-    const { token } = await join(server, otherGame, 'alice');
-    await getState(server, gameId, token).expect(401);
-    await sendAction(server, gameId, token, { type: 'increment' }).expect(401);
+  it('only accepts tokens for their own space', async () => {
+    const spaceId = await newSpace(server);
+    const otherSpace = await newSpace(server);
+    const { token } = await join(server, otherSpace, 'alice');
+    await getState(server, spaceId, token).expect(401);
+    await sendAction(server, spaceId, token, { type: 'increment' }).expect(401);
   });
 });

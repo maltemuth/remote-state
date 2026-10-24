@@ -1,5 +1,5 @@
 /**
- * What the client hands out and receives: snapshots of the player's view, updates
+ * What the client hands out and receives: snapshots of the member's view, updates
  * from the server, and the connection's state. These mirror the server's events;
  * the client doesn't import the server package, so they're declared here.
  */
@@ -8,7 +8,7 @@ import { type Patch } from 'immer';
 
 export type { Patch };
 
-/** The player's whole view at a sequence */
+/** The member's whole view at a sequence */
 export interface Snapshot<View> {
   sequence: number;
   view: View;

@@ -10,12 +10,12 @@ import { describe, it } from 'node:test';
 import { createRemoteState, silentLogger, UnsupportedDatabaseError } from '../../src/index.js';
 import { tempDatabases, withOrm } from '../helpers/tempDatabase.js';
 import { initializeDatabase, SCHEMA_VERSION } from '../../src/database/orm.js';
-import { counterGame, initialCounterState } from '../helpers/counterGame.js';
+import { counterRules, initialCounterState } from '../helpers/counterRules.js';
 
 describe('database', () => {
   const databaseNamed = tempDatabases('database');
   const open = (database: string) =>
-    createRemoteState(counterGame(), { database, logger: silentLogger, socket: false });
+    createRemoteState(counterRules(), { database, logger: silentLogger, socket: false });
   /** Run SQL on a database file directly, without the library */
   const sql = <T>(database: string, statement: string) =>
     withOrm(database, em => em.getConnection().execute<T>(statement));
@@ -25,13 +25,13 @@ describe('database', () => {
   it('creates the schema in a new database, and reopens it', async () => {
     const database = databaseNamed('new.db');
     const first = await open(database);
-    const gameId = await first.createGame(initialCounterState());
+    const spaceId = await first.createSpace(initialCounterState());
     await first.close();
     assert.equal(await userVersion(database), SCHEMA_VERSION);
 
     const second = await open(database);
     try {
-      assert.equal(typeof (await second.admit({ gameId, identity: { id: 'alice' } })), 'string');
+      assert.equal(typeof (await second.admit({ spaceId, identity: { id: 'alice' } })), 'string');
     } finally {
       await second.close();
     }
@@ -68,7 +68,7 @@ describe('database', () => {
 
   it("passes on the driver's error for a file it can't open", async () => {
     await assert.rejects(
-      open(databaseNamed('missing/directory/games.db')),
+      open(databaseNamed('missing/directory/spaces.db')),
       /unable to open database file|directory does not exist/
     );
   });

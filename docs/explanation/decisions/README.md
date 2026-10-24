@@ -70,6 +70,7 @@ Records aren't edited after the fact, except to update their status. A decision 
 | [0062](0062-the-client-reconnects-when-a-page-resumes.md)              | The client reconnects when a page resumes                                      | Accepted                                                                                                       |
 | [0063](0063-players-pair-their-own-devices.md)                         | Players can pair their own devices                                             | Accepted                                                                                                       |
 | [0064](0064-install-without-scripts.md)                                | Install with --ignore-scripts until npm honours gypfile: false                 | Accepted                                                                                                       |
+| [0065](0065-spaces-members-and-rules.md)                               | Spaces, members and rules                                                      | Accepted                                                                                                       |
 
 ## Writing a record
 

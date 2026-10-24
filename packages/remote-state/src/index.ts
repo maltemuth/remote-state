@@ -1,6 +1,6 @@
 /**
  * Public entry point of the Remote State library: the server and its embeddable
- * core, the game plugin contract, logging, and the shapes of what clients receive.
+ * core, the space plugin contract, logging, and the shapes of what clients receive.
  */
 
 export { createRemoteStateServer, type RemoteStateServer } from './server/createServer.js';
@@ -10,14 +10,14 @@ export {
   type RemoteStateServerOptions,
   type SocketSettings,
 } from './server/options.js';
-export { UnknownGameError } from './server/errors.js';
+export { UnknownSpaceError } from './server/errors.js';
 export { UnsupportedDatabaseError } from './database/orm.js';
 export { CODE_LIFETIME_MS, type Admission, type Identity } from './server/host.js';
 export {
   type ActionValidationResult,
   type Awaitable,
-  type GamePlugin,
-  type JoiningPlayer,
+  type Rules,
+  type JoiningMember,
   type StateResult,
 } from './plugin/types.js';
 export {
@@ -29,8 +29,8 @@ export {
   type TransitionChanges,
 } from './plugin/transition.js';
 export { SYSTEM } from './plugin/system.js';
-export { type ActResult } from './engine/act.js';
-export { GameRefusal } from './plugin/refusal.js';
+export { type DispatchResult } from './engine/dispatch.js';
+export { Refusal } from './plugin/refusal.js';
 export { EVERYONE } from './plugin/views.js';
 export { type DiffName, type Patch } from './patches/diff.js';
 export { checksumOf } from './patches/checksum.js';

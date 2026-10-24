@@ -13,10 +13,10 @@ import express, {
   type Response,
   Router,
 } from "express";
-import { type RemoteState, UnknownGameError } from "@malte.muth/remote-state";
+import { type RemoteState, UnknownSpaceError } from "@malte.muth/remote-state";
 
 export const createLobby = <StateType>(
-  remote: Pick<RemoteState<StateType>, "createGame" | "admit" | "act">,
+  remote: Pick<RemoteState<StateType>, "createSpace" | "admit" | "dispatch">,
   newGame: () => StateType,
   /** The system action that resumes a paused game; without it, there's no endpoint */
   resume?: unknown,
@@ -26,14 +26,14 @@ export const createLobby = <StateType>(
 
   // A new game, with nobody in it yet
   lobby.post("/games", async (_req, res) => {
-    res.status(201).json({ gameId: await remote.createGame(newGame()) });
+    res.status(201).json({ gameId: await remote.createSpace(newGame()) });
   });
 
   // A code for the client to exchange at POST …/api/tokens
   lobby.post("/games/:gameId/codes", async (req, res) => {
     const name = typeof req.body?.name === "string" ? req.body.name : "";
     const code = await remote.admit({
-      gameId: req.params.gameId,
+      spaceId: req.params.gameId,
       identity: { id: randomUUID(), name },
     });
     res.status(201).json({ code });
@@ -42,7 +42,7 @@ export const createLobby = <StateType>(
   // Resume a game a server restart paused, once its players are back
   if (resume !== undefined) {
     lobby.post("/games/:gameId/resume", async (req, res) => {
-      const result = await remote.act(req.params.gameId, resume);
+      const result = await remote.dispatch(req.params.gameId, resume);
       if ("rejected" in result)
         res.status(400).json({ error: result.rejected });
       else res.status(201).json(result);
@@ -51,7 +51,7 @@ export const createLobby = <StateType>(
 
   // Express 5 passes rejected handlers here
   lobby.use((err: unknown, _req: Request, res: Response, next: NextFunction) =>
-    err instanceof UnknownGameError
+    err instanceof UnknownSpaceError
       ? res.status(404).json({ error: err.message })
       : next(err),
   );

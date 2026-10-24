@@ -46,7 +46,7 @@ export const playGame = async (
       await new Promise((r) => setTimeout(r, pause * (0.5 + Math.random())));
     const started = performance.now();
     const { status, body } = await postJson(
-      `${base}/battleship/api/games/${gameId}/actions`,
+      `${base}/battleship/api/spaces/${gameId}/actions`,
       { action },
       players[actor].token,
     );

@@ -4,7 +4,7 @@
  * default).
  */
 
-import { GameRefusal, type GamePlugin } from "@malte.muth/remote-state";
+import { Refusal, type Rules } from "@malte.muth/remote-state";
 import {
   executeAction,
   filterStateForPlayer,
@@ -14,18 +14,18 @@ import { type BattleshipAction, type BattleshipState } from "./types.js";
 
 export { newBattleshipGame } from "./types.js";
 
-export const battleshipPlugin: GamePlugin<BattleshipState, BattleshipAction> = {
-  onJoin: (state, { playerId }) => {
+export const battleshipRules: Rules<BattleshipState, BattleshipAction> = {
+  onJoin: (state, { memberId: playerId }) => {
     const seat = !state.players.player1
       ? "player1"
       : !state.players.player2
         ? "player2"
         : null;
-    if (!seat) throw new GameRefusal("Both seats are taken");
+    if (!seat) throw new Refusal("Both seats are taken");
     return { ...state, players: { ...state.players, [seat]: playerId } };
   },
   validateAction,
   executeAction,
   // The default audience of each player is named by their player ID
-  filterStateForAudience: filterStateForPlayer,
+  view: filterStateForPlayer,
 };

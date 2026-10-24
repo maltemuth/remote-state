@@ -15,7 +15,7 @@ import {
   silentLogger,
   type StateEvent,
 } from '../../src/index.js';
-import { counterGame, type CounterState, initialCounterState } from '../helpers/counterGame.js';
+import { counterRules, type CounterState, initialCounterState } from '../helpers/counterRules.js';
 import { openSocket } from '../helpers/testServer.js';
 
 describe('embedding', () => {
@@ -25,7 +25,7 @@ describe('embedding', () => {
   let port: number;
 
   before(async () => {
-    remote = await createRemoteState(counterGame(), {
+    remote = await createRemoteState(counterRules(), {
       logger: silentLogger,
       socket: { path: '/counter/socket.io' },
     });
@@ -37,18 +37,18 @@ describe('embedding', () => {
   });
   after(() => new Promise<void>(resolve => httpServer.close(() => resolve())));
 
-  const joinGame = async () => {
-    const gameId = await remote.createGame(initialCounterState());
-    const code = await remote.admit({ gameId, identity: { id: 'alice' } });
+  const joinSpace = async () => {
+    const spaceId = await remote.createSpace(initialCounterState());
+    const code = await remote.admit({ spaceId, identity: { id: 'alice' } });
     const { body } = await request(app).post('/counter/api/tokens').send({ code }).expect(201);
-    return { gameId, token: body.token as string };
+    return { spaceId, token: body.token as string };
   };
 
   it('serves the API under the prefix, next to the host routes', async () => {
-    const { gameId, token } = await joinGame();
+    const { spaceId, token } = await joinSpace();
     await request(app).get('/').expect(200, 'host');
     const state = await request(app)
-      .get(`/counter/api/games/${gameId}/state`)
+      .get(`/counter/api/spaces/${spaceId}/state`)
       .set('Authorization', `Bearer ${token}`)
       .expect(200);
     assert.deepEqual(state.body.state, { count: 0, mine: 0 });
@@ -56,10 +56,10 @@ describe('embedding', () => {
   });
 
   it('serves the socket on the host server, at its path', async () => {
-    const { gameId, token } = await joinGame();
+    const { spaceId, token } = await joinSpace();
     const socket = openSocket(
       `http://localhost:${port}`,
-      { gameId, token },
+      { spaceId, token },
       { path: '/counter/socket.io' }
     );
     const event = await new Promise<StateEvent>(resolve => socket.once('state', resolve));

@@ -1,6 +1,6 @@
 /**
- * Pairing another device from the client (0063): a player's client gets a code
- * for the player, another device redeems it, and both follow the same view.
+ * Pairing another device from the client (0063): a member's client gets a code
+ * for the member, another device redeems it, and both follow the same view.
  */
 
 import assert from 'node:assert/strict';
@@ -15,14 +15,14 @@ describe('pairing a device', () => {
   });
   after(() => server.close());
 
-  it('lets another device follow the same view, as the same player', async () => {
-    const gameId = await server.newGame();
-    const laptop = await server.join(gameId, 'alice');
+  it('lets another device follow the same view, as the same member', async () => {
+    const spaceId = await server.newSpace();
+    const laptop = await server.join(spaceId, 'alice');
     const session = await redeemCode(await laptop.pairingCode(), { baseUrl: server.baseUrl });
-    assert.equal(session.playerId, laptop.session.playerId);
+    assert.equal(session.memberId, laptop.session.memberId);
     const phone = createClient({ session, baseUrl: server.baseUrl });
     try {
-      const { sequence } = await laptop.send({ type: 'note', text: 'mine' });
+      const { sequence } = await laptop.dispatch({ type: 'note', text: 'mine' });
       const seen = [laptop, phone].map(async client => (await client.waitFor(sequence)).view);
       const [onLaptop, onPhone] = await Promise.all(seen);
       assert.deepEqual(onPhone, onLaptop);

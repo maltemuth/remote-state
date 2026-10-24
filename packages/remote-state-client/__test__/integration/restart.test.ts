@@ -20,19 +20,19 @@ describe('client across a restart', () => {
   it("reconnects by itself and ends with the restarted server's view", async () => {
     const database = joinPath(directory, 'notes.db');
     let server = await startNotesServer({ database });
-    const gameId = await server.newGame();
-    const alice = await server.join(gameId, 'alice');
-    const bob = await server.join(gameId, 'bob');
+    const spaceId = await server.newSpace();
+    const alice = await server.join(spaceId, 'alice');
+    const bob = await server.join(spaceId, 'bob');
     const statuses: ConnectionState['status'][] = [];
     alice.onConnection(({ status }) => statuses.push(status));
     try {
-      await alice.waitFor((await alice.send({ type: 'note', text: 'before' })).sequence);
+      await alice.waitFor((await alice.dispatch({ type: 'note', text: 'before' })).sequence);
 
       await server.close();
       server = await startNotesServer({ database, port: server.port });
 
       // Bob acts on the restarted server with his old session
-      const { sequence } = await bob.send({ type: 'count' });
+      const { sequence } = await bob.dispatch({ type: 'count' });
       const { view } = await alice.waitFor(sequence);
       assert.deepEqual(view, { board: { count: 1 }, mine: ['before'] });
       assert.deepEqual((await bob.waitFor(sequence)).view, { board: { count: 1 }, mine: [] });
@@ -59,16 +59,16 @@ describe('client across a restart', () => {
       });
 
     let server = await startNotesServer({ database });
-    const gameId = await server.newGame();
-    const alice = await server.join(gameId, 'alice');
-    const bob = await server.join(gameId, 'bob');
+    const spaceId = await server.newSpace();
+    const alice = await server.join(spaceId, 'alice');
+    const bob = await server.join(spaceId, 'bob');
     try {
-      await alice.waitFor((await alice.send({ type: 'note', text: 'kept' })).sequence);
+      await alice.waitFor((await alice.dispatch({ type: 'note', text: 'kept' })).sequence);
       await server.close();
       copy(database, backup);
 
       server = await startNotesServer({ database, port: server.port });
-      await alice.waitFor((await alice.send({ type: 'note', text: 'lost' })).sequence);
+      await alice.waitFor((await alice.dispatch({ type: 'note', text: 'lost' })).sequence);
       assert.deepEqual(alice.getSnapshot()?.view.mine, ['kept', 'lost']);
       await server.close();
 
@@ -76,7 +76,7 @@ describe('client across a restart', () => {
       copy(backup, database);
       server = await startNotesServer({ database, port: server.port });
       // At the sequence the lost note had
-      const { sequence } = await bob.send({ type: 'count' });
+      const { sequence } = await bob.dispatch({ type: 'count' });
       const expected = { sequence, view: { board: { count: 1 }, mine: ['kept'] } };
       for (let i = 0; i < 100 && !isDeepStrictEqual(alice.getSnapshot(), expected); i++) {
         await new Promise(resolve => setTimeout(resolve, 20));

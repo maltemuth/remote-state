@@ -12,7 +12,7 @@ import { type PatchesEvent, type StateEvent } from '../../src/index.js';
 import {
   type CounterServer,
   join,
-  newGame,
+  newSpace,
   sendAction,
   openSocket,
   serverUrl,
@@ -47,41 +47,41 @@ describe('socket', () => {
     new Promise<string>(resolve => socket.once('connect_error', err => resolve(err.message)));
 
   it('refuses invalid tokens and unknown formats', async () => {
-    const gameId = await newGame(server);
-    const { token } = await join(server, gameId, 'alice');
-    assert.match(await connectError(open({ gameId, token: 'wrong' })), /Invalid token/);
-    assert.match(await connectError(open({ gameId, token }, 'json-patch')), /Unknown format/);
+    const spaceId = await newSpace(server);
+    const { token } = await join(server, spaceId, 'alice');
+    assert.match(await connectError(open({ spaceId, token: 'wrong' })), /Invalid token/);
+    assert.match(await connectError(open({ spaceId, token }, 'json-patch')), /Unknown format/);
   });
 
   it('sends the whole view on connect, then whole views', async () => {
-    const gameId = await newGame(server);
-    const { token } = await join(server, gameId, 'alice');
-    const socket = open({ gameId, token });
+    const spaceId = await newSpace(server);
+    const { token } = await join(server, spaceId, 'alice');
+    const socket = open({ spaceId, token });
     assert.deepEqual(await next<StateEvent>(socket, 'state'), {
-      gameId,
+      spaceId,
       sequence: 1,
       state: { count: 0, mine: 0 },
     });
     const update = next<StateEvent>(socket, 'state');
-    await sendAction(server, gameId, token, { type: 'increment' }).expect(201);
-    assert.deepEqual(await update, { gameId, sequence: 2, state: { count: 1, mine: 1 } });
+    await sendAction(server, spaceId, token, { type: 'increment' }).expect(201);
+    assert.deepEqual(await update, { spaceId, sequence: 2, state: { count: 1, mine: 1 } });
   });
 
   it('sends patches in order, also across an audience change', async () => {
-    const gameId = await newGame(server);
-    const alice = await join(server, gameId, 'alice');
-    const bob = await join(server, gameId, 'bob');
-    const socket = open({ gameId, token: alice.token }, 'immer');
+    const spaceId = await newSpace(server);
+    const alice = await join(server, spaceId, 'alice');
+    const bob = await join(server, spaceId, 'bob');
+    const socket = open({ spaceId, token: alice.token }, 'immer');
     let view = (await next<StateEvent>(socket, 'state')).state;
     const received: PatchesEvent[] = [];
     socket.on('patches', (event: PatchesEvent) => received.push(event));
 
     await Promise.all([
-      sendAction(server, gameId, alice.token, { type: 'increment' }),
-      sendAction(server, gameId, bob.token, { type: 'increment' }),
-      sendAction(server, gameId, alice.token, { type: 'increment' }),
+      sendAction(server, spaceId, alice.token, { type: 'increment' }),
+      sendAction(server, spaceId, bob.token, { type: 'increment' }),
+      sendAction(server, spaceId, alice.token, { type: 'increment' }),
     ]);
-    await sendAction(server, gameId, alice.token, { type: 'spectate' }).expect(201);
+    await sendAction(server, spaceId, alice.token, { type: 'spectate' }).expect(201);
     await waitUntil(() => received.length === 4, 'four updates');
 
     assert.deepEqual(

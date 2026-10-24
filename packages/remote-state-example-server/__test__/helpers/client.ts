@@ -36,7 +36,7 @@ export const clientFor = (app: Express, base: string) => {
 
   /** Get a code from the lobby and exchange it for a token */
   const joinAs = async (gameId: string, name: string): Promise<Seat> => {
-    const { playerId, token } = (
+    const { memberId: playerId, token } = (
       await redeem(await codeFor(gameId, name)).expect(201)
     ).body;
     return { playerId, token };
@@ -44,14 +44,14 @@ export const clientFor = (app: Express, base: string) => {
 
   const act = (gameId: string, token: string, action: object) =>
     http
-      .post(`${base}/api/games/${gameId}/actions`)
+      .post(`${base}/api/spaces/${gameId}/actions`)
       .set("Authorization", `Bearer ${token}`)
       .send({ action });
 
   const stateFor = async <T>(gameId: string, token: string): Promise<T> =>
     (
       await http
-        .get(`${base}/api/games/${gameId}/state`)
+        .get(`${base}/api/spaces/${gameId}/state`)
         .set("Authorization", `Bearer ${token}`)
         .expect(200)
     ).body.state;

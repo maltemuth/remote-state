@@ -73,7 +73,7 @@ export const joinPlayer = async (
   const waiting = new Map<number, (time: number) => void>();
   const socket: Socket = io(base, {
     path: "/battleship/socket.io",
-    auth: { gameId, token },
+    auth: { spaceId: gameId, token },
     query: { format },
     transports: ["websocket"],
     ...(parser === "msgpack" ? { parser: msgpackParser } : {}),

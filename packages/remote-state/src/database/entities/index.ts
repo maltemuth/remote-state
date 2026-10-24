@@ -4,11 +4,11 @@
 
 import { AdmissionCode } from './AdmissionCode.js';
 import { AudienceMembership } from './AudienceMembership.js';
-import { Game } from './Game.js';
-import { GameState } from './GameState.js';
-import { Player } from './Player.js';
+import { Space } from './Space.js';
+import { SpaceState } from './SpaceState.js';
+import { Member } from './Member.js';
 import { Token } from './Token.js';
 
-export { AdmissionCode, AudienceMembership, Game, GameState, Player, Token };
+export { AdmissionCode, AudienceMembership, Space, SpaceState, Member, Token };
 
-export const entities = [Game, Player, Token, AdmissionCode, GameState, AudienceMembership];
+export const entities = [Space, Member, Token, AdmissionCode, SpaceState, AudienceMembership];

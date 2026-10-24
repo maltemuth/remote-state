@@ -1,5 +1,5 @@
 /**
- * Where a game's library routes are: the HTTP API at `<baseUrl>/api`, and the
+ * Where a space's library routes are: the HTTP API at `<baseUrl>/api`, and the
  * socket at `<baseUrl's path>/socket.io` unless set otherwise. In a browser, a
  * relative base URL is resolved against the page.
  */

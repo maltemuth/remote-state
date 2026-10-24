@@ -1,51 +1,51 @@
 /**
- * Finds the player for a host identity in a game, or adds one through the game's
- * join hook (decision 0026), under the game's lock.
+ * Finds the member for a host identity in a space, or adds one through the space's
+ * join hook (decision 0026), under the space's lock.
  */
 
 import { randomUUID } from 'crypto';
-import { Player } from '../database/entities/index.js';
-import { GameRefusal } from '../plugin/refusal.js';
-import { UnknownGameError } from '../server/errors.js';
+import { Member } from '../database/entities/index.js';
+import { Refusal } from '../plugin/refusal.js';
+import { UnknownSpaceError } from '../server/errors.js';
 import { type EngineContext } from './context.js';
 import { recordTransition } from './recordTransition.js';
 import { latestState } from './states.js';
 
-export type JoinResult = { playerId: string } | { refused: string };
+export type JoinResult = { memberId: string } | { refused: string };
 
-export const joinGame = (
+export const joinSpace = (
   context: EngineContext,
-  gameId: string,
+  spaceId: string,
   identityId: string,
   details: Record<string, unknown>
 ): Promise<JoinResult> =>
-  context.withGameLock(gameId, async () => {
+  context.withSpaceLock(spaceId, async () => {
     const em = context.orm.em.fork();
-    const existing = await em.findOne(Player, { game: gameId, identityId });
-    if (existing) return { playerId: existing.id };
+    const existing = await em.findOne(Member, { space: spaceId, identityId });
+    if (existing) return { memberId: existing.id };
 
-    const previous = await latestState(em, gameId);
-    if (!previous) throw new UnknownGameError(gameId);
+    const previous = await latestState(em, spaceId);
+    if (!previous) throw new UnknownSpaceError(spaceId);
 
-    const playerId = randomUUID();
+    const memberId = randomUUID();
     let result: unknown = previous.state;
     try {
       if (context.plugin.onJoin) {
-        result = await context.plugin.onJoin(previous.state, { playerId, details });
+        result = await context.plugin.onJoin(previous.state, { memberId, details });
       }
     } catch (err) {
-      if (err instanceof GameRefusal) return { refused: err.message };
+      if (err instanceof Refusal) return { refused: err.message };
       throw err;
     }
 
     await recordTransition(context, {
-      gameId,
+      spaceId,
       previous,
       result,
-      authorId: playerId,
+      authorId: memberId,
       actionType: 'join',
       actionData: null,
-      joiningPlayer: { id: playerId, identityId },
+      joiningMember: { id: memberId, identityId },
     });
-    return { playerId };
+    return { memberId };
   });

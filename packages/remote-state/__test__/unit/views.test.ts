@@ -1,6 +1,6 @@
 /**
  * Views are plain JSON, so diffs see changes in values such as dates that a
- * game's filter may return.
+ * space's filter may return.
  */
 
 import assert from 'node:assert/strict';
@@ -13,7 +13,7 @@ describe('viewFor', () => {
     const plugin = {
       validateAction: () => true as const,
       executeAction: (state: unknown) => state,
-      filterStateForAudience: (state: { at: number }) => ({ at: new Date(state.at) }),
+      view: (state: { at: number }) => ({ at: new Date(state.at) }),
     };
     const before = await viewFor(plugin, { at: 0 }, 'a');
     const after = await viewFor(plugin, { at: 1000 }, 'a');

@@ -20,17 +20,17 @@ describe('client transport options', () => {
   ] as const) {
     it(`keeps the view in step with ${name}`, async () => {
       const server = await startNotesServer({ remote });
-      const gameId = await server.newGame();
+      const spaceId = await server.newSpace();
       const errors: unknown[] = [];
-      const alice = await server.join(gameId, 'alice', 'immer', {
+      const alice = await server.join(spaceId, 'alice', 'immer', {
         ...client,
         onError: error => errors.push(error),
       });
-      const bob = await server.join(gameId, 'bob', 'immer', client);
+      const bob = await server.join(spaceId, 'bob', 'immer', client);
       try {
-        await bob.send({ type: 'count' });
-        await alice.send({ type: 'note', text: 'mine' });
-        const { sequence } = await bob.send({ type: 'count' });
+        await bob.dispatch({ type: 'count' });
+        await alice.dispatch({ type: 'note', text: 'mine' });
+        const { sequence } = await bob.dispatch({ type: 'count' });
         assert.deepEqual((await alice.waitFor(sequence)).view, {
           board: { count: 2 },
           mine: ['mine'],

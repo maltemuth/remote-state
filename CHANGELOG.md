@@ -4,14 +4,17 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ## Unreleased
 
+Databases from 0.10.x have to be deleted: the schema's version is now 4.
+
 ### Changed
 
+- **Breaking:** games are now spaces and players members, since nothing in the library is specific to games (0065). `GamePlugin` is `Rules`, its `filterStateForAudience` is `view`, `GameRefusal` is `Refusal`, `UnknownGameError` is `UnknownSpaceError`, and `JoiningPlayer` is `JoiningMember`, with `memberId`. `createGame` is `createSpace`, and the host's `act` and the client's `send` are both `dispatch`, with `DispatchResult` for `ActResult`. `gameId` and `playerId` are `spaceId` and `memberId` everywhere: in `admit`, `Session`, the token response, events and the socket handshake. The HTTP API is under `/api/spaces/:spaceId`, and the tables are `spaces`, `members` and `space_states`.
 - Install with `--ignore-scripts`: from a lockfile, npm tries to build the SQLite driver from source, which fails without a C++ compiler. The docs said npm would ask about its install script, and that `allowScripts` denied it; neither is so (0064).
 
 ### Added
 
 - `llms.txt`, a manual of the whole library in one file for coding agents, shipped in `@malte.muth/remote-state`.
-- Players can pair their own devices, with the server option `devicePairing`: `POST /api/games/:gameId/codes` gives a player a single-use code for themselves, which another device redeems at `POST /api/tokens` for a new token for the same player. The client offers `pairingCode()`. A pairing code may travel in a link's fragment, such as in a QR code (0063).
+- Members can pair their own devices, with the server option `devicePairing`: `POST /api/spaces/:spaceId/codes` gives a member a single-use code for themselves, which another device redeems at `POST /api/tokens` for a new token for the same member. The client offers `pairingCode()`. A pairing code may travel in a link's fragment, such as in a QR code (0063).
 - The client reconnects at once when its page is shown again after being hidden for 10 seconds or more, or the network comes back, so a phone that wakes up shows the current view within a round trip instead of after up to 45 seconds. `resumeAfter` sets the time, or `null` turns it off; `reconnect()` does it on demand (0062).
 
 ## 0.10.0 - 2026-10-18

@@ -19,7 +19,7 @@ import { entities } from '../../src/database/entities/index.js';
 export const tempDatabases = (name: string) => {
   const directory = mkdtempSync(join(tmpdir(), `remote-state-${name}-`));
   after(() => rmSync(directory, { recursive: true, force: true }));
-  return (file = 'games.db') => join(directory, file);
+  return (file = 'spaces.db') => join(directory, file);
 };
 
 /** Run `work` on a database file, closing it afterwards */

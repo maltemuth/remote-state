@@ -1,14 +1,14 @@
 /**
- * What the engine's operations share: the database, the game, the per-game lock,
+ * What the engine's operations share: the database, the space, the per-space lock,
  * the logger, and where finished transitions are published (the socket, if any).
  */
 
 import { type Orm } from '../database/orm.js';
 import { type Logger } from '../logging/logger.js';
 import { type Diff } from '../patches/diff.js';
-import { type AnyGamePlugin } from '../plugin/types.js';
+import { type AnyRules } from '../plugin/types.js';
 import { type TimerRequest } from '../plugin/transition.js';
-import { type GameLock } from './gameLock.js';
+import { type SpaceLock } from './spaceLock.js';
 import { type Scheduler } from './scheduler.js';
 
 /**
@@ -16,11 +16,11 @@ import { type Scheduler } from './scheduler.js';
  * patches are computed from the two states when they're sent (0056).
  */
 export interface TransitionOutcome {
-  gameId: string;
+  spaceId: string;
   sequence: number;
   previousState: unknown;
   state: unknown;
-  /** Player ID → effective audience, before and after the transition */
+  /** Member ID → effective audience, before and after the transition */
   audiencesBefore: Map<string, string>;
   audiencesAfter: Map<string, string>;
   /** What the transition scheduled and cancelled, to apply once it's recorded */
@@ -33,8 +33,8 @@ export interface Publisher {
 
 export interface EngineContext {
   orm: Orm;
-  plugin: AnyGamePlugin;
-  withGameLock: GameLock;
+  plugin: AnyRules;
+  withSpaceLock: SpaceLock;
   logger: Logger;
   publisher: Publisher;
   scheduler: Scheduler;

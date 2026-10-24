@@ -1,6 +1,6 @@
 # Build your first game: rock, paper, scissors
 
-You'll build a two-player rock-paper-scissors server, play a round with `curl`, and watch the updates arrive over Socket.IO. About 30 minutes.
+You'll build a two-player rock-paper-scissors server, play a round with `curl`, and watch the updates arrive over Socket.IO. About 30 minutes. In Remote State's words, each game is a **space**, each player a **member**, and the game's logic its **rules**.
 
 You need Node.js 24 or newer, `curl`, and a clone of this repository, installed with:
 
@@ -19,9 +19,9 @@ import { randomUUID } from "crypto";
 import express from "express";
 import {
   createRemoteStateServer,
-  GameRefusal,
-  UnknownGameError,
-  type GamePlugin,
+  Refusal,
+  UnknownSpaceError,
+  type Rules,
 } from "@malte.muth/remote-state";
 
 type Choice = "rock" | "paper" | "scissors";
@@ -67,26 +67,26 @@ The server keeps the whole truth, `RpsState`, and gives each player a view of it
 Add the game:
 
 ```ts
-const rockPaperScissors: GamePlugin<RpsState, RpsAction, RpsView> = {
-  onJoin: (state, { playerId, details }) => {
-    if (state.players.length === 2) throw new GameRefusal("Game is full");
+const rockPaperScissors: Rules<RpsState, RpsAction, RpsView> = {
+  onJoin: (state, { memberId, details }) => {
+    if (state.players.length === 2) throw new Refusal("Game is full");
     return {
       ...state,
-      players: [...state.players, playerId],
-      names: { ...state.names, [playerId]: String(details.name ?? "") },
+      players: [...state.players, memberId],
+      names: { ...state.names, [memberId]: String(details.name ?? "") },
     };
   },
 
-  validateAction: (state, action, playerId) => {
+  validateAction: (state, action, memberId) => {
     if (action?.type !== "choose") return "Unknown action";
     if (state.players.length < 2) return "Waiting for an opponent";
-    if (state.choices[playerId]) return "You already chose";
+    if (state.choices[memberId]) return "You already chose";
     if (!(action.choice in beats)) return "Choose rock, paper or scissors";
     return true;
   },
 
-  executeAction: (state, action, playerId) => {
-    const choices = { ...state.choices, [playerId]: action.choice };
+  executeAction: (state, action, memberId) => {
+    const choices = { ...state.choices, [memberId]: action.choice };
     const [first, second] = state.players;
     let winner: string | null = null;
     if (choices[first] && choices[second]) {
@@ -101,8 +101,8 @@ const rockPaperScissors: GamePlugin<RpsState, RpsAction, RpsView> = {
   },
 
   // Each player is an audience of their own, named by their player ID
-  filterStateForAudience: (state, playerId) => {
-    const opponent = state.players.find((id) => id !== playerId);
+  view: (state, memberId) => {
+    const opponent = state.players.find((id) => id !== memberId);
     return {
       players: state.players,
       names: state.names,
@@ -111,7 +111,7 @@ const rockPaperScissors: GamePlugin<RpsState, RpsAction, RpsView> = {
         state.winner !== null
           ? state.choices
           : Object.fromEntries(
-              Object.entries(state.choices).filter(([id]) => id === playerId),
+              Object.entries(state.choices).filter(([id]) => id === memberId),
             ),
       opponentHasChosen: opponent !== undefined && opponent in state.choices,
       winner: state.winner,
@@ -120,20 +120,20 @@ const rockPaperScissors: GamePlugin<RpsState, RpsAction, RpsView> = {
 };
 ```
 
-- `onJoin` seats a newcomer, or turns them away with a `GameRefusal`.
+- `onJoin` seats a newcomer, or turns them away with a `Refusal`.
 - `validateAction` returns `true`, or why not.
 - `executeAction` turns the state into the next one.
-- `filterStateForAudience` decides what each player sees.
+- `view` decides what each player sees.
 
 ## 3. The server and your host's routes
 
-Remote State has no routes for creating or joining games: only your app knows who may play. Add two:
+Remote State has no routes for creating or joining spaces: only your app knows who may play. Add two:
 
 ```ts
 const server = await createRemoteStateServer(rockPaperScissors, { port: 3001 });
 
 server.app.post("/lobby/games", async (_req, res) => {
-  res.status(201).json({ gameId: await server.createGame(newGame()) });
+  res.status(201).json({ gameId: await server.createSpace(newGame()) });
 });
 
 server.app.post(
@@ -144,12 +144,12 @@ server.app.post(
     try {
       // No login here, so every request is a new person
       const code = await server.admit({
-        gameId: req.params.gameId,
+        spaceId: req.params.gameId,
         identity: { id: randomUUID(), name },
       });
       res.status(201).json({ code });
     } catch (err) {
-      if (!(err instanceof UnknownGameError)) throw err;
+      if (!(err instanceof UnknownSpaceError)) throw err;
       res.status(404).json({ error: err.message });
     }
   },
@@ -189,7 +189,7 @@ That ran your `onJoin`: Alice has a seat. Trade the same code again, and it's re
 Alice tries to play alone:
 
 ```sh
-curl -s -X POST localhost:3001/api/games/$GAME/actions \
+curl -s -X POST localhost:3001/api/spaces/$GAME/actions \
   -H "Authorization: Bearer $ALICE" -H 'Content-Type: application/json' \
   -d '{"action":{"type":"choose","choice":"rock"}}'
 ```
@@ -207,8 +207,8 @@ Create `watch.mjs` in the repository root:
 ```js
 import { io } from "socket.io-client";
 
-const [gameId, token] = process.argv.slice(2);
-const socket = io("http://localhost:3001", { auth: { gameId, token } });
+const [spaceId, token] = process.argv.slice(2);
+const socket = io("http://localhost:3001", { auth: { spaceId, token } });
 socket.on("state", (event) =>
   console.log(`#${event.sequence}`, JSON.stringify(event.state)),
 );
@@ -229,7 +229,7 @@ Bob knows Alice chose, but not what: that's your filter. Now Bob chooses paper (
 Last, ask what changed for Bob since sequence 2:
 
 ```sh
-curl -s "localhost:3001/api/games/$GAME/updates?since=2" -H "Authorization: Bearer $BOB"
+curl -s "localhost:3001/api/spaces/$GAME/updates?since=2" -H "Authorization: Bearer $BOB"
 ```
 
 One set of patches from his view then to his view now: how a client that was away catches up.

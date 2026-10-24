@@ -40,21 +40,21 @@ describe('client when its page resumes', () => {
   after(() => server.close());
 
   it('reconnects at once, and ends with the current view', async () => {
-    const gameId = await server.newGame();
+    const spaceId = await server.newSpace();
     const fake = hiddenPage();
     // Hidden for any time at all counts, so showing the page resumes it
-    const alice = await server.join(gameId, 'alice', undefined, {
+    const alice = await server.join(spaceId, 'alice', undefined, {
       page: fake.page,
       resumeAfter: 0,
     });
-    const bob = await server.join(gameId, 'bob');
+    const bob = await server.join(spaceId, 'bob');
     const statuses: ConnectionState['status'][] = [];
     try {
       await alice.waitFor(0);
       alice.onConnection(({ status }) => statuses.push(status));
       fake.show();
       await reconnected(statuses);
-      const { sequence } = await bob.send({ type: 'count' });
+      const { sequence } = await bob.dispatch({ type: 'count' });
       assert.deepEqual((await alice.waitFor(sequence)).view.board, { count: 1 });
     } finally {
       alice.close();
@@ -63,8 +63,8 @@ describe('client when its page resumes', () => {
   });
 
   it('reconnects when asked to', async () => {
-    const gameId = await server.newGame();
-    const alice = await server.join(gameId, 'alice', undefined, { resumeAfter: null });
+    const spaceId = await server.newSpace();
+    const alice = await server.join(spaceId, 'alice', undefined, { resumeAfter: null });
     const statuses: ConnectionState['status'][] = [];
     try {
       await alice.waitFor(0);
@@ -77,9 +77,9 @@ describe('client when its page resumes', () => {
   });
 
   it("doesn't watch the page with resumeAfter null", async () => {
-    const gameId = await server.newGame();
+    const spaceId = await server.newSpace();
     const fake = hiddenPage();
-    const alice = await server.join(gameId, 'alice', undefined, {
+    const alice = await server.join(spaceId, 'alice', undefined, {
       page: fake.page,
       resumeAfter: null,
     });

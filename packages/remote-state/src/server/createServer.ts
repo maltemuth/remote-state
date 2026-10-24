@@ -1,5 +1,5 @@
 /**
- * A standalone Remote State server for one game: its own Express app and HTTP
+ * A standalone Remote State server for one space: its own Express app and HTTP
  * server around the embeddable core. Hosts add their routes to `app`. It never
  * exits the process; the host decides when to.
  */
@@ -7,7 +7,7 @@
 import express, { type Express } from 'express';
 import { createServer, type Server as HTTPServer } from 'http';
 import { consoleLogger } from '../logging/logger.js';
-import { type GamePlugin } from '../plugin/types.js';
+import { type Rules } from '../plugin/types.js';
 import { createRemoteState, type RemoteState } from './createRemoteState.js';
 import { type RemoteStateServerOptions } from './options.js';
 import { refuseUnhandledUpgrades } from './refuseUpgrades.js';
@@ -24,7 +24,7 @@ export interface RemoteStateServer<StateType> extends Omit<RemoteState<StateType
 }
 
 export const createRemoteStateServer = async <StateType, ActionType, ViewType>(
-  plugin: GamePlugin<StateType, ActionType, ViewType>,
+  plugin: Rules<StateType, ActionType, ViewType>,
   { port: requestedPort = 3000, ...options }: RemoteStateServerOptions = {}
 ): Promise<RemoteStateServer<StateType>> => {
   const logger = options.logger ?? consoleLogger();
@@ -70,9 +70,9 @@ export const createRemoteStateServer = async <StateType, ActionType, ViewType>(
       return listeningPort();
     },
     router: remote.router,
-    createGame: remote.createGame,
+    createSpace: remote.createSpace,
     admit: remote.admit,
-    act: remote.act,
+    dispatch: remote.dispatch,
     startServer,
     close,
   };

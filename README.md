@@ -9,12 +9,12 @@ Clients dispatch actions. The server runs your rules, like a reducer, and sends 
 The full state never leaves the server. A client only ever receives what your filter lets its user see, so anything private, such as a sealed bid, a hand of cards or someone else's draft, stays hidden, even from the browser's dev tools. And clients can't change the state themselves: an action your rules reject changes nothing, its sender gets the reason, and nobody else sees a thing.
 
 ```ts
-const server = await createRemoteStateServer(myGame, { port: 3000 });
+const server = await createRemoteStateServer(myRules, { port: 3000 });
 
 // In your own route, after your own login:
-const gameId = await server.createGame(newGame());
+const spaceId = await server.createSpace(initialState);
 const code = await server.admit({
-  gameId,
+  spaceId,
   identity: { id: user.id, name: user.name },
 });
 // The client trades the code for a token, then connects
@@ -22,7 +22,7 @@ const code = await server.admit({
 await server.startServer();
 ```
 
-You get admission codes and tokens, actions over HTTP, per-user views over Socket.IO as whole states or patches, a stored history, catch-up, timers, and a standalone server or a router for your own Express app.
+Each shared state is a **space**, and the people in it its **members**. You get admission codes and tokens, actions over HTTP, per-member views over Socket.IO as whole states or patches, a stored history, catch-up, timers, and a standalone server or a router for your own Express app.
 
 ## Try it
 

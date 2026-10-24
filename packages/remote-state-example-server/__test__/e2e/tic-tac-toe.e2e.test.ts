@@ -148,7 +148,7 @@ describe("Tic-tac-toe E2E", () => {
     const { gameId, x, o } = await seatedGame();
     const socket = connect(`http://localhost:${port}`, {
       path: "/tic-tac-toe/socket.io",
-      auth: { gameId, token: o.token },
+      auth: { spaceId: gameId, token: o.token },
       transports: ["websocket"],
       reconnection: false,
     });
@@ -168,7 +168,7 @@ describe("Tic-tac-toe E2E", () => {
   });
 
   it("ends the game when the player to move runs out of time", async () => {
-    const gameId = await example.ticTacToe.createGame(
+    const gameId = await example.ticTacToe.createSpace(
       newTicTacToeGame({ turnSeconds: 0.1 }),
     );
     const x = await client.joinAs(gameId, "Xena");

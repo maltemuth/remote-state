@@ -33,9 +33,9 @@ describe('consoleLogger', () => {
   });
 
   it('prints the scope, metadata and errors', () => {
-    consoleLogger({ scope: 'games' }).warn('slow', { ms: 5, cause: new Error('boom') });
+    consoleLogger({ scope: 'spaces' }).warn('slow', { ms: 5, cause: new Error('boom') });
     assert.ok(
-      lines[0].includes('warn  games slow | {"ms":5,"cause":{"name":"Error","message":"boom"')
+      lines[0].includes('warn  spaces slow | {"ms":5,"cause":{"name":"Error","message":"boom"')
     );
   });
 });

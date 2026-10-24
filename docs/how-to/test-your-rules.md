@@ -1,13 +1,13 @@
-# Test a game plugin
+# Test your rules
 
 ## Unit-test the rules
 
-A plugin is plain functions, so call them directly. Test `validateAction` and `executeAction` separately: the server never executes an action that failed validation.
+Rules are plain functions, so call them directly. Test `validateAction` and `executeAction` separately: the server never executes an action that failed validation.
 
 ```ts
 import assert from "node:assert/strict";
 import { it } from "node:test";
-import { GameRefusal } from "@malte.muth/remote-state";
+import { Refusal } from "@malte.muth/remote-state";
 
 it("rejects a second choice", async () => {
   const state = {
@@ -29,8 +29,8 @@ it("rejects a second choice", async () => {
 it("refuses a third player", () => {
   const full = { players: ["a", "b"], names: {}, choices: {}, winner: null };
   assert.throws(
-    () => rockPaperScissors.onJoin!(full, { playerId: "c", details: {} }),
-    GameRefusal,
+    () => rockPaperScissors.onJoin!(full, { memberId: "c", details: {} }),
+    Refusal,
   );
 });
 ```
@@ -45,24 +45,24 @@ const server = await createRemoteStateServer(rockPaperScissors, {
 });
 after(() => server.close());
 
-const join = async (gameId, name) => {
-  const code = await server.admit({ gameId, identity: { id: name, name } });
+const join = async (spaceId, name) => {
+  const code = await server.admit({ spaceId, identity: { id: name, name } });
   return (
     await request(server.app).post("/api/tokens").send({ code }).expect(201)
   ).body;
 };
 
 it("hides the opponent's choice", async () => {
-  const gameId = await server.createGame(newGame());
-  const alice = await join(gameId, "alice");
-  const bob = await join(gameId, "bob");
+  const spaceId = await server.createSpace(newGame());
+  const alice = await join(spaceId, "alice");
+  const bob = await join(spaceId, "bob");
   await request(server.app)
-    .post(`/api/games/${gameId}/actions`)
+    .post(`/api/spaces/${spaceId}/actions`)
     .set("Authorization", `Bearer ${alice.token}`)
     .send({ action: { type: "choose", choice: "rock" } })
     .expect(201);
   const { body } = await request(server.app)
-    .get(`/api/games/${gameId}/state`)
+    .get(`/api/spaces/${spaceId}/state`)
     .set("Authorization", `Bearer ${bob.token}`)
     .expect(200);
   assert.deepEqual(body.state.choices, {});

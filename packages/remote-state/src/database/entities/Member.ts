@@ -1,28 +1,28 @@
 /**
- * Anyone admitted to a game, seated or watching (decisions 0020, 0024). A player is
- * identified within its game by the host's identity ID, which the library never
+ * Anyone admitted to a space, seated or watching (decisions 0020, 0024). A member is
+ * identified within its space by the host's identity ID, which the library never
  * interprets.
  */
 
 import { type Opt } from '@mikro-orm/core';
 import { Entity, ManyToOne, PrimaryKey, Property, Unique } from '@mikro-orm/decorators/es';
 import { randomUUID } from 'crypto';
-import { Game } from './Game.js';
+import { Space } from './Space.js';
 
-@Entity({ tableName: 'players' })
-@Unique({ properties: ['game', 'identityId'] })
-export class Player {
+@Entity({ tableName: 'members' })
+@Unique({ properties: ['space', 'identityId'] })
+export class Member {
   @PrimaryKey({ type: 'string' })
   id: Opt<string> = randomUUID();
 
-  @ManyToOne(() => Game)
-  game!: Game;
+  @ManyToOne(() => Space)
+  space!: Space;
 
   /** Chosen by the host when admitting */
   @Property({ type: 'string' })
   identityId!: string;
 
-  /** The audience set by the game, or null for the default audience (decision 0025) */
+  /** The audience set by the space, or null for the default audience (decision 0025) */
   @Property({ type: 'string', nullable: true })
   audience: Opt<string> | null = null;
 

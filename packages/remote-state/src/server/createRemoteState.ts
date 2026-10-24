@@ -1,25 +1,25 @@
 /**
- * The embeddable core of the library for one game: a router for the host's
+ * The embeddable core of the library for one space: a router for the host's
  * Express app, a socket attached to the host's HTTP server, and the host API
- * (`createGame`, `admit`). Nothing here listens on a port or exits the process.
+ * (`createSpace`, `admit`). Nothing here listens on a port or exits the process.
  */
 
 import { type Server as HTTPServer } from 'http';
 import { type Router } from 'express';
 import { initializeDatabase } from '../database/orm.js';
 import { type EngineContext } from '../engine/context.js';
-import { createGameLock } from '../engine/gameLock.js';
+import { createSpaceLock } from '../engine/spaceLock.js';
 import { createScheduler } from '../engine/scheduler.js';
-import { restartGames } from '../engine/restart.js';
+import { restartSpaces } from '../engine/restart.js';
 import { runDueTimer } from '../engine/timers.js';
 import { createRouter } from '../http/router.js';
 import { consoleLogger } from '../logging/logger.js';
-import { type GamePlugin } from '../plugin/types.js';
+import { type Rules } from '../plugin/types.js';
 import { createPublisher } from '../socket/publisher.js';
 import { closeSocketServer, createSocketServer, type SocketServer } from '../socket/server.js';
-import { act, type ActResult } from '../engine/act.js';
+import { dispatch, type DispatchResult } from '../engine/dispatch.js';
 import { SYSTEM } from '../plugin/system.js';
-import { type Admission, admit, createGame } from './host.js';
+import { type Admission, admit, createSpace } from './host.js';
 import { diffs } from '../patches/diff.js';
 import { defaultCors, type RemoteStateOptions } from './options.js';
 
@@ -28,18 +28,18 @@ export interface RemoteState<StateType> {
   router: Router;
   /** Serve the socket on the host's HTTP server; at most once, and not with `socket: false` */
   attach: (httpServer: HTTPServer) => void;
-  /** Store a new game with an initial state the host got from the game (0036); returns its ID */
-  createGame: (initialState: StateType) => Promise<string>;
-  /** Issue a single-use code admitting an identity to a game (0020) */
+  /** Store a new space with an initial state the host built itself (0036); returns its ID */
+  createSpace: (initialState: StateType) => Promise<string>;
+  /** Issue a single-use code admitting an identity to a space (0020) */
   admit: (admission: Admission) => Promise<string>;
-  /** Run an action as the system (0040); throws `UnknownGameError` for an unknown game */
-  act: (gameId: string, action: unknown) => Promise<ActResult>;
+  /** Run an action as the system (0040); throws `UnknownSpaceError` for an unknown space */
+  dispatch: (spaceId: string, action: unknown) => Promise<DispatchResult>;
   /** Disconnect clients and close the database. The host's HTTP server keeps running. */
   close: () => Promise<void>;
 }
 
 export const createRemoteState = async <StateType, ActionType, ViewType>(
-  plugin: GamePlugin<StateType, ActionType, ViewType>,
+  plugin: Rules<StateType, ActionType, ViewType>,
   options: RemoteStateOptions = {}
 ): Promise<RemoteState<StateType>> => {
   const logger = options.logger ?? consoleLogger();
@@ -54,14 +54,14 @@ export const createRemoteState = async <StateType, ActionType, ViewType>(
     orm,
     plugin,
     logger,
-    withGameLock: createGameLock(),
+    withSpaceLock: createSpaceLock(),
     publisher: { publish: async () => undefined },
     scheduler: createScheduler(timer => runDueTimer(context, timer)),
     diff: diffs[diffName],
     checksums: options.checksums ?? true,
   };
   // Before anything is served, so no action can come in between (0052)
-  await restartGames(context);
+  await restartSpaces(context);
   let io: SocketServer | null = null;
 
   const attach = (httpServer: HTTPServer) => {
@@ -74,9 +74,9 @@ export const createRemoteState = async <StateType, ActionType, ViewType>(
   return {
     router: createRouter(context, cors, { devicePairing: options.devicePairing ?? false }),
     attach,
-    createGame: initialState => createGame(orm, logger, initialState),
+    createSpace: initialState => createSpace(orm, logger, initialState),
     admit: admission => admit(orm, admission),
-    act: (gameId, action) => act(context, gameId, SYSTEM, action),
+    dispatch: (spaceId, action) => dispatch(context, spaceId, SYSTEM, action),
     close: async () => {
       context.scheduler.close();
       if (io) closeSocketServer(io);

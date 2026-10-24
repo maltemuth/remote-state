@@ -115,7 +115,7 @@ describe('view store, catching up and closing', () => {
     store.receive({ sequence: 1, state: view('a') });
     store.receive({ sequence: 2, patches: add(1, 'lost') });
     store.receive({ sequence: 3, patches: add(2, 'lost too') });
-    // The restarted server went back to 1, and the game went on differently
+    // The restarted server went back to 1, and the space went on differently
     store.receive({ sequence: 1, state: view('a'), reset: true });
     store.receive({ sequence: 2, patches: add(1, 'b') });
     assert.deepEqual(store.getSnapshot(), { sequence: 2, view: view('a', 'b') });

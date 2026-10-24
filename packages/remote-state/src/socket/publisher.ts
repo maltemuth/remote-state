@@ -1,7 +1,7 @@
 /**
- * Sends a recorded transition to every connected player of the game, in the format
+ * Sends a recorded transition to every connected member of the space, in the format
  * each chose. Views and patches are computed here, only for the audiences of the
- * sockets connected, and once per audience (0056). A player who changed audience
+ * sockets connected, and once per audience (0056). A member who changed audience
  * gets a diff computed across audiences (decision 0035).
  */
 
@@ -9,12 +9,12 @@ import { type RemoteSocket, type Server } from 'socket.io';
 import { type Publisher, type TransitionOutcome } from '../engine/context.js';
 import { checksumOf } from '../patches/checksum.js';
 import { type Diff, type Patch } from '../patches/diff.js';
-import { type AnyGamePlugin } from '../plugin/types.js';
+import { type AnyRules } from '../plugin/types.js';
 import { viewFor } from '../plugin/views.js';
 import { type Logger } from '../logging/logger.js';
 import { type ServerToClientEvents, type SocketData } from './events.js';
 
-type GameSocket = RemoteSocket<ServerToClientEvents, SocketData>;
+type SpaceSocket = RemoteSocket<ServerToClientEvents, SocketData>;
 
 /** Computes each value once per key, the first time it's asked for */
 const memoized = <T>(compute: (key: string) => Promise<T>) => {
@@ -26,7 +26,7 @@ const memoized = <T>(compute: (key: string) => Promise<T>) => {
 };
 
 /** Views and patches of one transition, per audience, computed when first needed */
-const viewsOf = (plugin: AnyGamePlugin, diff: Diff, outcome: TransitionOutcome) => {
+const viewsOf = (plugin: AnyRules, diff: Diff, outcome: TransitionOutcome) => {
   const viewBefore = memoized(audience => viewFor(plugin, outcome.previousState, audience));
   const viewAfter = memoized(audience => viewFor(plugin, outcome.state, audience));
   const patches = memoized<Patch[]>(async key => {
@@ -44,42 +44,42 @@ const viewsOf = (plugin: AnyGamePlugin, diff: Diff, outcome: TransitionOutcome) 
 
 export const createPublisher = (
   io: Server<never, ServerToClientEvents>,
-  plugin: AnyGamePlugin,
+  plugin: AnyRules,
   diff: Diff,
   checksums: boolean,
   { error }: Logger
 ): Publisher => {
   const send = async (
-    socket: GameSocket,
+    socket: SpaceSocket,
     outcome: TransitionOutcome,
     views: ReturnType<typeof viewsOf>
   ) => {
-    const { gameId, sequence } = outcome;
-    const { playerId, format } = socket.data;
-    const audience = outcome.audiencesAfter.get(playerId);
+    const { spaceId, sequence } = outcome;
+    const { memberId, format } = socket.data;
+    const audience = outcome.audiencesAfter.get(memberId);
     if (audience === undefined) return;
     if (format === 'state') {
-      socket.emit('state', { gameId, sequence, state: await views.viewAfter(audience) });
+      socket.emit('state', { spaceId, sequence, state: await views.viewAfter(audience) });
     } else {
-      const before = outcome.audiencesBefore.get(playerId) ?? audience;
+      const before = outcome.audiencesBefore.get(memberId) ?? audience;
       const patches = await views.patches(before, audience);
       socket.emit(
         'patches',
         checksums
-          ? { gameId, sequence, patches, checksum: await views.checksum(audience) }
-          : { gameId, sequence, patches }
+          ? { spaceId, sequence, patches, checksum: await views.checksum(audience) }
+          : { spaceId, sequence, patches }
       );
     }
   };
 
   return {
     publish: async outcome => {
-      const sockets = (await io.in(outcome.gameId).fetchSockets()) as GameSocket[];
+      const sockets = (await io.in(outcome.spaceId).fetchSockets()) as SpaceSocket[];
       const views = viewsOf(plugin, diff, outcome);
       await Promise.all(
         sockets.map(socket =>
           send(socket, outcome, views).catch(err =>
-            error(`Failed to send update to player ${socket.data.playerId}`, err)
+            error(`Failed to send update to member ${socket.data.memberId}`, err)
           )
         )
       );

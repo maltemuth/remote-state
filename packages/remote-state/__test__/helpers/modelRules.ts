@@ -1,16 +1,16 @@
 /**
- * A game for property tests, built to stress diffs and views: a list with inserts,
+ * A space for property tests, built to stress diffs and views: a list with inserts,
  * removals and reversals, a table with keys that need escaping in JSON Pointers,
- * secret notes per player, and players moving to and from the spectators. Players
+ * secret notes per member, and members moving to and from the spectators. Members
  * see the public parts and their own notes; spectators see only the public parts.
  */
 
-import { withAudiences, type GamePlugin } from '../../src/index.js';
+import { withAudiences, type Rules } from '../../src/index.js';
 
 export interface ModelState {
   items: string[];
   table: Record<string, number>;
-  /** Player ID → notes, which only that player sees */
+  /** Member ID → notes, which only that member sees */
   secrets: Record<string, string[]>;
   spectating: string[];
 }
@@ -52,16 +52,16 @@ export const viewOf = (state: ModelState, audience: string): ModelView => ({
 
 const at = (index: number, length: number) => (length === 0 ? 0 : index % length);
 
-export const modelGame: GamePlugin<ModelState, ModelAction, ModelView> = {
-  onJoin: (state, { playerId }) => ({ ...state, secrets: { ...state.secrets, [playerId]: [] } }),
-  validateAction: (state, action, playerId) => {
+export const modelRules: Rules<ModelState, ModelAction, ModelView> = {
+  onJoin: (state, { memberId }) => ({ ...state, secrets: { ...state.secrets, [memberId]: [] } }),
+  validateAction: (state, action, memberId) => {
     if (action.type === 'invalid') return 'Invalid move';
-    const spectating = state.spectating.includes(playerId);
+    const spectating = state.spectating.includes(memberId);
     if (action.type === 'spectate' && spectating) return 'Already spectating';
     if (action.type === 'sit' && !spectating) return 'Already seated';
     return true;
   },
-  executeAction: (state, action, playerId) => {
+  executeAction: (state, action, memberId) => {
     switch (action.type) {
       case 'insert': {
         const items = [...state.items];
@@ -84,21 +84,21 @@ export const modelGame: GamePlugin<ModelState, ModelAction, ModelView> = {
       case 'note':
         return {
           ...state,
-          secrets: { ...state.secrets, [playerId]: [...state.secrets[playerId], action.text] },
+          secrets: { ...state.secrets, [memberId]: [...state.secrets[memberId], action.text] },
         };
       case 'spectate':
         return withAudiences(
-          { ...state, spectating: [...state.spectating, playerId] },
-          { [playerId]: SPECTATORS }
+          { ...state, spectating: [...state.spectating, memberId] },
+          { [memberId]: SPECTATORS }
         );
       case 'sit':
         return withAudiences(
-          { ...state, spectating: state.spectating.filter(id => id !== playerId) },
-          { [playerId]: null }
+          { ...state, spectating: state.spectating.filter(id => id !== memberId) },
+          { [memberId]: null }
         );
       default:
         return state;
     }
   },
-  filterStateForAudience: viewOf,
+  view: viewOf,
 };

@@ -5,17 +5,17 @@
  * the game until the host resumes it.
  */
 
-import { GameRefusal, type GamePlugin } from "@malte.muth/remote-state";
+import { Refusal, type Rules } from "@malte.muth/remote-state";
 import { pauseOnRestart } from "./restart.js";
 import { applyAction, checkAction, freeMark } from "./rules.js";
 import { withTurnTimer } from "./turnTimer.js";
 import type { TicTacToeAction, TicTacToeState } from "./types.js";
 
-export const ticTacToePlugin: GamePlugin<TicTacToeState, TicTacToeAction> = {
+export const ticTacToeRules: Rules<TicTacToeState, TicTacToeAction> = {
   onRestart: pauseOnRestart,
-  onJoin: (state, { playerId, details }) => {
+  onJoin: (state, { memberId: playerId, details }) => {
     const mark = freeMark(state);
-    if (!mark) throw new GameRefusal("Both seats are taken");
+    if (!mark) throw new Refusal("Both seats are taken");
     const name =
       typeof details.name === "string" && details.name
         ? details.name

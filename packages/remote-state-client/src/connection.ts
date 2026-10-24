@@ -1,6 +1,6 @@
 /**
- * The Socket.IO connection to a game: authenticates with the session, passes the
- * game's `state` and `patches` events on as updates, and reports the connection's
+ * The Socket.IO connection to a space: authenticates with the session, passes the
+ * space's `state` and `patches` events on as updates, and reports the connection's
  * state. Socket.IO reconnects by itself, and `reconnect` does it at once, such as
  * when a page resumes (0062); every (re)connect starts with a whole view, marked as a
  * reset, since a restarted server may have gone back to an earlier state.
@@ -31,7 +31,7 @@ export const connect = <View>({
 }: ConnectionOptions<View>) => {
   const socket = io(endpoints.socketOrigin, {
     path: endpoints.socketPath,
-    auth: { gameId: session.gameId, token: session.token },
+    auth: { spaceId: session.spaceId, token: session.token },
     query: { format },
     ...(parser ? { parser } : {}),
   });
@@ -51,7 +51,7 @@ export const connect = <View>({
         : { status: 'refused', error: error.message }
     )
   );
-  // The socket is authenticated for this one game, so every event is about it
+  // The socket is authenticated for this one space, so every event is about it
   socket.on('state', (event: { sequence: number; state: View }) => {
     onUpdate({ sequence: event.sequence, state: event.state, reset: connected });
     connected = false;

@@ -1,7 +1,7 @@
 /**
- * `createClient`: one player's client for one game. It keeps the player's view in
+ * `createClient`: one member's client for one space. It keeps the member's view in
  * step with the server, which anything can subscribe to (decision 0043), and sends
- * actions over HTTP. It's generic over the game's view and action types (0045), and
+ * actions over HTTP. It's generic over the space's view and action types (0045), and
  * shows results only once the server has sent them (0033). In a browser, it
  * reconnects at once when the page comes back after a while, or the network does
  * (0062).
@@ -18,7 +18,7 @@ import { createViewStore, type CatchUp } from './viewStore.js';
 
 export interface ClientOptions {
   session: Session;
-  /** Where the game's library routes are mounted; the page's origin by default */
+  /** Where the space's library routes are mounted; the page's origin by default */
   baseUrl?: string;
   /** The socket's path; `<baseUrl's path>/socket.io` by default */
   socketPath?: string;
@@ -56,13 +56,13 @@ export interface RemoteStateClient<View, Action> {
    */
   waitFor: (sequence: number) => Promise<Snapshot<View>>;
   /**
-   * Send an action. Resolves with the sequence of the state it produced, which
+   * Dispatch an action. Resolves with the sequence of the state it produced, which
    * arrives through `subscribe`. A rejected action throws an `ActionRejectedError`.
    */
-  send: (action: Action) => Promise<{ sequence: number }>;
+  dispatch: (action: Action) => Promise<{ sequence: number }>;
   /**
-   * A single-use code for this player, for another device to redeem with
-   * `redeemCode` and play as the same player, such as a phone; it expires within a
+   * A single-use code for this member, for another device to redeem with
+   * `redeemCode` and follow the space as the same member, such as a phone; it expires within a
    * minute. Needs a server with `devicePairing` (0063)
    */
   pairingCode: () => Promise<string>;
@@ -77,7 +77,7 @@ export interface RemoteStateClient<View, Action> {
   close: () => void;
 }
 
-/** The game rejected an action; `message` is its reason */
+/** The space rejected an action; `message` is its reason */
 export class ActionRejectedError extends RequestError {
   constructor(message: string) {
     super(message, 400);
@@ -90,8 +90,8 @@ export const createClient = <View = unknown, Action = unknown>(
 ): RemoteStateClient<View, Action> => {
   const { session } = options;
   const endpoints = resolveEndpoints(options.baseUrl, options.socketPath);
-  const game = (path: string) => endpoints.api(`/games/${session.gameId}${path}`);
-  const get = <T>(path: string) => requestJson<T>(game(path), { token: session.token });
+  const space = (path: string) => endpoints.api(`/spaces/${session.spaceId}${path}`);
+  const get = <T>(path: string) => requestJson<T>(space(path), { token: session.token });
 
   const catchUp: CatchUp<View> = {
     state: () => get('/state'),
@@ -137,9 +137,9 @@ export const createClient = <View = unknown, Action = unknown>(
     getSnapshot: store.getSnapshot,
     subscribe: store.subscribe,
     waitFor: store.waitFor,
-    send: async action => {
+    dispatch: async action => {
       try {
-        return await requestJson<{ sequence: number }>(game('/actions'), {
+        return await requestJson<{ sequence: number }>(space('/actions'), {
           method: 'POST',
           body: { action },
           token: session.token,
@@ -153,7 +153,7 @@ export const createClient = <View = unknown, Action = unknown>(
     },
     pairingCode: async () =>
       (
-        await requestJson<{ code: string }>(game('/codes'), {
+        await requestJson<{ code: string }>(space('/codes'), {
           method: 'POST',
           token: session.token,
         })

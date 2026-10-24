@@ -14,12 +14,12 @@ import {
   type SocketSettings,
 } from "@malte.muth/remote-state";
 import {
-  battleshipPlugin,
+  battleshipRules,
   newBattleshipGame,
 } from "../games/battleship/plugin.js";
 import type { BattleshipState } from "../games/battleship/types.js";
 import { newTicTacToeGame } from "../games/tic-tac-toe/rules.js";
-import { ticTacToePlugin } from "../games/tic-tac-toe/plugin.js";
+import { ticTacToeRules } from "../games/tic-tac-toe/plugin.js";
 import type { TicTacToeState } from "../games/tic-tac-toe/types.js";
 import { serveBrowserModules } from "./browserModules.js";
 import { mountGame } from "./mountGame.js";
@@ -69,7 +69,7 @@ export const createExampleServer = async ({
     server,
     "/tic-tac-toe",
     {
-      plugin: ticTacToePlugin,
+      plugin: ticTacToeRules,
       newGame: () => newTicTacToeGame({ turnSeconds: TURN_SECONDS }),
       resume: { type: "resume" },
     },
@@ -79,7 +79,7 @@ export const createExampleServer = async ({
     app,
     server,
     "/battleship",
-    { plugin: battleshipPlugin, newGame: newBattleshipGame },
+    { plugin: battleshipRules, newGame: newBattleshipGame },
     { database: database("battleship"), logger, diff, checksums, socket },
   );
   if (publicDirectory) {

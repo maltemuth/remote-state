@@ -1,5 +1,5 @@
 /**
- * A transition's changes default per field, also when a game passes a field as
+ * A transition's changes default per field, also when a space passes a field as
  * undefined.
  */
 

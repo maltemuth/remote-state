@@ -1,5 +1,5 @@
 /**
- * The Socket.IO server. Clients connect with `auth: { gameId, token }` and an
+ * The Socket.IO server. Clients connect with `auth: { spaceId, token }` and an
  * optional `format` query parameter (`state` by default; unknown values are
  * refused, 0008). On connect, a client gets its whole view, then updates (0031).
  */
@@ -33,18 +33,18 @@ export const createSocketServer = (
     path,
     ...(parser ? { parser } : {}),
     ...(perMessageDeflate !== undefined ? { perMessageDeflate } : {}),
-    // Leave upgrade requests for other paths to the host, such as another game's socket
+    // Leave upgrade requests for other paths to the host, such as another space's socket
     destroyUpgrade: false,
   });
 
   io.use(async (socket, next) => {
-    const { gameId, token } = socket.handshake.auth ?? {};
+    const { spaceId, token } = socket.handshake.auth ?? {};
     const format = parseFormat(socket.handshake.query.format);
     if (!format) return next(new Error(`Unknown format; use one of ${formats.join(', ')}`));
     try {
-      const playerId = await authenticate(context.orm, token, gameId);
-      if (!playerId) return next(new Error('Invalid token or game'));
-      socket.data = { gameId, playerId, format };
+      const memberId = await authenticate(context.orm, token, spaceId);
+      if (!memberId) return next(new Error('Invalid token or space'));
+      socket.data = { spaceId, memberId, format };
       next();
     } catch (err) {
       error('Socket authentication failed', err);
@@ -53,17 +53,17 @@ export const createSocketServer = (
   });
 
   io.on('connection', socket => {
-    const { gameId, playerId } = socket.data;
-    info(`Player ${playerId} connected to game ${gameId}`);
+    const { spaceId, memberId } = socket.data;
+    info(`Member ${memberId} connected to space ${spaceId}`);
     // Under the lock, so no update is sent between the view and joining the room
     void context
-      .withGameLock(gameId, async () => {
-        const view = await currentView(context, gameId, playerId);
-        socket.emit('state', { gameId, ...view });
-        await socket.join(gameId);
+      .withSpaceLock(spaceId, async () => {
+        const view = await currentView(context, spaceId, memberId);
+        socket.emit('state', { spaceId, ...view });
+        await socket.join(spaceId);
       })
       .catch(err => {
-        error(`Failed to send the current state to player ${playerId}`, err);
+        error(`Failed to send the current state to member ${memberId}`, err);
         socket.disconnect(true);
       });
   });

@@ -1,6 +1,6 @@
 /**
  * Deployment settings, passed when creating a server rather than defined by the
- * game, so the same game can be deployed in different ways.
+ * space, so the same space can be deployed in different ways.
  */
 
 import { type CorsOptions } from 'cors';
@@ -9,7 +9,7 @@ import { type Logger } from '../logging/logger.js';
 import { type DiffName } from '../patches/diff.js';
 
 export interface RemoteStateOptions {
-  /** SQLite file to keep games in; `:memory:` (the default) keeps them only while running */
+  /** SQLite file to keep spaces in; `:memory:` (the default) keeps them only while running */
   database?: string;
   /** Where the library logs, including MikroORM's output; `consoleLogger()` by default */
   logger?: Logger;
@@ -25,8 +25,8 @@ export interface RemoteStateOptions {
   /** Send a checksum of the view with every patch, for clients to check theirs; on by default (0059, 0061) */
   checksums?: boolean;
   /**
-   * Let players pair their own devices: `POST /api/games/:gameId/codes` gives a
-   * player a single-use code for themselves, for another device to redeem; off by
+   * Let members pair their own devices: `POST /api/spaces/:spaceId/codes` gives a
+   * member a single-use code for themselves, for another device to redeem; off by
    * default (0063)
    */
   devicePairing?: boolean;

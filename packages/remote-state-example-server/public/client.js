@@ -90,7 +90,7 @@ class TicTacToeClient {
     if (!this.client) return;
     try {
       this.showError("");
-      await this.client.send(action);
+      await this.client.dispatch(action);
     } catch (error) {
       this.showError(
         error instanceof ActionRejectedError
@@ -111,7 +111,7 @@ class TicTacToeClient {
   }
 
   render(state) {
-    const me = this.session.playerId;
+    const me = this.session.memberId;
     const mine =
       ["X", "O"].find((mark) => state.seats[mark]?.playerId === me) ?? null;
     const waiting = !state.seats.X || !state.seats.O;

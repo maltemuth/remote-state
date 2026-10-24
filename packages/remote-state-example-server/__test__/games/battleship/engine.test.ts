@@ -6,14 +6,14 @@
 
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { GameRefusal } from "@malte.muth/remote-state";
+import { Refusal } from "@malte.muth/remote-state";
 import {
   executeAction,
   filterStateForPlayer,
   validateAction,
 } from "../../../src/games/battleship/engine.js";
 import {
-  battleshipPlugin,
+  battleshipRules,
   newBattleshipGame,
 } from "../../../src/games/battleship/plugin.js";
 import { FLEET, HITS, MISSES } from "../../../src/games/battleship/script.js";
@@ -23,7 +23,10 @@ import type {
 } from "../../../src/games/battleship/types.js";
 
 const seat = (state: BattleshipState, playerId: string) =>
-  battleshipPlugin.onJoin!(state, { playerId, details: {} }) as BattleshipState;
+  battleshipRules.onJoin!(state, {
+    memberId: playerId,
+    details: {},
+  }) as BattleshipState;
 
 /** Validate, then apply; throws with the reason if the action isn't allowed */
 const play = (state: BattleshipState, playerId: string, action: unknown) => {
@@ -57,7 +60,7 @@ describe("battleship rules", () => {
   it("seats players in admission order and refuses a third", () => {
     const state = seated();
     assert.deepEqual(state.players, { player1: "alice", player2: "bob" });
-    assert.throws(() => seat(state, "carol"), GameRefusal);
+    assert.throws(() => seat(state, "carol"), Refusal);
   });
 
   it("only lets seated players act", () => {

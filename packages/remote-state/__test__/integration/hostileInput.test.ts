@@ -2,7 +2,7 @@
  * Hostile input: reserved keys such as `__proto__` in actions and states (dropped
  * from states, 0047), bodies that are too large or not JSON, actions that aren't
  * objects, malformed tokens, codes and cursors, and handshakes with the wrong types. The server must answer
- * with a client error or the game's own answer, stay usable, and never change
+ * with a client error or the space's own answer, stay usable, and never change
  * `Object.prototype`.
  */
 
@@ -12,7 +12,7 @@ import { applyPatches, enablePatches } from 'immer';
 import { type Socket } from 'socket.io-client';
 import request from 'supertest';
 import {
-  type GamePlugin,
+  type Rules,
   type RemoteStateServer,
   type Logger,
   type PatchesEvent,
@@ -23,11 +23,11 @@ import { waitUntil } from '../helpers/waitUntil.js';
 
 enablePatches();
 
-/** Stores whatever JSON a player sends, the worst case for reserved keys */
+/** Stores whatever JSON a member sends, the worst case for reserved keys */
 interface BagState {
   bag: unknown;
 }
-const bagGame: GamePlugin<BagState, { type: 'put'; bag: unknown }> = {
+const bagRules: Rules<BagState, { type: 'put'; bag: unknown }> = {
   validateAction: (_state, action) =>
     (typeof action === 'object' && action !== null && action.type === 'put') || 'Not a put',
   executeAction: (_state, action) => ({ bag: action.bag }),
@@ -55,7 +55,7 @@ describe('hostile input', () => {
   };
 
   before(async () => {
-    server = await startServer(bagGame, { logger });
+    server = await startServer(bagRules, { logger });
     url = serverUrl(server);
   });
   afterEach(() => {
@@ -64,26 +64,26 @@ describe('hostile input', () => {
   });
   after(() => server.close());
 
-  const player = async () => {
-    const gameId = await server.createGame({ bag: null });
-    const { token } = await join(server, gameId, 'alice');
+  const member = async () => {
+    const spaceId = await server.createSpace({ bag: null });
+    const { token } = await join(server, spaceId, 'alice');
     const auth = (req: request.Test) => req.set('Authorization', `Bearer ${token}`);
     return {
-      gameId,
+      spaceId,
       token,
       act: (payload: string) =>
-        auth(request(url).post(`/api/games/${gameId}/actions`))
+        auth(request(url).post(`/api/spaces/${spaceId}/actions`))
           .set('Content-Type', 'application/json')
           .send(payload),
-      state: () => auth(request(url).get(`/api/games/${gameId}/state`)),
+      state: () => auth(request(url).get(`/api/spaces/${spaceId}/state`)),
       updates: (since: string) =>
-        auth(request(url).get(`/api/games/${gameId}/updates?since=${since}`)).redirects(0),
+        auth(request(url).get(`/api/spaces/${spaceId}/updates?since=${since}`)).redirects(0),
     };
   };
 
   it('drops reserved keys from states, so patches apply, and warns', async () => {
-    const { gameId, token, act, state, updates } = await player();
-    const socket = openSocket(url, { gameId, token }, { query: { format: 'immer' } });
+    const { spaceId, token, act, state, updates } = await member();
+    const socket = openSocket(url, { spaceId, token }, { query: { format: 'immer' } });
     sockets.push(socket);
     let view: unknown;
     let sequence = -1;
@@ -111,12 +111,12 @@ describe('hostile input', () => {
     }
     assert.match(
       warnings[0],
-      new RegExp(`^Dropped keys named __proto__ from the state of game ${gameId} at \\d+`)
+      new RegExp(`^Dropped keys named __proto__ from the state of space ${spaceId} at \\d+`)
     );
   });
 
   it('answers actions with reserved keys like any other', async () => {
-    const { act } = await player();
+    const { act } = await member();
     await act('{"action": {"__proto__": {"type": "put"}, "bag": 1}}').expect(400);
     await act('{"__proto__": {"action": {"type": "put", "bag": 1}}}').expect(400);
     await act(
@@ -124,8 +124,8 @@ describe('hostile input', () => {
     ).expect(201);
   });
 
-  it("answers actions that are not objects with the game's answer", async () => {
-    const { act } = await player();
+  it("answers actions that are not objects with the space's answer", async () => {
+    const { act } = await member();
     for (const action of ['null', '42', '"put"', '[]', 'true']) {
       await act(`{"action": ${action}}`).expect(400, { error: 'Not a put' });
     }
@@ -133,7 +133,7 @@ describe('hostile input', () => {
   });
 
   it('rejects bodies that are too large or not JSON', async () => {
-    const { act, gameId, token } = await player();
+    const { act, spaceId, token } = await member();
     const huge = JSON.stringify({ action: { type: 'put', bag: 'x'.repeat(200_000) } });
     const tooLarge = await act(huge);
     assert.equal(tooLarge.status, 413);
@@ -141,7 +141,7 @@ describe('hostile input', () => {
     assert.equal(typeof tooLarge.body.error, 'string');
 
     await request(url)
-      .post(`/api/games/${gameId}/actions`)
+      .post(`/api/spaces/${spaceId}/actions`)
       .set('Authorization', `Bearer ${token}`)
       .set('Content-Type', 'text/plain')
       .send('{"action": {"type": "put", "bag": 1}}')
@@ -149,9 +149,12 @@ describe('hostile input', () => {
   });
 
   it('rejects malformed tokens, codes and cursors', async () => {
-    const { gameId, updates } = await player();
+    const { spaceId, updates } = await member();
     for (const header of ['Bearer', 'Bearer ', 'Basic abc', `Bearer ${'x'.repeat(10_000)}`]) {
-      await request(url).get(`/api/games/${gameId}/state`).set('Authorization', header).expect(401);
+      await request(url)
+        .get(`/api/spaces/${spaceId}/state`)
+        .set('Authorization', header)
+        .expect(401);
     }
     for (const code of [123, {}, [], null, '', 'x'.repeat(10_000)]) {
       const { status } = await request(url).post('/api/tokens').send({ code });
@@ -163,13 +166,13 @@ describe('hostile input', () => {
     // A number, but in the future
     assert.equal((await updates('99999999999999999999')).status, 404);
     await request(url)
-      .get('/api/games/..%2F..%2Fetc/state')
+      .get('/api/spaces/..%2F..%2Fetc/state')
       .set('Authorization', 'Bearer x')
       .expect(401);
   });
 
   it('refuses handshakes with the wrong types', async () => {
-    const { gameId, token } = await player();
+    const { spaceId, token } = await member();
     const refusal = (auth: object, query: Record<string, string | string[]> = {}) => {
       const socket = openSocket(url, auth, { query });
       sockets.push(socket);
@@ -177,11 +180,11 @@ describe('hostile input', () => {
         socket.once('connect_error', error => resolve(error.message))
       );
     };
-    assert.match(await refusal({ gameId: { $ne: null }, token }), /Invalid token/);
-    assert.match(await refusal({ gameId, token: 12345 }), /Invalid token/);
-    assert.match(await refusal({ gameId: [gameId], token: [token] }), /Invalid token/);
+    assert.match(await refusal({ spaceId: { $ne: null }, token }), /Invalid token/);
+    assert.match(await refusal({ spaceId, token: 12345 }), /Invalid token/);
+    assert.match(await refusal({ spaceId: [spaceId], token: [token] }), /Invalid token/);
     assert.match(
-      await refusal({ gameId, token }, { format: ['state', 'immer'] }),
+      await refusal({ spaceId, token }, { format: ['state', 'immer'] }),
       /Unknown format/
     );
   });
