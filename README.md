@@ -1,6 +1,6 @@
 # Remote State
 
-Like Redux, but the store lives on the server and every player is connected to it.
+Like Redux, Pinia or NgRx, but the store lives on the server and every player is connected to it.
 
 Clients dispatch actions. The server runs your game's rules, like a reducer, and sends each player the new state. A player sees only what your filter lets them see, so hidden hands stay hidden.
 
