@@ -6,13 +6,14 @@ Clients dispatch actions. The server runs your game's rules, like a reducer, and
 
 ```mermaid
 flowchart LR
-  A[Alice's client] -- "action" --> S
-  B[Bob's client] -- "action" --> S
+  A[Alice's client]
+  B[Bob's client]
   subgraph S[Server]
+    direction TB
     R["your rules<br/>(state, action) → state"] --> F["your filter<br/>state → each player's view"]
   end
-  F -- "Alice's view" --> A
-  F -- "Bob's view" --> B
+  A <-- "actions / Alice's view" --> S
+  B <-- "actions / Bob's view" --> S
 ```
 
 Your app decides who may play, and the library does the rest: storing every game and its history, ordering actions, and keeping every client in step.
