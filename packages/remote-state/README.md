@@ -1,5 +1,7 @@
 # @malte.muth/remote-state
 
+> ⚠️ **Experimental, and vibe-coded.** Written largely with an AI assistant, and not reviewed for production use. Use at your own risk.
+
 Server-authoritative shared state, on Node.js 24+: like Redux, Pinia or NgRx, but on the server. Each shared state is a **space**, such as a game, an auction or a document, and the people in it are its **members**. You write the rules; the library runs them, stores every space's history, and sends each member their own view, live. Your app decides who may join.
 
 ```sh

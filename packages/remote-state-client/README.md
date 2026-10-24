@@ -1,5 +1,7 @@
 # @malte.muth/remote-state-client
 
+> ⚠️ **Experimental, and vibe-coded.** Written largely with an AI assistant, and not reviewed for production use. Use at your own risk.
+
 The client for [`@malte.muth/remote-state`](https://www.npmjs.com/package/@malte.muth/remote-state) spaces: it keeps one member's view in step with the server, and dispatches their actions. Browsers and Node.js 24+.
 
 ```sh
